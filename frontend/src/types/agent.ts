@@ -13,6 +13,7 @@ export interface Agent {
   collaboratingWith?: string[]
   color: string
   icon: string
+  location?: 'boss-room' | 'tea-room'
 }
 
 export interface WorkLog {
