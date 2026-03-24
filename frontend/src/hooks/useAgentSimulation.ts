@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Agent, WorkLog, OfficeRoom, SpeechBubble } from '../types/agent'
 import { initialAgents, initialRooms, initialWorkLogs } from '../utils/mockData'
 
@@ -74,6 +74,15 @@ const MISSIONS: Mission[] = [
 
 const DIRECTOR_ID = 'project-director'
 
+// Reset all initial agents to idle so first mission speech bubble is clearly visible
+const idleAgents: Agent[] = initialAgents.map((a) => ({
+  ...a,
+  status: 'idle' as const,
+  currentTask: undefined,
+  progress: undefined,
+  collaboratingWith: undefined,
+}))
+
 function randomItem<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
@@ -89,7 +98,7 @@ let logSeq = initialWorkLogs.length + 1
    ════════════════════════════════════════════ */
 
 export function useAgentSimulation() {
-  const [agents, setAgents] = useState<Agent[]>(initialAgents)
+  const [agents, setAgents] = useState<Agent[]>(idleAgents)
   const [workLogs, setWorkLogs] = useState<WorkLog[]>(initialWorkLogs)
   const [bubbles, setBubbles] = useState<SpeechBubble[]>([])
 
@@ -107,7 +116,7 @@ export function useAgentSimulation() {
 
   /* ── Helpers ── */
 
-  const addLog = (aId: string, message: string, type: WorkLog['type'] = 'info') => {
+  const addLog = useCallback((aId: string, message: string, type: WorkLog['type'] = 'info') => {
     setWorkLogs((prev) => {
       const next = [...prev, {
         id: `log-${logSeq++}`,
@@ -119,20 +128,112 @@ export function useAgentSimulation() {
       }]
       return next.length > 100 ? next.slice(-100) : next
     })
-  }
+  }, [])
 
-  const batchUpdate = (updates: Record<string, Partial<Agent>>) => {
+  const batchUpdate = useCallback((updates: Record<string, Partial<Agent>>) => {
     setAgents((prev) => prev.map((a) => {
       const u = updates[a.id]
       return u ? { ...a, ...u } : a
     }))
-  }
+  }, [])
 
-  const showBubble = (aId: string, text: string) => {
-    setBubbles([{ id: `b-${Date.now()}`, agentId: aId, text, timestamp: new Date() }])
-  }
+  const showBubble = useCallback((aId: string, text: string) => {
+    const newBubble: SpeechBubble = {
+      id: `b-${Date.now()}-${aId}`,
+      agentId: aId,
+      text,
+      timestamp: new Date(),
+    }
+    setBubbles((prev) => [...prev.filter((b) => b.agentId !== aId), newBubble])
+  }, [])
 
-  const clearBubbles = () => setBubbles([])
+  const clearBubbleForAgent = useCallback((aId: string) => {
+    setBubbles((prev) => prev.filter((b) => b.agentId !== aId))
+  }, [])
+
+  const clearBubbles = useCallback(() => setBubbles([]), [])
+
+  /* ── Boss call handler ── */
+  const handleBossCall = useCallback((targetName: string) => {
+    const cur = agentsRef.current
+    const director = cur.find((a) => a.id === DIRECTOR_ID)
+
+    if (!director || director.status !== 'idle') {
+      addLog(DIRECTOR_ID, '老闆目前忙碌中...')
+      return
+    }
+
+    // Find target by displayName (partial match) or id
+    const target = cur.find(
+      (a) =>
+        a.id !== DIRECTOR_ID &&
+        (a.displayName.includes(targetName) || a.id.includes(targetName)),
+    )
+
+    if (!target) {
+      addLog(DIRECTOR_ID, `找不到員工：${targetName}`)
+      return
+    }
+
+    // Director bubble
+    showBubble(DIRECTOR_ID, `${target.displayName}，來我辦公室一下 ❤️`)
+
+    setTimeout(() => {
+      clearBubbleForAgent(DIRECTOR_ID)
+      batchUpdate({
+        [DIRECTOR_ID]: { status: 'waiting', location: 'boss-room', currentTask: '私密會談中...' },
+        [target.id]: { status: 'waiting', location: 'boss-room', currentTask: '私密會談中...' },
+      })
+
+      setTimeout(() => {
+        batchUpdate({
+          [DIRECTOR_ID]: { status: 'idle', location: undefined, currentTask: undefined },
+          [target.id]: { status: 'idle', location: undefined, currentTask: undefined },
+        })
+      }, 10000)
+    }, 2000)
+  }, [addLog, showBubble, clearBubbleForAgent, batchUpdate])
+
+  /* ── Tea time handler ── */
+  const handleTeaTime = useCallback(() => {
+    const cur = agentsRef.current
+    const available = cur.filter((a) => a.status === 'idle' && !a.location)
+
+    if (available.length < 2) return
+
+    // Pick 2-3 random agents
+    const shuffled = [...available].sort(() => Math.random() - 0.5)
+    const count = available.length >= 3 && Math.random() > 0.4 ? 3 : 2
+    const chosen = shuffled.slice(0, count)
+
+    const names = chosen.map((a) => a.displayName).join('、')
+    addLog('system', `${names} 去茶水間休息`)
+
+    setTimeout(() => {
+      const updates: Record<string, Partial<Agent>> = {}
+      chosen.forEach((a) => {
+        updates[a.id] = { status: 'waiting', location: 'tea-room', currentTask: '休息中 ☕' }
+      })
+      batchUpdate(updates)
+
+      setTimeout(() => {
+        const clearUpdates: Record<string, Partial<Agent>> = {}
+        chosen.forEach((a) => {
+          clearUpdates[a.id] = { status: 'idle', location: undefined, currentTask: undefined }
+        })
+        batchUpdate(clearUpdates)
+      }, 12000)
+    }, 1500)
+  }, [addLog, batchUpdate])
+
+  /* ── sendCommand: external command handler ── */
+  const sendCommand = useCallback((command: string, params: Record<string, string> = {}) => {
+    if (command === 'bosscall') {
+      handleBossCall(params.target ?? '')
+    } else if (command === 'teatime') {
+      handleTeaTime()
+    }
+  }, [handleBossCall, handleTeaTime])
 
   /* ── Mission lifecycle ── */
 
@@ -140,11 +241,23 @@ export function useAgentSimulation() {
     let cancelled = false
     const timers: ReturnType<typeof setTimeout>[] = []
     let progressInterval: ReturnType<typeof setInterval> | null = null
+    let autoTeaTimer: ReturnType<typeof setTimeout> | null = null
 
     function sched(fn: () => void, ms: number) {
       if (cancelled) return
       const t = setTimeout(() => { if (!cancelled) fn() }, ms)
       timers.push(t)
+    }
+
+    function schedAutoTea() {
+      if (cancelled) return
+      const delay = 18000 + Math.random() * 8000 // ~20s
+      autoTeaTimer = setTimeout(() => {
+        if (!cancelled) {
+          handleTeaTime()
+          schedAutoTea()
+        }
+      }, delay)
     }
 
     function runMission() {
@@ -162,7 +275,7 @@ export function useAgentSimulation() {
 
       // ═══ Phase 2: Agents gather (3.5s) ═══
       sched(() => {
-        clearBubbles()
+        clearBubbleForAgent(DIRECTOR_ID)
         const updates: Record<string, Partial<Agent>> = {
           [DIRECTOR_ID]: { status: 'waiting', currentTask: '前往會議室主持...' },
         }
@@ -178,7 +291,7 @@ export function useAgentSimulation() {
         showBubble(DIRECTOR_ID, `${mission.name}：開始分配工作！`)
         addLog(DIRECTOR_ID, `開始分配 ${mission.name} 任務`)
 
-        sched(() => clearBubbles(), 2500)
+        sched(() => clearBubbleForAgent(DIRECTOR_ID), 2500)
 
         const updates: Record<string, Partial<Agent>> = {
           [DIRECTOR_ID]: { status: 'working', currentTask: `監督：${mission.name}`, progress: undefined },
@@ -254,15 +367,17 @@ export function useAgentSimulation() {
       }, 6500) // announce + gather duration
     }
 
-    // Start first mission after 2s
+    // Start first mission after 2s, auto tea after first idle period
     sched(runMission, 2000)
+    schedAutoTea()
 
     return () => {
       cancelled = true
       timers.forEach(clearTimeout)
       if (progressInterval) clearInterval(progressInterval)
+      if (autoTeaTimer) clearTimeout(autoTeaTimer)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { agents, rooms, workLogs, speechBubbles: bubbles }
+  return { agents, rooms, workLogs, speechBubbles: bubbles, sendCommand }
 }

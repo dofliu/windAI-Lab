@@ -13,11 +13,27 @@ interface RoomDef {
 }
 
 const MEETING: RoomDef = {
-  x: 10, y: 1, w: 80, h: 14,
+  x: 11, y: 1, w: 78, h: 14,
   label: '會議室', icon: '🏛️',
   floor: 'rgba(99,102,241,0.06)',
   border: 'rgba(99,102,241,0.25)',
   labelColor: '#818cf8',
+}
+
+const BOSS_ROOM: RoomDef = {
+  x: 1, y: 1, w: 9, h: 14,
+  label: '私密室', icon: '🔒',
+  floor: 'rgba(236,72,153,0.08)',
+  border: 'rgba(236,72,153,0.3)',
+  labelColor: '#f472b6',
+}
+
+const TEA_ROOM: RoomDef = {
+  x: 90, y: 1, w: 9, h: 14,
+  label: '茶水間', icon: '☕',
+  floor: 'rgba(251,191,36,0.06)',
+  border: 'rgba(251,191,36,0.25)',
+  labelColor: '#fbbf24',
 }
 
 const ROOMS: Record<string, RoomDef> = {
@@ -96,12 +112,32 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
   }, [])
 
   /* ── Compute positions ── */
-  const { positions, meetingIds } = useMemo(() => {
+  const { positions, meetingIds, specialIds } = useMemo(() => {
     const pos = new Map<string, { x: number; y: number }>()
     const mIds = new Set<string>()
+    const sIds = new Set<string>()
 
-    // Meeting room agents — 動態產生足夠座位，避免重疊
-    const inMeeting = allAgents.filter((a) => a.status === 'working' || a.status === 'waiting')
+    // 1. Special rooms (boss-room, tea-room) — highest priority
+    const inBoss = allAgents.filter((a) => a.location === 'boss-room')
+    inBoss.forEach((agent, i) => {
+      const cx = BOSS_ROOM.x + BOSS_ROOM.w / 2
+      const cy = BOSS_ROOM.y + BOSS_ROOM.h * 0.55
+      pos.set(agent.id, { x: cx + (i - (inBoss.length - 1) / 2) * 3.5, y: cy })
+      sIds.add(agent.id)
+    })
+
+    const inTea = allAgents.filter((a) => a.location === 'tea-room')
+    inTea.forEach((agent, i) => {
+      const cx = TEA_ROOM.x + TEA_ROOM.w / 2
+      const cy = TEA_ROOM.y + TEA_ROOM.h * 0.55
+      pos.set(agent.id, { x: cx + (i - (inTea.length - 1) / 2) * 3, y: cy })
+      sIds.add(agent.id)
+    })
+
+    // 2. Meeting room agents — working/waiting without special location
+    const inMeeting = allAgents.filter(
+      (a) => (a.status === 'working' || a.status === 'waiting') && !sIds.has(a.id),
+    )
     const seats = meetingSeats(inMeeting.length)
     inMeeting.forEach((agent, i) => {
       pos.set(agent.id, seats[i])
@@ -120,7 +156,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
       })
     })
 
-    return { positions: pos, meetingIds: mIds }
+    return { positions: pos, meetingIds: mIds, specialIds: sIds }
   }, [allAgents, rooms])
 
   /* ── Start walk animation for a specific agent ── */
@@ -142,19 +178,26 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
     }, 2200))
   }, [])
 
-  /* ── Detect movement (status change → meeting room transition) ── */
+  /* ── Detect movement (status/location change → room transition) ── */
   useEffect(() => {
     allAgents.forEach((agent) => {
-      const prev = prevStatusRef.current.get(agent.id)
-      if (prev && prev !== agent.status) {
-        const wasM = prev === 'working' || prev === 'waiting'
-        const isM = agent.status === 'working' || agent.status === 'waiting'
-        if (wasM !== isM) startWalking(agent.id)
+      // Encode current position category as a string for comparison
+      const locKey = agent.location ?? (
+        agent.status === 'working' || agent.status === 'waiting' ? 'meeting' : 'desk'
+      )
+      const prevKey = prevStatusRef.current.get(agent.id)
+      if (prevKey && prevKey !== locKey) {
+        startWalking(agent.id)
       }
     })
 
     const newMap = new Map<string, string>()
-    allAgents.forEach((a) => newMap.set(a.id, a.status))
+    allAgents.forEach((a) => {
+      const key = a.location ?? (
+        a.status === 'working' || a.status === 'waiting' ? 'meeting' : 'desk'
+      )
+      newMap.set(a.id, key)
+    })
     prevStatusRef.current = newMap
   }, [allAgents, startWalking])
 
@@ -167,8 +210,37 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
 
   const meetingCount = meetingIds.size
 
+  const bossOccupied = allAgents.some((a) => a.location === 'boss-room')
+  const teaOccupied = allAgents.some((a) => a.location === 'tea-room')
+
   return (
     <div className="office-world">
+      {/* ════ Boss Room (hidden feature) ════ */}
+      <RoomBox room={BOSS_ROOM} count={allAgents.filter((a) => a.location === 'boss-room').length} />
+      {bossOccupied && (
+        <div className="pixel-hearts" style={{
+          position: 'absolute',
+          left: `${BOSS_ROOM.x + BOSS_ROOM.w / 2}%`,
+          top: `${BOSS_ROOM.y - 1}%`,
+          transform: 'translate(-50%, -50%)',
+        }}>
+          <span>❤️</span><span>💕</span><span>❤️</span>
+        </div>
+      )}
+
+      {/* ════ Tea Room ════ */}
+      <RoomBox room={TEA_ROOM} count={allAgents.filter((a) => a.location === 'tea-room').length} />
+      {teaOccupied && (
+        <div className="pixel-tea-activity" style={{
+          position: 'absolute',
+          left: `${TEA_ROOM.x + TEA_ROOM.w / 2}%`,
+          top: `${TEA_ROOM.y - 1}%`,
+          transform: 'translate(-50%, -50%)',
+        }}>
+          <span>☕</span><span>🎮</span><span>🍪</span>
+        </div>
+      )}
+
       {/* ════ Meeting Room ════ */}
       <RoomBox room={MEETING} count={meetingCount} extra={meetingCount > 0 ? '進行中' : '空閒'} />
 
@@ -226,7 +298,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
         const desks = deskGrid(def, room.agents.length)
         return desks.map((pos, i) => {
           const agent = room.agents[i]
-          const empty = agent && meetingIds.has(agent.id)
+          const empty = agent && (meetingIds.has(agent.id) || specialIds.has(agent.id))
           return (
             <div
               key={`desk-${room.tier}-${i}`}
@@ -253,7 +325,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
         const desks = deskGrid(def, room.agents.length)
         return desks.map((pos, i) => {
           const agent = room.agents[i]
-          if (!agent || !meetingIds.has(agent.id)) return null
+          if (!agent || (!meetingIds.has(agent.id) && !specialIds.has(agent.id))) return null
           return (
             <div
               key={`empty-${room.tier}-${i}`}
@@ -263,7 +335,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
                 top: `${pos.y}%`,
               }}
             >
-              <span className="text-[8px] text-slate-600 whitespace-nowrap">會議中</span>
+              <span className="text-[8px] text-slate-600 whitespace-nowrap">{agent.location === 'boss-room' ? '私密中' : agent.location === 'tea-room' ? '休息中' : '會議中'}</span>
             </div>
           )
         })
@@ -285,7 +357,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
               left: `${pos.x}%`,
               top: `${pos.y}%`,
               transition: mounted ? 'left 2s ease-in-out, top 2s ease-in-out' : 'none',
-              zIndex: isHovered || isSelected ? 30 : 10,
+              zIndex: speechBubbles.some((b) => b.agentId === agent.id) ? 50 : isHovered || isSelected ? 30 : 10,
             }}
             onClick={() => onSelectAgent(agent)}
             onMouseEnter={() => setHoveredId(agent.id)}

@@ -28,6 +28,14 @@ export default function App() {
 
   const workingCount = agents.filter((a) => a.status === 'working').length
 
+  const handleCommand = (command: string, parameters: Record<string, string>) => {
+    if (isConnected) {
+      ws.sendCommand(command, parameters)
+    } else {
+      sim.sendCommand(command, parameters)
+    }
+  }
+
   const connectionLabel = {
     connected: { text: '後端已連線', color: 'text-emerald-400', dot: 'bg-emerald-400' },
     connecting: { text: '連線中...', color: 'text-yellow-400', dot: 'bg-yellow-400' },
@@ -87,8 +95,7 @@ export default function App() {
           {/* Command Bar (compact) */}
           <div className="border-t border-slate-700/50 bg-slate-800/60 px-4 py-2">
             <CommandBar
-              onExecute={ws.sendCommand}
-              disabled={!isConnected}
+              onExecute={handleCommand}
             />
           </div>
         </div>

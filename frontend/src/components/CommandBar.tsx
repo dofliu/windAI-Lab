@@ -9,9 +9,11 @@ const COMMANDS = [
   { name: 'diagnose-real', label: '/diagnose-real', description: '真實資料故障診斷', paramHint: '風機 ID (如 WT-01)' },
   { name: 'diagnose', label: '/diagnose', description: '風機故障診斷 (模擬)', paramHint: '風機 ID (如 WT-07)' },
   { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題' },
+  { name: 'bosscall', label: '/bosscall', description: '老闆密室召喚 ❤️', paramHint: '員工名稱' },
+  { name: 'teatime', label: '/teatime', description: '茶水間休息時間 ☕', paramHint: '' },
 ]
 
-export default function CommandBar({ onExecute, disabled }: CommandBarProps) {
+export default function CommandBar({ onExecute, disabled = false }: CommandBarProps) {
   const [input, setInput] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -31,6 +33,8 @@ export default function CommandBar({ onExecute, disabled }: CommandBarProps) {
         params.turbine_id = paramValue
       } else if (cmdName === 'lit-search' && paramValue) {
         params.topic = paramValue
+      } else if (cmdName === 'bosscall' && paramValue) {
+        params.target = paramValue
       }
       onExecute(cmdName, params)
       setInput('')
