@@ -83,7 +83,7 @@ export default function App() {
         {/* Office World + Command Bar */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Office World (pixel art) — takes all remaining space */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-x-hidden overflow-y-auto">
             <OfficeWorld
               rooms={rooms}
               selectedAgent={currentSelected}
