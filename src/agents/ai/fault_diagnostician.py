@@ -52,17 +52,13 @@ class FaultDiagnostician(BaseAgent):
             from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, lambda: load_turbine_data(turbine_id)
-            )
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
             await self.update_progress(0.25, f"已載入 {len(df)} 筆記錄")
 
             # 清洗
             from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
 
-            df_clean, quality = await loop.run_in_executor(
-                None, lambda: clean_scada_data(df)
-            )
+            df_clean, quality = await loop.run_in_executor(None, lambda: clean_scada_data(df))
             await self.update_progress(0.4, "資料清洗完成")
 
             # 特徵工程
@@ -121,9 +117,7 @@ class FaultDiagnostician(BaseAgent):
             from src.models.evaluation.anomaly_analysis import generate_diagnosis_report
 
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, lambda: load_turbine_data(turbine_id)
-            )
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
 
             await self.update_progress(0.6, "執行異常偵測模型")
 

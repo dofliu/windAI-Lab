@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from src.agents.base import (
@@ -21,7 +19,6 @@ from src.agents.base import (
 from src.agents.message_bus import MessageBus
 from src.agents.registry import AgentInstanceRegistry
 from src.api.agent_registry import reset_all_agents
-
 
 # ── 測試用具體代理 ─────────────────────────────────────────────
 
@@ -232,9 +229,7 @@ class TestMessageBus:
     @pytest.mark.asyncio()
     async def test_message_history(self, message_bus: MessageBus) -> None:
         """訊息歷史正確記錄。"""
-        msg = AgentMessage(
-            from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={}
-        )
+        msg = AgentMessage(from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={})
         await message_bus.publish(msg)
         assert len(message_bus.history) == 1
         assert message_bus.history[0].from_agent == "a"
@@ -245,8 +240,10 @@ class TestMessageBus:
         message_bus._max_history = 5
         for i in range(10):
             msg = AgentMessage(
-                from_agent="a", to_agent="b",
-                type=MessageType.NOTIFICATION, payload={"i": i},
+                from_agent="a",
+                to_agent="b",
+                type=MessageType.NOTIFICATION,
+                payload={"i": i},
             )
             await message_bus.publish(msg)
         assert len(message_bus.history) == 5
@@ -269,8 +266,10 @@ class TestMessageBus:
 
         message_bus.subscribe("test-topic", handler)
         msg = AgentMessage(
-            from_agent="a", to_agent="test-topic",
-            type=MessageType.NOTIFICATION, payload={},
+            from_agent="a",
+            to_agent="test-topic",
+            type=MessageType.NOTIFICATION,
+            payload={},
         )
         await message_bus.publish(msg)
         assert len(received) == 1
@@ -353,9 +352,7 @@ class TestDataModels:
 
     def test_task_result_error(self) -> None:
         """失敗的 TaskResult。"""
-        result = TaskResult(
-            status=TaskStatus.ERROR, errors=["err1", "err2"]
-        )
+        result = TaskResult(status=TaskStatus.ERROR, errors=["err1", "err2"])
         assert len(result.errors) == 2
 
     def test_agent_message_to_dict(self) -> None:
@@ -477,7 +474,6 @@ class TestConcreteAgents:
     @pytest.mark.asyncio()
     async def test_research_lead_review(self) -> None:
         """ResearchLead 執行審閱任務。"""
-        from src.agents.research.literature_reviewer import LiteratureReviewer
         from src.agents.leadership.research_lead import ResearchLead
 
         agent = ResearchLead()

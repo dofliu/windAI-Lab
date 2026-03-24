@@ -131,7 +131,8 @@ class OrchestrationEngine:
                 await asyncio.sleep(0.3)
 
             log = self._create_log(
-                agent_id, display_name,
+                agent_id,
+                display_name,
                 f"完成：{step.description}（{result.status.value}）",
                 "success" if result.status.value == "success" else "warning",
             )
@@ -278,7 +279,8 @@ class OrchestrationEngine:
         )
 
         log = self._create_log(
-            "system", "系統",
+            "system",
+            "系統",
             f"🚀 指派任務至 {agent.display_name}：{task}",
         )
         await ws_manager.broadcast_work_log(log)
@@ -286,7 +288,8 @@ class OrchestrationEngine:
         result = await agent.run_task(task, ctx)
 
         log = self._create_log(
-            "system", "系統",
+            "system",
+            "系統",
             f"{'✅' if result.status == 'success' else '⚠️'} "
             f"{agent.display_name}：{result.summary}",
             "success" if result.status == "success" else "warning",

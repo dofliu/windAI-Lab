@@ -66,17 +66,11 @@ class AgentInstanceRegistry:
             該 namespace 下的代理實例列表。
         """
         prefix = f"{namespace}:"
-        return [
-            a for a in self._instances.values()
-            if a.namespace_name.startswith(prefix)
-        ]
+        return [a for a in self._instances.values() if a.namespace_name.startswith(prefix)]
 
     def get_by_tier(self, tier: AgentTier) -> list[BaseAgent]:
         """取得指定層級下所有已註冊的代理。"""
-        return [
-            a for a in self._instances.values()
-            if a.model and a.model.tier == tier
-        ]
+        return [a for a in self._instances.values() if a.model and a.model.tier == tier]
 
     def get_all(self) -> list[BaseAgent]:
         """取得所有已註冊的代理實例。"""
@@ -108,27 +102,22 @@ def bootstrap_agents() -> AgentInstanceRegistry:
     Returns:
         已初始化的 AgentInstanceRegistry。
     """
+    from src.agents.ai.fault_diagnostician import FaultDiagnostician
+    from src.agents.ai.predictive_modeler import PredictiveModeler
+    from src.agents.ai.rag_architect import RagArchitect
+    from src.agents.data.quality_checker import QualityChecker
+    from src.agents.data.scada_processor import ScadaProcessor
+    from src.agents.domain.maintenance_planner import MaintenancePlanner
+    from src.agents.domain.power_curve_expert import PowerCurveExpert
+    from src.agents.engineering.backend_dev import BackendDev
+    from src.agents.engineering.devops_engineer import DevOpsEngineer
+    from src.agents.engineering.test_engineer import TestEngineer
     from src.agents.leadership.director import ProjectDirector
     from src.agents.leadership.project_manager import ProjectManager
     from src.agents.leadership.research_lead import ResearchLead
     from src.agents.leadership.tech_lead import TechLead
-
-    from src.agents.data.scada_processor import ScadaProcessor
-    from src.agents.data.quality_checker import QualityChecker
-
-    from src.agents.ai.fault_diagnostician import FaultDiagnostician
-    from src.agents.ai.predictive_modeler import PredictiveModeler
-    from src.agents.ai.rag_architect import RagArchitect
-
-    from src.agents.domain.power_curve_expert import PowerCurveExpert
-    from src.agents.domain.maintenance_planner import MaintenancePlanner
-
-    from src.agents.engineering.backend_dev import BackendDev
-    from src.agents.engineering.devops_engineer import DevOpsEngineer
-    from src.agents.engineering.test_engineer import TestEngineer
-
-    from src.agents.research.paper_writer import PaperWriter
     from src.agents.research.literature_reviewer import LiteratureReviewer
+    from src.agents.research.paper_writer import PaperWriter
 
     agents_to_register: list[BaseAgent] = [
         # Tier 1 — Leadership

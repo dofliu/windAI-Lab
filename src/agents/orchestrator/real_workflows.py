@@ -63,7 +63,9 @@ async def _reset_agents() -> None:
     """重設所有參與代理至待命狀態。"""
     await asyncio.sleep(3)
     for aid in PARTICIPATING_AGENTS:
-        updated = update_agent_status(aid, status=AgentStatus.IDLE, current_task=None, progress=0.0)
+        updated = update_agent_status(
+            aid, status=AgentStatus.IDLE, current_task=None, progress=0.0
+        )
         if updated:
             await ws_manager.broadcast_agent_status(updated)
 
@@ -95,16 +97,16 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             parameters={"turbine_id": turbine_id, "data_id": data_id},
             collaborators=["fault-diagnostician", "predictive-modeler"],
         )
-        result = await director.run_task(
-            f"確認 {turbine_id} 風機資訊並分派故障診斷任務", ctx
-        )
+        await director.run_task(f"確認 {turbine_id} 風機資訊並分派故障診斷任務", ctx)
         await _broadcast_log(
-            "project-director", "專案總監",
+            "project-director",
+            "專案總監",
             "Kelmarsh 風場 — Senvion MM92, 2050 kW, 92m 轉子直徑",
         )
     else:
         await _broadcast_log(
-            "project-director", "專案總監",
+            "project-director",
+            "專案總監",
             f"🚀 啟動 {turbine_id} 故障診斷工作流程",
         )
 
@@ -115,9 +117,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             parameters={"turbine_id": data_id},
             collaborators=["predictive-modeler"],
         )
-        diag_result = await diagnostician.run_task(
-            f"診斷 {data_id} 風機故障", ctx
-        )
+        diag_result = await diagnostician.run_task(f"診斷 {data_id} 風機故障", ctx)
 
         if diag_result.status == TaskStatus.SUCCESS:
             results["diagnosis"] = diag_result.data.get("report", {})
@@ -130,7 +130,8 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             temp_anomalies = report.get("temperature_anomalies", [])
             if temp_anomalies:
                 await _broadcast_log(
-                    "fault-diagnostician", "故障診斷師",
+                    "fault-diagnostician",
+                    "故障診斷師",
                     f"偵測到 {len(temp_anomalies)} 個溫度異常事件",
                     "warning",
                 )
@@ -139,7 +140,8 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             if pc:
                 dev = pc.get("mean_deviation_pct", 0)
                 await _broadcast_log(
-                    "fault-diagnostician", "故障診斷師",
+                    "fault-diagnostician",
+                    "故障診斷師",
                     f"Power Curve 平均偏差：{dev:.1f}%",
                     "success" if abs(dev) < 5 else "warning",
                 )
@@ -149,7 +151,8 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
                 cf = ops.get("capacity_factor", 0)
                 avail = ops.get("availability", 0)
                 await _broadcast_log(
-                    "fault-diagnostician", "故障診斷師",
+                    "fault-diagnostician",
+                    "故障診斷師",
                     f"容量因數：{cf:.1f}%, 可用率：{avail:.1f}%",
                 )
         else:
@@ -163,9 +166,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
         ctx = TaskContext(
             parameters={"topic": f"Senvion MM92 {turbine_id} fault diagnosis"},
         )
-        lit_result = await lit_reviewer.run_task(
-            "搜索相關故障案例文獻", ctx
-        )
+        lit_result = await lit_reviewer.run_task("搜索相關故障案例文獻", ctx)
         results["literature"] = lit_result.data
     else:
         logger.warning("literature-reviewer 代理未註冊，跳過文獻搜索")
@@ -177,9 +178,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             parameters={"turbine_id": turbine_id},
             results=results,
         )
-        report_result = await paper_writer.run_task(
-            "生成診斷報告", ctx
-        )
+        report_result = await paper_writer.run_task("生成診斷報告", ctx)
 
         # 廣播警告與建議
         diagnosis = results.get("diagnosis", {})
@@ -203,7 +202,8 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
     # 專案總監最終確認
     health = results.get("diagnosis", {}).get("health_score", 0)
     await _broadcast_log(
-        "project-director", "專案總監",
+        "project-director",
+        "專案總監",
         f"📋 {turbine_id} 故障診斷完成 — 健康分數 {health}/100",
         "success",
     )

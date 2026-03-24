@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from typing import TYPE_CHECKING, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING
 
 from src.utils.logger import get_logger
 
@@ -103,7 +104,7 @@ class MessageBus:
         # 記錄歷史
         self._history.append(message)
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
 
         # 廣播至前端 WebSocket（非阻塞）
         try:
@@ -137,9 +138,7 @@ class MessageBus:
 
         return await agent.handle_message(message)
 
-    async def request(
-        self, message: AgentMessage, timeout: float = 30.0
-    ) -> AgentMessage | None:
+    async def request(self, message: AgentMessage, timeout: float = 30.0) -> AgentMessage | None:
         """發送請求並等待回覆（含超時）。
 
         Args:
@@ -151,7 +150,7 @@ class MessageBus:
         """
         try:
             return await asyncio.wait_for(self.publish(message), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 f"訊息超時：{message.from_agent} → {message.to_agent} "
                 f"(type={message.type}, timeout={timeout}s)"

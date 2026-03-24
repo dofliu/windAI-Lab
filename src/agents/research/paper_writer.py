@@ -45,9 +45,7 @@ class PaperWriter(BaseAgent):
         await self.update_progress(1.0, "撰寫完成")
         return TaskResult(status=TaskStatus.SUCCESS, summary=f"撰寫完成：{task}")
 
-    async def _generate_report(
-        self, params: dict[str, Any], context: TaskContext
-    ) -> TaskResult:
+    async def _generate_report(self, params: dict[str, Any], context: TaskContext) -> TaskResult:
         """彙整分析結果生成報告。"""
         await self.update_progress(0.2, "整理分析結果摘要")
         await self.update_progress(0.4, "撰寫報告主體")

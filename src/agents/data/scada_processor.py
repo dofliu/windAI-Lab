@@ -54,9 +54,7 @@ class ScadaProcessor(BaseAgent):
             from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, lambda: load_turbine_data(turbine_id, year)
-            )
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id, year))
 
             row_count = len(df)
             col_count = len(df.columns)
@@ -91,15 +89,11 @@ class ScadaProcessor(BaseAgent):
             turbine_id = params.get("turbine_id", "Kelmarsh_1")
 
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, lambda: load_turbine_data(turbine_id)
-            )
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
 
             await self.update_progress(0.5, "清洗中：去重、插補、異常值過濾")
 
-            df_clean, quality = await loop.run_in_executor(
-                None, lambda: clean_scada_data(df)
-            )
+            df_clean, quality = await loop.run_in_executor(None, lambda: clean_scada_data(df))
 
             await self.update_progress(1.0, "資料清洗完成")
 

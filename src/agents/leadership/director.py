@@ -57,9 +57,7 @@ class ProjectDirector(BaseAgent):
             summary=f"已完成：{task}",
         )
 
-    async def _assign_task(
-        self, params: dict, context: TaskContext
-    ) -> TaskResult:
+    async def _assign_task(self, params: dict, context: TaskContext) -> TaskResult:
         """分派任務至下級代理。"""
         target_agents = params.get("agents", [])
         task_desc = params.get("description", "未指定任務")
@@ -100,9 +98,7 @@ class ProjectDirector(BaseAgent):
             summary=f"已完成審核：{task}",
         )
 
-    async def _coordinate(
-        self, params: dict, context: TaskContext
-    ) -> TaskResult:
+    async def _coordinate(self, params: dict, context: TaskContext) -> TaskResult:
         """跨團隊協調。"""
         teams = params.get("teams", [])
         await self.update_progress(0.5, f"協調 {len(teams)} 個團隊")

@@ -55,15 +55,11 @@ class PowerCurveExpert(BaseAgent):
             )
 
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, lambda: load_turbine_data(turbine_id)
-            )
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
 
             await self.update_progress(0.5, "計算功率曲線特徵")
 
-            df_pc = await loop.run_in_executor(
-                None, lambda: compute_power_curve_features(df)
-            )
+            df_pc = await loop.run_in_executor(None, lambda: compute_power_curve_features(df))
 
             await self.update_progress(1.0, "功率曲線建模完成")
 

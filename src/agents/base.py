@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -17,7 +17,6 @@ from src.api.agent_registry import get_agent, update_agent_status
 from src.api.models import AgentModel, AgentStatus, WorkLogEntry
 from src.api.websocket_manager import manager as ws_manager
 from src.utils.logger import get_logger
-
 
 # ── 代理間訊息模型 ─────────────────────────────────────────────
 
@@ -47,9 +46,7 @@ class AgentMessage:
     type: MessageType
     payload: dict[str, Any] = field(default_factory=dict)
     message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     correlation_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:

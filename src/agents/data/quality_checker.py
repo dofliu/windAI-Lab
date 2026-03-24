@@ -48,9 +48,7 @@ class QualityChecker(BaseAgent):
             from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
             loop = asyncio.get_event_loop()
-            df = await loop.run_in_executor(
-                None, lambda: load_turbine_data(turbine_id)
-            )
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
 
             return await self._validate_dataframe(df)
         except Exception as e:
