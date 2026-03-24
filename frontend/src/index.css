@@ -37,9 +37,8 @@
   .office-world {
     position: relative;
     width: 100%;
-    min-height: 520px;
+    min-height: 560px;
     height: 100%;
-    padding-top: 32px;
     background-color: #0c1222;
     /* Pixel grid background */
     background-image:
@@ -225,6 +224,48 @@
     border-top-color: #64748b;
   }
 
+  /* ── Speech bubble (below variant for top-area agents) ── */
+  .pixel-speech-bubble-below {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f8fafc;
+    color: #1e293b;
+    border: 2px solid #64748b;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 10px;
+    line-height: 1.4;
+    max-width: 240px;
+    white-space: normal;
+    z-index: 60;
+    pointer-events: none;
+    animation: bubble-appear-below 0.3s ease-out;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Triangle pointer (pointing up) */
+  .pixel-speech-bubble-below::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: #f8fafc;
+  }
+
+  .pixel-speech-bubble-below::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-bottom-color: #64748b;
+  }
+
   /* ── Hearts animation (boss room) ── */
   .pixel-hearts {
     display: flex;
@@ -366,6 +407,12 @@
 /* Speech bubble entrance */
 @keyframes bubble-appear {
   from { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(6px); }
+  to { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+}
+
+/* Speech bubble entrance (below variant — slides down) */
+@keyframes bubble-appear-below {
+  from { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(-6px); }
   to { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
 }
 

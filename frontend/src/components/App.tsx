@@ -29,11 +29,15 @@ export default function App() {
 
   const workingCount = agents.filter((a) => a.status === 'working').length
 
+  // Simulation-only commands always go to sim; others route based on backend status
+  const SIM_COMMANDS = new Set(['bosscall', 'teatime'])
+
   const handleCommand = (command: string, parameters: Record<string, string>) => {
-    if (isConnected) {
+    // Always run simulation commands locally
+    sim.sendCommand(command, parameters)
+    // Also forward non-sim commands to backend if live
+    if (useLiveBackend && !SIM_COMMANDS.has(command)) {
       ws.sendCommand(command, parameters)
-    } else {
-      sim.sendCommand(command, parameters)
     }
   }
 
