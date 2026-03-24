@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Agent, WorkLog, OfficeRoom, AgentStatus } from '../types/agent'
+import { Agent, WorkLog, OfficeRoom, AgentStatus, SpeechBubble } from '../types/agent'
 import { initialRooms } from '../utils/mockData'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -141,5 +141,6 @@ export function useWebSocket() {
     }
   }, [connect])
 
-  return { agents, rooms, workLogs, connectionStatus, sendCommand }
+  const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, sendCommand }
 }

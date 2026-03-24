@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Agent, OfficeRoom } from '../types/agent'
+import { Agent, OfficeRoom, SpeechBubble } from '../types/agent'
 import PixelCharacter from './PixelCharacter'
 
 /* ================================================================
@@ -78,9 +78,10 @@ interface Props {
   rooms: OfficeRoom[]
   selectedAgent: Agent | null
   onSelectAgent: (agent: Agent) => void
+  speechBubbles?: SpeechBubble[]
 }
 
-export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Props) {
+export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speechBubbles = [] }: Props) {
   const allAgents = useMemo(() => rooms.flatMap((r) => r.agents), [rooms])
 
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -306,8 +307,15 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
               </div>
             )}
 
-            {/* Hover tooltip */}
-            {isHovered && (
+            {/* Speech bubble */}
+            {speechBubbles.find((b) => b.agentId === agent.id) && (
+              <div className="pixel-speech-bubble">
+                {speechBubbles.find((b) => b.agentId === agent.id)!.text}
+              </div>
+            )}
+
+            {/* Hover tooltip (only when no speech bubble) */}
+            {isHovered && !speechBubbles.find((b) => b.agentId === agent.id) && (
               <div className="pixel-tooltip">
                 <p className="font-semibold text-slate-100">{agent.displayName}</p>
                 <p className="text-slate-500">{agent.name}</p>

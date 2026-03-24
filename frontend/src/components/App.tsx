@@ -18,6 +18,7 @@ export default function App() {
   const agents = isConnected && hasAgents ? ws.agents : sim.agents
   const rooms = isConnected && hasAgents ? ws.rooms : sim.rooms
   const workLogs = isConnected && hasAgents ? ws.workLogs : sim.workLogs
+  const speechBubbles = isConnected && hasAgents ? ws.speechBubbles : sim.speechBubbles
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
 
@@ -79,6 +80,7 @@ export default function App() {
               rooms={rooms}
               selectedAgent={currentSelected}
               onSelectAgent={setSelectedAgent}
+              speechBubbles={speechBubbles}
             />
           </div>
 

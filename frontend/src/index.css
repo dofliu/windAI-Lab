@@ -150,10 +150,10 @@
   .pixel-nametag {
     display: block;
     text-align: center;
-    font-size: 8px;
-    line-height: 1.1;
-    color: rgba(148, 163, 184, 0.7);
-    max-width: 48px;
+    font-size: 10px;
+    line-height: 1.2;
+    color: rgba(148, 163, 184, 0.75);
+    max-width: 56px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -180,6 +180,48 @@
     background: #34d399;
     border-radius: 2px;
     transition: width 0.7s;
+  }
+
+  /* ── Speech bubble ── */
+  .pixel-speech-bubble {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f8fafc;
+    color: #1e293b;
+    border: 2px solid #64748b;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 10px;
+    line-height: 1.4;
+    max-width: 240px;
+    white-space: normal;
+    z-index: 60;
+    pointer-events: none;
+    animation: bubble-appear 0.3s ease-out;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+
+  /* Triangle pointer */
+  .pixel-speech-bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #f8fafc;
+  }
+
+  .pixel-speech-bubble::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: #64748b;
   }
 
   /* ── Tooltip ── */
@@ -286,6 +328,12 @@
 @keyframes monitor-glow {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
+}
+
+/* Speech bubble entrance */
+@keyframes bubble-appear {
+  from { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(6px); }
+  to { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
 }
 
 /* Tooltip entrance */

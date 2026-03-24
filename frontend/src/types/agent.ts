@@ -32,3 +32,10 @@ export interface OfficeRoom {
   icon: string
   position: { row: number; col: number }
 }
+
+export interface SpeechBubble {
+  id: string
+  agentId: string
+  text: string
+  timestamp: Date
+}
