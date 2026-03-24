@@ -30,101 +30,213 @@
 }
 
 @layer components {
-  /* ── Office floor ── */
-  .office-floor {
-    background-color: #0f172a;
-    background-image:
-      linear-gradient(rgba(51, 65, 85, 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(51, 65, 85, 0.08) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
+  /* ══════════════════════════════════════════
+     Office World — pixel art canvas
+     ══════════════════════════════════════════ */
 
-  /* ── Office room ── */
-  .office-room {
-    @apply relative rounded-xl bg-slate-800/40 backdrop-blur-sm
-      transition-all duration-300;
-    min-height: 120px;
-  }
-
-  .office-room:hover {
-    @apply border-slate-500/50;
-    box-shadow:
-      0 0 24px -6px rgba(99, 102, 241, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  }
-
-  .room-header {
-    border-bottom: 1px solid rgba(71, 85, 105, 0.25);
-  }
-
-  /* ── Desk slot ── */
-  .desk-surface {
+  .office-world {
     position: relative;
-    min-width: 3.5rem;
+    width: 100%;
+    min-height: 580px;
+    height: 100%;
+    background-color: #0c1222;
+    /* Pixel grid background */
+    background-image:
+      linear-gradient(rgba(51, 65, 85, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(51, 65, 85, 0.06) 1px, transparent 1px);
+    background-size: 8px 8px;
+    image-rendering: pixelated;
   }
 
-  .desk-surface::before {
-    content: '';
+  /* ── Room box ── */
+  .pixel-room {
     position: absolute;
-    bottom: -2px;
+    border-radius: 12px;
+    border: 2px solid;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .pixel-room:hover {
+    border-color: rgba(148, 163, 184, 0.3) !important;
+  }
+
+  .pixel-room-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    border-bottom: 1px solid rgba(71, 85, 105, 0.15);
+  }
+
+  /* ── Conference table ── */
+  .pixel-conf-table {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(71, 85, 105, 0.12);
+    border: 2px solid rgba(71, 85, 105, 0.08);
+    pointer-events: none;
+  }
+
+  /* ── Desk furniture ── */
+  .pixel-desk {
+    position: absolute;
+    width: 28px;
+    height: 8px;
+    background: rgba(71, 85, 105, 0.25);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  .pixel-monitor {
+    width: 12px;
+    height: 8px;
+    margin: -10px auto 0;
+    background: rgba(71, 85, 105, 0.15);
+    border-radius: 1px;
+    border: 1px solid rgba(71, 85, 105, 0.1);
+  }
+
+  .pixel-monitor-on {
+    background: rgba(52, 211, 153, 0.2);
+    border-color: rgba(52, 211, 153, 0.15);
+    animation: monitor-glow 2s ease-in-out infinite;
+  }
+
+  /* ── Empty seat marker ── */
+  .pixel-empty-seat {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px dashed rgba(71, 85, 105, 0.25);
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+
+  /* ══════════════════════════════════════════
+     Pixel Agent — positioned character
+     ══════════════════════════════════════════ */
+
+  .pixel-agent {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+  }
+
+  .pixel-agent:hover {
+    z-index: 40 !important;
+    filter: brightness(1.15);
+  }
+
+  .pixel-agent-selected {
+    filter: drop-shadow(0 0 6px rgba(99, 102, 241, 0.6));
+  }
+
+  /* Walking bob animation */
+  .pixel-agent-walking {
+    animation: pixel-walk-bob 0.35s ease-in-out infinite;
+  }
+
+  /* ── Name tag ── */
+  .pixel-nametag {
+    display: block;
+    text-align: center;
+    font-size: 9px;
+    line-height: 1.2;
+    color: rgba(148, 163, 184, 0.7);
+    max-width: 56px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: -2px;
+    transition: color 0.2s;
+  }
+
+  .pixel-agent:hover .pixel-nametag {
+    color: rgba(226, 232, 240, 0.9);
+  }
+
+  /* ── Progress bar ── */
+  .pixel-progress {
+    width: 32px;
+    height: 3px;
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 1px;
+  }
+
+  .pixel-progress-fill {
+    height: 100%;
+    background: #34d399;
+    border-radius: 2px;
+    transition: width 0.7s;
+  }
+
+  /* ── Tooltip ── */
+  .pixel-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
-    width: 12px;
-    height: 3px;
-    background: rgba(71, 85, 105, 0.3);
-    border-radius: 0 0 2px 2px;
-  }
-
-  /* ── Agent working glow — 工作中底色閃爍 ── */
-  .agent-working-glow {
-    animation: working-glow 2s ease-in-out infinite;
-    box-shadow: 0 0 16px rgba(52, 211, 153, 0.35), 0 0 4px rgba(52, 211, 153, 0.2);
-  }
-
-  .agent-waiting-glow {
-    animation: waiting-glow 2s ease-in-out infinite;
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
-  }
-
-  .agent-error-glow {
-    animation: error-glow 1.5s ease-in-out infinite;
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.35);
-  }
-
-  /* ── Desk working state ── */
-  .agent-desk-working {
-    animation: desk-working-bg 3s ease-in-out infinite;
-  }
-
-  /* ── Meeting room ── */
-  .meeting-room {
-    animation: meeting-room-ambient 4s ease-in-out infinite;
-  }
-
-  /* ── Agent tooltip ── */
-  .agent-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(71, 85, 105, 0.6);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
     animation: tooltip-enter 0.15s ease-out;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 50;
   }
 
-  /* ── Status dot ── */
+  /* ══════════════════════════════════════════
+     Pixel Character — SVG sprite animation
+     ══════════════════════════════════════════ */
+
+  /* Default: show standing legs only */
+  .pixel-char .pixel-legs-stand { visibility: visible; }
+  .pixel-char .pixel-legs-walk-a { visibility: hidden; }
+  .pixel-char .pixel-legs-walk-b { visibility: hidden; }
+
+  /* Walking: hide standing, alternate walk frames */
+  .pixel-char-walking .pixel-legs-stand { visibility: hidden; }
+  .pixel-char-walking .pixel-legs-walk-a {
+    visibility: visible;
+    animation: walk-frame-toggle 0.4s steps(1) infinite;
+  }
+  .pixel-char-walking .pixel-legs-walk-b {
+    visibility: visible;
+    animation: walk-frame-toggle 0.4s steps(1) infinite;
+    animation-delay: -0.2s;
+  }
+
+  /* ══════════════════════════════════════════
+     Legacy components (sidebar, logs, etc.)
+     ══════════════════════════════════════════ */
+
   .status-dot {
     @apply inline-block h-2.5 w-2.5 rounded-full;
   }
 
-  /* ── Log entry ── */
   .log-entry {
     @apply border-l-2 py-1.5 pl-3 text-sm transition-colors duration-200;
   }
 
-  /* ── Room card (legacy compat) ── */
   .room-card {
     @apply rounded-xl border border-slate-700/50 bg-slate-800/60 backdrop-blur-sm
       transition-all duration-300;
-  }
-
-  .room-card:hover {
-    @apply border-slate-600/70;
-    box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.12);
   }
 
   .neon-border {
@@ -138,31 +250,6 @@
     text-shadow: 0 0 10px currentColor;
   }
 
-  /* ── Status ring pulse ── */
-  .animate-pulse-ring {
-    animation: pulse-ring 2s ease-in-out infinite;
-  }
-
-  .animate-blink-ring {
-    animation: blink-ring 1.5s ease-in-out infinite;
-  }
-
-  /* ── Working dots bounce ── */
-  .animate-bounce-dot {
-    animation: bounce-dot 1.2s ease-in-out infinite;
-  }
-
-  /* ── Slow ping for avatar overlay ── */
-  .animate-ping-slow {
-    animation: ping-slow 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-  }
-
-  /* ── Monitor screen flicker ── */
-  .animate-screen-flicker {
-    animation: screen-flicker 3s ease-in-out infinite;
-  }
-
-  /* ── Slow pulse ── */
   .animate-pulse-slow {
     animation: pulse-slow 2.5s ease-in-out infinite;
   }
@@ -172,93 +259,48 @@
   }
 }
 
-/* ── Keyframes ── */
+/* ══════════════════════════════════════════
+   Keyframes
+   ══════════════════════════════════════════ */
 
-/* Working agent: green glow pulse */
-@keyframes working-glow {
+/* Character walk bob: hop up and sway slightly */
+@keyframes pixel-walk-bob {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(52, 211, 153, 0.2), 0 0 2px rgba(52, 211, 153, 0.15);
+    transform: translate(-50%, -100%) translateY(0) rotate(0deg);
   }
-  50% {
-    box-shadow: 0 0 20px rgba(52, 211, 153, 0.5), 0 0 6px rgba(52, 211, 153, 0.3);
+  25% {
+    transform: translate(-50%, -100%) translateY(-4px) rotate(-2deg);
   }
-}
-
-/* Waiting agent: amber glow */
-@keyframes waiting-glow {
-  0%, 100% {
-    box-shadow: 0 0 6px rgba(251, 191, 36, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
+  75% {
+    transform: translate(-50%, -100%) translateY(-4px) rotate(2deg);
   }
 }
 
-/* Error agent: red glow */
-@keyframes error-glow {
-  0%, 100% {
-    box-shadow: 0 0 6px rgba(239, 68, 68, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 18px rgba(239, 68, 68, 0.45);
-  }
+/* Leg frame toggle: visibility alternation */
+@keyframes walk-frame-toggle {
+  0%, 49.9% { visibility: visible; }
+  50%, 100% { visibility: hidden; }
 }
 
-/* Desk background pulse when working */
-@keyframes desk-working-bg {
-  0%, 100% {
-    background-color: rgba(6, 78, 59, 0.15);
-  }
-  50% {
-    background-color: rgba(6, 78, 59, 0.35);
-  }
+/* Monitor glow */
+@keyframes monitor-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
-/* Meeting room ambient glow */
-@keyframes meeting-room-ambient {
-  0%, 100% {
-    border-color: rgba(99, 102, 241, 0.2);
-  }
-  50% {
-    border-color: rgba(99, 102, 241, 0.4);
-  }
-}
-
-@keyframes pulse-ring {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.3); }
-  50% { box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.08); }
-}
-
-@keyframes blink-ring {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes bounce-dot {
-  0%, 100% { transform: translateY(0); opacity: 0.6; }
-  50% { transform: translateY(-3px); opacity: 1; }
-}
-
-@keyframes ping-slow {
-  0% { transform: scale(1); opacity: 0.3; }
-  75%, 100% { transform: scale(1.6); opacity: 0; }
-}
-
-@keyframes screen-flicker {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
-}
-
+/* Tooltip entrance */
 @keyframes tooltip-enter {
-  from { opacity: 0; transform: translate(-50%, calc(-100% + 4px)); }
-  to { opacity: 1; transform: translate(-50%, -100%); }
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Pulse slow */
 @keyframes pulse-slow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
 
+/* Blink */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }

@@ -12,6 +12,7 @@ from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
 
 if TYPE_CHECKING:
     import pandas as pd
+
 from src.features.domain_features.wind_features import (
     compute_operational_features,
     compute_power_curve_features,
