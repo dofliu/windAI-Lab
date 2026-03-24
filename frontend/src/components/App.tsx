@@ -12,13 +12,14 @@ export default function App() {
   const sim = useAgentSimulation()
 
   const isConnected = ws.connectionStatus === 'connected'
-  const hasAgents = ws.agents.length > 0
+  // Only use WebSocket data when the backend actively sends live updates
+  // (not just the static initial_state on connect)
+  const useLiveBackend = isConnected && ws.hasLiveUpdates
 
-  // Use WebSocket data if connected and has agents, otherwise use simulation
-  const agents = isConnected && hasAgents ? ws.agents : sim.agents
-  const rooms = isConnected && hasAgents ? ws.rooms : sim.rooms
-  const workLogs = isConnected && hasAgents ? ws.workLogs : sim.workLogs
-  const speechBubbles = isConnected && hasAgents ? ws.speechBubbles : sim.speechBubbles
+  const agents = useLiveBackend ? ws.agents : sim.agents
+  const rooms = useLiveBackend ? ws.rooms : sim.rooms
+  const workLogs = useLiveBackend ? ws.workLogs : sim.workLogs
+  const speechBubbles = useLiveBackend ? ws.speechBubbles : sim.speechBubbles
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
 
@@ -36,12 +37,14 @@ export default function App() {
     }
   }
 
-  const connectionLabel = {
-    connected: { text: '後端已連線', color: 'text-emerald-400', dot: 'bg-emerald-400' },
-    connecting: { text: '連線中...', color: 'text-yellow-400', dot: 'bg-yellow-400' },
-    disconnected: { text: '模擬模式（後端離線）', color: 'text-orange-400', dot: 'bg-orange-400' },
-    error: { text: '連線錯誤（模擬模式）', color: 'text-red-400', dot: 'bg-red-400' },
-  }[ws.connectionStatus]
+  const connectionLabel = useLiveBackend
+    ? { text: '後端已連線', color: 'text-emerald-400', dot: 'bg-emerald-400' }
+    : {
+        connected: { text: '模擬模式（後端無即時資料）', color: 'text-cyan-400', dot: 'bg-cyan-400' },
+        connecting: { text: '連線中...', color: 'text-yellow-400', dot: 'bg-yellow-400' },
+        disconnected: { text: '模擬模式', color: 'text-orange-400', dot: 'bg-orange-400' },
+        error: { text: '模擬模式', color: 'text-orange-400', dot: 'bg-orange-400' },
+      }[ws.connectionStatus]
 
   return (
     <div className="flex h-screen flex-col bg-slate-900 text-slate-100">
@@ -72,7 +75,7 @@ export default function App() {
             <span>{agents.length - workingCount} 待命</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className={`h-1.5 w-1.5 rounded-full ${connectionLabel.dot} ${isConnected ? 'animate-pulse-slow' : ''}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${connectionLabel.dot} ${useLiveBackend ? 'animate-pulse-slow' : ''}`} />
             <span className={`text-[9px] ${connectionLabel.color}`}>{connectionLabel.text}</span>
           </div>
         </div>

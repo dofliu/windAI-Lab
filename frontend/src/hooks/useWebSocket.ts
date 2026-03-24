@@ -15,6 +15,7 @@ export function useWebSocket() {
   const [rooms, setRooms] = useState<OfficeRoom[]>(initialRooms)
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([])
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
+  const [hasLiveUpdates, setHasLiveUpdates] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
@@ -72,6 +73,7 @@ export function useWebSocket() {
           }
 
           case 'agent_status_update': {
+            setHasLiveUpdates(true)
             const updatedAgent = mapAgent(msg.payload)
             setAgents(prev => {
               const next = prev.map(a => a.id === updatedAgent.id ? updatedAgent : a)
@@ -142,5 +144,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, sendCommand }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand }
 }
