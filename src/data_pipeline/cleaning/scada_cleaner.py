@@ -10,12 +10,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 # 風機運行參數預設值
-_DEFAULT_CUT_IN = 3.0       # 切入風速 (m/s)
+_DEFAULT_CUT_IN = 3.0  # 切入風速 (m/s)
 _DEFAULT_RATED_POWER = 2050  # 額定功率 (kW)
-_DEFAULT_CUT_OUT = 25.0      # 切出風速 (m/s)
-_MAX_GAP_INTERPOLATE = 3     # 最大插值間隙（筆數，即 30 分鐘）
+_DEFAULT_CUT_OUT = 25.0  # 切出風速 (m/s)
+_MAX_GAP_INTERPOLATE = 3  # 最大插值間隙（筆數，即 30 分鐘）
 
 
 def _find_column(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:

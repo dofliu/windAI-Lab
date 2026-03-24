@@ -6,11 +6,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-import pandas as pd
+from typing import TYPE_CHECKING, Any
 
 from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
+
+if TYPE_CHECKING:
+    import pandas as pd
 from src.features.domain_features.wind_features import (
     compute_operational_features,
     compute_power_curve_features,
@@ -61,8 +62,6 @@ def run_full_diagnosis(
     diagnosis_report = generate_diagnosis_report(df_feat, turbine_id)
     diagnosis_report["quality_report"] = quality_report
 
-    logger.info(
-        f"{turbine_id} 診斷完成 — 健康分數：{diagnosis_report.get('health_score', 'N/A')}"
-    )
+    logger.info(f"{turbine_id} 診斷完成 — 健康分數：{diagnosis_report.get('health_score', 'N/A')}")
 
     return diagnosis_report

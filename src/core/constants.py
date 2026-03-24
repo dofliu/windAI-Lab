@@ -28,12 +28,12 @@ AGENT_TIERS: dict[str, int] = {
 
 # ── 代理狀態顏色 ──
 STATUS_COLORS: dict[str, str] = {
-    "idle": "#9ca3af",       # 灰色
-    "working": "#22c55e",    # 綠色
-    "waiting": "#eab308",    # 黃色
+    "idle": "#9ca3af",  # 灰色
+    "working": "#22c55e",  # 綠色
+    "waiting": "#eab308",  # 黃色
     "completed": "#3b82f6",  # 藍色
-    "error": "#ef4444",      # 紅色
-    "offline": "#6b7280",    # 深灰
+    "error": "#ef4444",  # 紅色
+    "offline": "#6b7280",  # 深灰
 }
 
 # ── 風機運行參數預設值（Senvion MM92） ──

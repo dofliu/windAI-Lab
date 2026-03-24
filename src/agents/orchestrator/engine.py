@@ -8,9 +8,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, Coroutine
+from enum import StrEnum
 
 from src.api.agent_registry import get_agent, update_agent_status
 from src.api.models import AgentStatus, WorkLogEntry
@@ -20,7 +18,7 @@ from src.utils.logger import get_logger
 logger = get_logger("orchestrator.engine")
 
 
-class StepType(str, Enum):
+class StepType(StrEnum):
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
     DECISION = "decision"
@@ -29,10 +27,11 @@ class StepType(str, Enum):
 @dataclass
 class WorkflowStep:
     """工作流程步驟定義。"""
-    name: str                          # 步驟名稱
-    agent_ids: list[str]               # 參與的代理 ID
-    description: str                   # 步驟描述（顯示在 UI）
-    duration: float = 3.0              # 模擬執行時間（秒）
+
+    name: str  # 步驟名稱
+    agent_ids: list[str]  # 參與的代理 ID
+    description: str  # 步驟描述（顯示在 UI）
+    duration: float = 3.0  # 模擬執行時間（秒）
     step_type: StepType = StepType.SEQUENTIAL
     sub_messages: list[str] = field(default_factory=list)  # 執行過程中的日誌訊息
     progress_messages: dict[int, str] = field(default_factory=dict)  # 進度 -> 訊息
@@ -41,6 +40,7 @@ class WorkflowStep:
 @dataclass
 class Workflow:
     """工作流程定義。"""
+
     id: str
     name: str
     description: str
@@ -58,7 +58,9 @@ class OrchestrationEngine:
     def work_logs(self) -> list[WorkLogEntry]:
         return self._work_logs
 
-    def _create_log(self, agent_id: str, agent_name: str, message: str, log_type: str = "info") -> WorkLogEntry:
+    def _create_log(
+        self, agent_id: str, agent_name: str, message: str, log_type: str = "info"
+    ) -> WorkLogEntry:
         """建立工作日誌項目。"""
         entry = WorkLogEntry(
             id=str(uuid.uuid4()),
@@ -89,7 +91,9 @@ class OrchestrationEngine:
         if updated:
             await ws_manager.broadcast_agent_status(updated)
 
-    async def _run_agent_step(self, agent_id: str, step: WorkflowStep, collaborators: list[str] | None = None) -> None:
+    async def _run_agent_step(
+        self, agent_id: str, step: WorkflowStep, collaborators: list[str] | None = None
+    ) -> None:
         """執行單一代理的工作步驟，模擬漸進式進度。"""
         agent = get_agent(agent_id)
         if not agent:
@@ -156,20 +160,14 @@ class OrchestrationEngine:
 
         # 廣播工作流程開始
         log = self._create_log(
-            "system", "系統",
-            f"🚀 工作流程啟動：{workflow.name} — {workflow.description}",
-            "info"
+            "system", "系統", f"🚀 工作流程啟動：{workflow.name} — {workflow.description}", "info"
         )
         await ws_manager.broadcast_work_log(log)
 
         try:
             for i, step in enumerate(workflow.steps):
                 step_label = f"[{i+1}/{len(workflow.steps)}]"
-                log = self._create_log(
-                    "system", "系統",
-                    f"📋 {step_label} {step.name}",
-                    "info"
-                )
+                log = self._create_log("system", "系統", f"📋 {step_label} {step.name}", "info")
                 await ws_manager.broadcast_work_log(log)
 
                 await self._run_step(step)
@@ -179,9 +177,7 @@ class OrchestrationEngine:
 
             # 工作流程完成
             log = self._create_log(
-                "system", "系統",
-                f"✅ 工作流程完成：{workflow.name}",
-                "success"
+                "system", "系統", f"✅ 工作流程完成：{workflow.name}", "success"
             )
             await ws_manager.broadcast_work_log(log)
 

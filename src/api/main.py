@@ -9,11 +9,16 @@ from __future__ import annotations
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, AsyncGenerator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.agents.orchestrator.engine import engine as orchestration_engine
+from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
 from src.api.agent_registry import get_agent, get_all_agents, update_agent_status
 from src.api.models import (
     AgentModel,
@@ -23,8 +28,6 @@ from src.api.models import (
     WorkLogEntry,
 )
 from src.api.websocket_manager import manager as ws_manager
-from src.agents.orchestrator.engine import engine as orchestration_engine
-from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
 from src.utils.logger import get_logger
 
 logger = get_logger("api.main")
@@ -98,8 +101,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 command_name = data.get("command", "")
                 parameters = data.get("parameters", {})
                 if command_name == "diagnose-real":
-                    from src.agents.orchestrator.real_workflows import run_real_diagnose
                     import asyncio as _aio
+
+                    from src.agents.orchestrator.real_workflows import run_real_diagnose
+
                     tid = parameters.get("turbine_id", "Kelmarsh_1")
                     _aio.create_task(run_real_diagnose(tid))
                 elif command_name in AVAILABLE_WORKFLOWS:
@@ -107,7 +112,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     if command_name == "diagnose":
                         workflow = workflow_factory(parameters.get("turbine_id", "WT-07"))
                     elif command_name == "lit-search":
-                        workflow = workflow_factory(parameters.get("topic", "wind turbine fault diagnosis"))
+                        workflow = workflow_factory(
+                            parameters.get("topic", "wind turbine fault diagnosis")
+                        )
                     else:
                         workflow = workflow_factory()
                     await orchestration_engine.run_workflow_background(workflow)
@@ -206,8 +213,10 @@ async def get_work_logs(limit: int = 50, agent_id: str | None = None) -> list[Wo
 
 
 @app.post("/api/commands/{command_name}", tags=["指令執行"])
-async def execute_command(command_name: str, parameters: dict[str, Any] = {}) -> dict:
+async def execute_command(command_name: str, parameters: dict[str, Any] | None = None) -> dict:
     """執行指定的 slash 指令，啟動對應的工作流程。"""
+    if parameters is None:
+        parameters = {}
     if command_name not in AVAILABLE_WORKFLOWS:
         raise HTTPException(
             status_code=404,
@@ -216,8 +225,9 @@ async def execute_command(command_name: str, parameters: dict[str, Any] = {}) ->
 
     # ── 真實資料診斷（特殊處理） ──
     if command_name == "diagnose-real":
-        from src.agents.orchestrator.real_workflows import run_real_diagnose
         import asyncio as _aio
+
+        from src.agents.orchestrator.real_workflows import run_real_diagnose
 
         turbine_id = parameters.get("turbine_id", "Kelmarsh_1")
         task_id = str(uuid.uuid4())
@@ -258,8 +268,16 @@ async def list_commands() -> dict:
     """列出所有可用的 slash 指令。"""
     return {
         "commands": [
-            {"name": "diagnose", "description": "風機故障診斷（模擬）", "parameters": ["turbine_id"]},
-            {"name": "diagnose-real", "description": "風機故障診斷（Kelmarsh 真實資料）", "parameters": ["turbine_id"]},
+            {
+                "name": "diagnose",
+                "description": "風機故障診斷（模擬）",
+                "parameters": ["turbine_id"],
+            },
+            {
+                "name": "diagnose-real",
+                "description": "風機故障診斷（Kelmarsh 真實資料）",
+                "parameters": ["turbine_id"],
+            },
             {"name": "lit-search", "description": "系統性文獻搜索", "parameters": ["topic"]},
         ]
     }

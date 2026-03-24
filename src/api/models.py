@@ -6,13 +6,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """代理運行狀態列舉。"""
 
     IDLE = "idle"
@@ -23,7 +23,7 @@ class AgentStatus(str, Enum):
     COMPLETED = "completed"
 
 
-class AgentTier(str, Enum):
+class AgentTier(StrEnum):
     """代理層級列舉。"""
 
     LEADERSHIP = "leadership"
@@ -44,7 +44,9 @@ class AgentModel(BaseModel):
     status: AgentStatus = Field(default=AgentStatus.IDLE, description="當前運行狀態")
     current_task: str | None = Field(default=None, description="當前執行任務描述")
     progress: float = Field(default=0.0, description="任務進度（0.0 至 1.0）")
-    collaborating_with: list[str] = Field(default_factory=list, description="正在協作的代理 ID 列表")
+    collaborating_with: list[str] = Field(
+        default_factory=list, description="正在協作的代理 ID 列表"
+    )
     color: str = Field(..., description="前端顯示色彩代碼")
     icon: str = Field(..., description="前端顯示圖示名稱")
 

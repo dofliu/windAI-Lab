@@ -6,13 +6,13 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastapi import WebSocket
+if TYPE_CHECKING:
+    from fastapi import WebSocket
 
-from src.api.models import AgentModel, WorkLogEntry
+    from src.api.models import AgentModel, WorkLogEntry
 
 
 class WebSocketManager:
