@@ -13,7 +13,7 @@ interface RoomDef {
 }
 
 const MEETING: RoomDef = {
-  x: 10, y: 1, w: 80, h: 16,
+  x: 10, y: 1, w: 80, h: 14,
   label: '會議室', icon: '🏛️',
   floor: 'rgba(99,102,241,0.06)',
   border: 'rgba(99,102,241,0.25)',
@@ -21,19 +21,22 @@ const MEETING: RoomDef = {
 }
 
 const ROOMS: Record<string, RoomDef> = {
-  leadership:  { x: 1, y: 23, w: 30, h: 28, label: '指揮中心',   icon: '🏛️', floor: 'rgba(245,158,11,0.05)',  border: 'rgba(245,158,11,0.22)', labelColor: '#fbbf24' },
-  data:        { x: 35, y: 23, w: 30, h: 28, label: '資料工程室', icon: '🗃️', floor: 'rgba(16,185,129,0.05)',  border: 'rgba(16,185,129,0.22)', labelColor: '#34d399' },
-  'ai-ml':     { x: 69, y: 23, w: 30, h: 28, label: '模型實驗室', icon: '🧠', floor: 'rgba(139,92,246,0.05)',  border: 'rgba(139,92,246,0.22)', labelColor: '#a78bfa' },
-  domain:      { x: 1, y: 57, w: 30, h: 28, label: '領域知識庫', icon: '🌬️', floor: 'rgba(236,72,153,0.05)',  border: 'rgba(236,72,153,0.22)', labelColor: '#f472b6' },
-  engineering: { x: 35, y: 57, w: 30, h: 28, label: '軟體工程室', icon: '💻', floor: 'rgba(249,115,22,0.05)',  border: 'rgba(249,115,22,0.22)', labelColor: '#fb923c' },
-  research:    { x: 69, y: 57, w: 30, h: 28, label: '研究室',     icon: '📖', floor: 'rgba(6,182,212,0.05)',   border: 'rgba(6,182,212,0.22)',  labelColor: '#22d3ee' },
+  leadership:  { x: 1, y: 20, w: 31, h: 32, label: '指揮中心',   icon: '🏛️', floor: 'rgba(245,158,11,0.05)',  border: 'rgba(245,158,11,0.22)', labelColor: '#fbbf24' },
+  data:        { x: 35, y: 20, w: 30, h: 32, label: '資料工程室', icon: '🗃️', floor: 'rgba(16,185,129,0.05)',  border: 'rgba(16,185,129,0.22)', labelColor: '#34d399' },
+  'ai-ml':     { x: 68, y: 20, w: 31, h: 32, label: '模型實驗室', icon: '🧠', floor: 'rgba(139,92,246,0.05)',  border: 'rgba(139,92,246,0.22)', labelColor: '#a78bfa' },
+  domain:      { x: 1, y: 56, w: 31, h: 32, label: '領域知識庫', icon: '🌬️', floor: 'rgba(236,72,153,0.05)',  border: 'rgba(236,72,153,0.22)', labelColor: '#f472b6' },
+  engineering: { x: 35, y: 56, w: 30, h: 32, label: '軟體工程室', icon: '💻', floor: 'rgba(249,115,22,0.05)',  border: 'rgba(249,115,22,0.22)', labelColor: '#fb923c' },
+  research:    { x: 68, y: 56, w: 31, h: 32, label: '研究室',     icon: '📖', floor: 'rgba(6,182,212,0.05)',   border: 'rgba(6,182,212,0.22)',  labelColor: '#22d3ee' },
 }
 
 /* ── Position helpers ── */
 
 function deskGrid(room: RoomDef, count: number) {
   if (count === 0) return []
-  const padX = 4, topPad = 7, botPad = 3
+  // padX: horizontal margin from room edges
+  // topPad: space for room label + character head above anchor
+  // botPad: space for nametag + progress bar below anchor (feet)
+  const padX = 3, topPad = 10, botPad = 8
   const cols = Math.min(count, count <= 4 ? count : Math.ceil(Math.sqrt(count * 2)))
   const rows = Math.ceil(count / cols)
   const aw = room.w - padX * 2
@@ -49,8 +52,8 @@ function meetingSeats(count: number) {
   if (count === 0) return []
   const cx = MEETING.x + MEETING.w / 2
   const cy = MEETING.y + MEETING.h / 2 + 1
-  const rx = MEETING.w * 0.37
-  const ry = MEETING.h * 0.28
+  const rx = MEETING.w * 0.32
+  const ry = MEETING.h * 0.2
   return Array.from({ length: count }, (_, i) => ({
     x: cx + Math.cos((i / count) * Math.PI * 2 - Math.PI / 2) * rx,
     y: cy + Math.sin((i / count) * Math.PI * 2 - Math.PI / 2) * ry,
@@ -182,7 +185,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
       {/* ════ Corridor ════ */}
       <div
         className="absolute flex items-center justify-center"
-        style={{ left: '5%', right: '5%', top: '18%', height: '4%' }}
+        style={{ left: '5%', right: '5%', top: '16%', height: '3%' }}
       >
         <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700/25 to-transparent" />
         <span className="absolute text-[9px] text-slate-600 bg-slate-900/80 px-2">▼ 各研究室 ▼</span>
@@ -228,8 +231,8 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
               key={`desk-${room.tier}-${i}`}
               className="pixel-desk"
               style={{
-                left: `calc(${pos.x}% - 14px)`,
-                top: `calc(${pos.y}% + 26px)`,
+                left: `calc(${pos.x}% - 10px)`,
+                top: `calc(${pos.y}% + 18px)`,
                 opacity: empty ? 0.2 : 0.5,
               }}
             >
@@ -292,7 +295,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
               tier={agent.tier}
               status={agent.status}
               isWalking={isWalking}
-              size={28}
+              size={20}
             />
             <span className="pixel-nametag">{agent.displayName}</span>
 

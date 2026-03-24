@@ -3,8 +3,7 @@ import { Agent } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
 import OfficeWorld from './OfficeWorld'
-import AgentDetail from './AgentDetail'
-import WorkLogPanel from './WorkLogPanel'
+import Sidebar from './Sidebar'
 import CommandBar from './CommandBar'
 
 export default function App() {
@@ -38,45 +37,43 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col bg-slate-900 text-slate-100">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/80 px-6 py-2.5 backdrop-blur-sm">
+      <header className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/80 px-6 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600/20">
-              <span className="text-lg">🏢</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600/20">
+              <span className="text-sm">🏢</span>
             </div>
             <div>
-              <h1 className="text-base font-bold tracking-tight">
-                WindAI Lab
-              </h1>
-              <p className="text-[10px] text-slate-500">虛擬研究辦公室</p>
+              <h1 className="text-sm font-bold tracking-tight">WindAI Lab</h1>
+              <p className="text-[9px] text-slate-500">虛擬研究辦公室</p>
             </div>
           </div>
-          <span className="rounded-full bg-slate-700/60 px-2.5 py-0.5 text-[10px] text-slate-400">
+          <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[9px] text-slate-400">
             {agents.length} 位研究員
           </span>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
-              {workingCount} 位工作中
+          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+              {workingCount} 工作中
             </span>
             <span className="text-slate-600">|</span>
-            <span>{agents.length - workingCount} 位待命</span>
+            <span>{agents.length - workingCount} 待命</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className={`status-dot h-2 w-2 ${connectionLabel.dot} ${isConnected ? 'animate-pulse-slow' : ''}`} />
-            <span className={`text-[10px] ${connectionLabel.color}`}>{connectionLabel.text}</span>
+            <span className={`h-1.5 w-1.5 rounded-full ${connectionLabel.dot} ${isConnected ? 'animate-pulse-slow' : ''}`} />
+            <span className={`text-[9px] ${connectionLabel.color}`}>{connectionLabel.text}</span>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Office Floor + Command Bar + Work Log */}
+        {/* Office World + Command Bar */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Office World (pixel art) */}
+          {/* Office World (pixel art) — takes all remaining space */}
           <div className="flex-1 overflow-auto">
             <OfficeWorld
               rooms={rooms}
@@ -85,23 +82,18 @@ export default function App() {
             />
           </div>
 
-          {/* Command Bar */}
-          <div className="border-t border-slate-700/50 bg-slate-800/60 px-4 py-2.5">
+          {/* Command Bar (compact) */}
+          <div className="border-t border-slate-700/50 bg-slate-800/60 px-4 py-2">
             <CommandBar
               onExecute={ws.sendCommand}
               disabled={!isConnected}
             />
           </div>
-
-          {/* Work Log Panel */}
-          <div className="h-44 shrink-0 border-t border-slate-700/50 bg-slate-850">
-            <WorkLogPanel logs={workLogs} />
-          </div>
         </div>
 
-        {/* Agent Detail Sidebar */}
+        {/* Sidebar: Agent Detail + Work Logs (tabbed) */}
         <aside className="w-72 shrink-0 border-l border-slate-700/50 bg-slate-800/50">
-          <AgentDetail
+          <Sidebar
             agent={currentSelected}
             allAgents={agents}
             workLogs={workLogs}
