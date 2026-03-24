@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Agent, OfficeRoom } from '../types/agent'
 import PixelCharacter from './PixelCharacter'
 
@@ -44,16 +44,18 @@ function deskGrid(room: RoomDef, count: number) {
   }))
 }
 
-const MEETING_SEATS = (() => {
+/** 根據參與人數動態產生會議室座位（橢圓排列），保證每個人有獨立座位 */
+function meetingSeats(count: number) {
+  if (count === 0) return []
   const cx = MEETING.x + MEETING.w / 2
   const cy = MEETING.y + MEETING.h / 2 + 1
   const rx = MEETING.w * 0.37
   const ry = MEETING.h * 0.28
-  return Array.from({ length: 16 }, (_, i) => ({
-    x: cx + Math.cos((i / 16) * Math.PI * 2 - Math.PI / 2) * rx,
-    y: cy + Math.sin((i / 16) * Math.PI * 2 - Math.PI / 2) * ry,
+  return Array.from({ length: count }, (_, i) => ({
+    x: cx + Math.cos((i / count) * Math.PI * 2 - Math.PI / 2) * rx,
+    y: cy + Math.sin((i / count) * Math.PI * 2 - Math.PI / 2) * ry,
   }))
-})()
+}
 
 /* ── Room furniture decorations ── */
 const ROOM_DECO: Record<string, Array<{ emoji: string; x: number; y: number }>> = {
@@ -82,6 +84,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
   const [walkingIds, setWalkingIds] = useState<Set<string>>(new Set())
   const [mounted, setMounted] = useState(false)
   const prevStatusRef = useRef<Map<string, string>>(new Map())
+  const walkTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   // Enable CSS transitions after initial render
   useEffect(() => {
@@ -93,10 +96,11 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
     const pos = new Map<string, { x: number; y: number }>()
     const mIds = new Set<string>()
 
-    // Meeting room agents
+    // Meeting room agents — 動態產生足夠座位，避免重疊
     const inMeeting = allAgents.filter((a) => a.status === 'working' || a.status === 'waiting')
+    const seats = meetingSeats(inMeeting.length)
     inMeeting.forEach((agent, i) => {
-      pos.set(agent.id, MEETING_SEATS[i % MEETING_SEATS.length])
+      pos.set(agent.id, seats[i])
       mIds.add(agent.id)
     })
 
@@ -115,38 +119,47 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent }: Pro
     return { positions: pos, meetingIds: mIds }
   }, [allAgents, rooms])
 
+  /* ── Start walk animation for a specific agent ── */
+  const startWalking = useCallback((agentId: string) => {
+    // Clear any existing timer for this agent
+    const existing = walkTimers.current.get(agentId)
+    if (existing) clearTimeout(existing)
+
+    setWalkingIds((prev) => new Set(prev).add(agentId))
+
+    // Stop walking after CSS transition completes
+    walkTimers.current.set(agentId, setTimeout(() => {
+      setWalkingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(agentId)
+        return next
+      })
+      walkTimers.current.delete(agentId)
+    }, 2200))
+  }, [])
+
   /* ── Detect movement (status change → meeting room transition) ── */
   useEffect(() => {
-    const movers: string[] = []
     allAgents.forEach((agent) => {
       const prev = prevStatusRef.current.get(agent.id)
       if (prev && prev !== agent.status) {
         const wasM = prev === 'working' || prev === 'waiting'
         const isM = agent.status === 'working' || agent.status === 'waiting'
-        if (wasM !== isM) movers.push(agent.id)
+        if (wasM !== isM) startWalking(agent.id)
       }
     })
 
     const newMap = new Map<string, string>()
     allAgents.forEach((a) => newMap.set(a.id, a.status))
     prevStatusRef.current = newMap
+  }, [allAgents, startWalking])
 
-    if (movers.length > 0) {
-      setWalkingIds((prev) => {
-        const next = new Set(prev)
-        movers.forEach((id) => next.add(id))
-        return next
-      })
-      const timer = setTimeout(() => {
-        setWalkingIds((prev) => {
-          const next = new Set(prev)
-          movers.forEach((id) => next.delete(id))
-          return next
-        })
-      }, 2200)
-      return () => clearTimeout(timer)
+  // Cleanup all walk timers on unmount
+  useEffect(() => {
+    return () => {
+      walkTimers.current.forEach((t) => clearTimeout(t))
     }
-  }, [allAgents])
+  }, [])
 
   const meetingCount = meetingIds.size
 
