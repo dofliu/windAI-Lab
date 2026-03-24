@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Agent } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
-import OfficeFloorMap from './OfficeFloorMap'
+import OfficeWorld from './OfficeWorld'
 import AgentDetail from './AgentDetail'
 import WorkLogPanel from './WorkLogPanel'
 import CommandBar from './CommandBar'
@@ -76,9 +76,9 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Office Floor + Command Bar + Work Log */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Office Floor Map */}
-          <div className="flex-1 overflow-hidden">
-            <OfficeFloorMap
+          {/* Office World (pixel art) */}
+          <div className="flex-1 overflow-auto">
+            <OfficeWorld
               rooms={rooms}
               selectedAgent={currentSelected}
               onSelectAgent={setSelectedAgent}
