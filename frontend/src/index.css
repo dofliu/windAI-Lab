@@ -37,8 +37,9 @@
   .office-world {
     position: relative;
     width: 100%;
-    min-height: 480px;
+    min-height: 520px;
     height: 100%;
+    padding-top: 32px;
     background-color: #0c1222;
     /* Pixel grid background */
     background-image:
