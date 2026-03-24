@@ -39,9 +39,17 @@ _work_logs: list[WorkLogEntry] = []
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """應用程式生命週期管理：啟動與關閉時的初始化與清理。"""
+    from src.agents.registry import agent_instances, bootstrap_agents
+
     logger.info("WindAI Lab API 啟動中...")
-    logger.info(f"已註冊 {len(get_all_agents())} 個代理")
+    logger.info(f"已註冊 {len(get_all_agents())} 個代理（狀態）")
+
+    # 初始化代理實例與 MessageBus
+    bootstrap_agents()
+    logger.info(f"已初始化 {agent_instances.count} 個代理實例（邏輯）")
+
     yield
+
     logger.info("WindAI Lab API 正在關閉...")
 
 
@@ -162,15 +170,36 @@ async def get_agent_detail(agent_id: str) -> AgentModel:
 async def invoke_agent(agent_id: str, request: InvokeRequest) -> InvokeResponse:
     """調用指定代理執行任務。
 
-    建立新任務並更新代理狀態為工作中，同時透過 WebSocket 廣播狀態變更。
+    若代理已註冊邏輯實例，則透過 OrchestrationEngine 呼叫真實 execute()；
+    否則僅更新狀態並廣播（向下相容舊行為）。
     """
+    import asyncio as _aio
+
+    from src.agents.registry import agent_instances
+
     agent = get_agent(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail=f"代理 '{agent_id}' 不存在")
 
     task_id = str(uuid.uuid4())
 
-    # 更新代理狀態
+    # 若有真實代理實例，使用 engine 的真實執行路徑
+    if agent_instances.has(agent_id):
+        _aio.create_task(
+            orchestration_engine.execute_agent_task(
+                agent_id=agent_id,
+                task=request.command,
+                parameters=request.parameters or {},
+            )
+        )
+        logger.info(f"代理 {agent_id} 已啟動真實任務 {task_id}：{request.command}")
+        return InvokeResponse(
+            task_id=task_id,
+            status="accepted",
+            message=f"任務已派發給 {agent.display_name}（真實執行）",
+        )
+
+    # 未註冊實例：僅更新狀態（向下相容）
     updated_agent = update_agent_status(
         agent_id,
         status=AgentStatus.WORKING,
@@ -178,7 +207,6 @@ async def invoke_agent(agent_id: str, request: InvokeRequest) -> InvokeResponse:
         progress=0.0,
     )
 
-    # 記錄工作日誌
     log_entry = WorkLogEntry(
         id=str(uuid.uuid4()),
         agent_id=agent_id,
@@ -188,12 +216,11 @@ async def invoke_agent(agent_id: str, request: InvokeRequest) -> InvokeResponse:
     )
     _work_logs.append(log_entry)
 
-    # 廣播狀態更新
     if updated_agent:
         await ws_manager.broadcast_agent_status(updated_agent)
     await ws_manager.broadcast_work_log(log_entry)
 
-    logger.info(f"代理 {agent_id} 已接收任務 {task_id}：{request.command}")
+    logger.info(f"代理 {agent_id} 已接收任務 {task_id}：{request.command}（僅狀態更新）")
 
     return InvokeResponse(
         task_id=task_id,
