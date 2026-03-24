@@ -1,0 +1,37 @@
+[project]
+name = "windai-lab"
+version = "0.1.0"
+description = "WindAI Lab — 風能人工智慧研究平台：整合多代理系統、RAG 與機器學習之智慧研究助理"
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "TCH"]
+ignore = ["E501"]
+fixable = ["ALL"]
+
+[tool.ruff.isort]
+known-first-party = ["windai"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+asyncio_mode = "auto"

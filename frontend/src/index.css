@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #1e293b;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: #475569;
+    border-radius: 3px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC',
+      'Microsoft JhengHei', sans-serif;
+    overflow: hidden;
+  }
+}
+
+@layer components {
+  .neon-border {
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2),
+      0 0 12px -3px rgba(99, 102, 241, 0.15);
+  }
+
+  .room-card {
+    @apply rounded-xl border border-slate-700/50 bg-slate-800/60 backdrop-blur-sm
+      transition-all duration-300;
+  }
+
+  .room-card:hover {
+    @apply border-slate-600/70;
+    box-shadow: 0 0 20px -5px rgba(99, 102, 241, 0.12);
+  }
+
+  .status-dot {
+    @apply inline-block h-2.5 w-2.5 rounded-full;
+  }
+
+  .log-entry {
+    @apply border-l-2 py-1.5 pl-3 text-sm transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+}

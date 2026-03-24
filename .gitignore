@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Data files (too large for git)
+data/external/*.zip
+data/external/*.csv
+data/raw/
+data/processed/
+data/features/
+data/labels/
+
+# Models (too large for git)
+models/predictive/
+models/diagnostic/
+models/rag/
+models/llm/
+models/anomaly/
+models/registry/
+models/baselines/
+
+# Environment
+.env
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MLflow
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temp
+*.tmp
+*.bak
