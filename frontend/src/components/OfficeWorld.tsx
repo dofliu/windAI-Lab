@@ -379,16 +379,16 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
               </div>
             )}
 
-            {/* Speech bubble */}
+            {/* Speech bubble — flip below agent when near top to avoid clipping */}
             {speechBubbles.find((b) => b.agentId === agent.id) && (
-              <div className="pixel-speech-bubble">
+              <div className={pos.y < 22 ? 'pixel-speech-bubble-below' : 'pixel-speech-bubble'}>
                 {speechBubbles.find((b) => b.agentId === agent.id)!.text}
               </div>
             )}
 
             {/* Hover tooltip (only when no speech bubble) */}
             {isHovered && !speechBubbles.find((b) => b.agentId === agent.id) && (
-              <div className="pixel-tooltip">
+              <div className="pixel-tooltip" style={pos.y < 22 ? { bottom: 'auto', top: 'calc(100% + 8px)' } : undefined}>
                 <p className="font-semibold text-slate-100">{agent.displayName}</p>
                 <p className="text-slate-500">{agent.name}</p>
                 {agent.currentTask && (
