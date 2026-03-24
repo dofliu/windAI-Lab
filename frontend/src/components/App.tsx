@@ -30,7 +30,7 @@ export default function App() {
   const workingCount = agents.filter((a) => a.status === 'working').length
 
   const handleCommand = (command: string, parameters: Record<string, string>) => {
-    if (isConnected) {
+    if (useLiveBackend) {
       ws.sendCommand(command, parameters)
     } else {
       sim.sendCommand(command, parameters)

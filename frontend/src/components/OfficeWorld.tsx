@@ -13,7 +13,7 @@ interface RoomDef {
 }
 
 const MEETING: RoomDef = {
-  x: 11, y: 1, w: 78, h: 14,
+  x: 11, y: 8, w: 78, h: 14,
   label: '會議室', icon: '🏛️',
   floor: 'rgba(99,102,241,0.06)',
   border: 'rgba(99,102,241,0.25)',
@@ -21,7 +21,7 @@ const MEETING: RoomDef = {
 }
 
 const BOSS_ROOM: RoomDef = {
-  x: 1, y: 1, w: 9, h: 14,
+  x: 1, y: 8, w: 9, h: 14,
   label: '私密室', icon: '🔒',
   floor: 'rgba(236,72,153,0.08)',
   border: 'rgba(236,72,153,0.3)',
@@ -29,7 +29,7 @@ const BOSS_ROOM: RoomDef = {
 }
 
 const TEA_ROOM: RoomDef = {
-  x: 90, y: 1, w: 9, h: 14,
+  x: 90, y: 8, w: 9, h: 14,
   label: '茶水間', icon: '☕',
   floor: 'rgba(251,191,36,0.06)',
   border: 'rgba(251,191,36,0.25)',
@@ -37,12 +37,12 @@ const TEA_ROOM: RoomDef = {
 }
 
 const ROOMS: Record<string, RoomDef> = {
-  leadership:  { x: 1, y: 20, w: 31, h: 32, label: '指揮中心',   icon: '🏛️', floor: 'rgba(245,158,11,0.05)',  border: 'rgba(245,158,11,0.22)', labelColor: '#fbbf24' },
-  data:        { x: 35, y: 20, w: 30, h: 32, label: '資料工程室', icon: '🗃️', floor: 'rgba(16,185,129,0.05)',  border: 'rgba(16,185,129,0.22)', labelColor: '#34d399' },
-  'ai-ml':     { x: 68, y: 20, w: 31, h: 32, label: '模型實驗室', icon: '🧠', floor: 'rgba(139,92,246,0.05)',  border: 'rgba(139,92,246,0.22)', labelColor: '#a78bfa' },
-  domain:      { x: 1, y: 56, w: 31, h: 32, label: '領域知識庫', icon: '🌬️', floor: 'rgba(236,72,153,0.05)',  border: 'rgba(236,72,153,0.22)', labelColor: '#f472b6' },
-  engineering: { x: 35, y: 56, w: 30, h: 32, label: '軟體工程室', icon: '💻', floor: 'rgba(249,115,22,0.05)',  border: 'rgba(249,115,22,0.22)', labelColor: '#fb923c' },
-  research:    { x: 68, y: 56, w: 31, h: 32, label: '研究室',     icon: '📖', floor: 'rgba(6,182,212,0.05)',   border: 'rgba(6,182,212,0.22)',  labelColor: '#22d3ee' },
+  leadership:  { x: 1, y: 27, w: 31, h: 28, label: '指揮中心',   icon: '🏛️', floor: 'rgba(245,158,11,0.05)',  border: 'rgba(245,158,11,0.22)', labelColor: '#fbbf24' },
+  data:        { x: 35, y: 27, w: 30, h: 28, label: '資料工程室', icon: '🗃️', floor: 'rgba(16,185,129,0.05)',  border: 'rgba(16,185,129,0.22)', labelColor: '#34d399' },
+  'ai-ml':     { x: 68, y: 27, w: 31, h: 28, label: '模型實驗室', icon: '🧠', floor: 'rgba(139,92,246,0.05)',  border: 'rgba(139,92,246,0.22)', labelColor: '#a78bfa' },
+  domain:      { x: 1, y: 58, w: 31, h: 28, label: '領域知識庫', icon: '🌬️', floor: 'rgba(236,72,153,0.05)',  border: 'rgba(236,72,153,0.22)', labelColor: '#f472b6' },
+  engineering: { x: 35, y: 58, w: 30, h: 28, label: '軟體工程室', icon: '💻', floor: 'rgba(249,115,22,0.05)',  border: 'rgba(249,115,22,0.22)', labelColor: '#fb923c' },
+  research:    { x: 68, y: 58, w: 31, h: 28, label: '研究室',     icon: '📖', floor: 'rgba(6,182,212,0.05)',   border: 'rgba(6,182,212,0.22)',  labelColor: '#22d3ee' },
 }
 
 /* ── Position helpers ── */
@@ -258,7 +258,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
       {/* ════ Corridor ════ */}
       <div
         className="absolute flex items-center justify-center"
-        style={{ left: '5%', right: '5%', top: '16%', height: '3%' }}
+        style={{ left: '5%', right: '5%', top: '23%', height: '3%' }}
       >
         <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-700/25 to-transparent" />
         <span className="absolute text-[9px] text-slate-600 bg-slate-900/80 px-2">▼ 各研究室 ▼</span>
