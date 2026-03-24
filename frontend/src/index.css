@@ -43,7 +43,7 @@
   .office-room {
     @apply relative rounded-xl bg-slate-800/40 backdrop-blur-sm
       transition-all duration-300;
-    min-height: 140px;
+    min-height: 120px;
   }
 
   .office-room:hover {
@@ -73,6 +73,32 @@
     height: 3px;
     background: rgba(71, 85, 105, 0.3);
     border-radius: 0 0 2px 2px;
+  }
+
+  /* ── Agent working glow — 工作中底色閃爍 ── */
+  .agent-working-glow {
+    animation: working-glow 2s ease-in-out infinite;
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.35), 0 0 4px rgba(52, 211, 153, 0.2);
+  }
+
+  .agent-waiting-glow {
+    animation: waiting-glow 2s ease-in-out infinite;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+  }
+
+  .agent-error-glow {
+    animation: error-glow 1.5s ease-in-out infinite;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.35);
+  }
+
+  /* ── Desk working state ── */
+  .agent-desk-working {
+    animation: desk-working-bg 3s ease-in-out infinite;
+  }
+
+  /* ── Meeting room ── */
+  .meeting-room {
+    animation: meeting-room-ambient 4s ease-in-out infinite;
   }
 
   /* ── Agent tooltip ── */
@@ -126,12 +152,17 @@
     animation: bounce-dot 1.2s ease-in-out infinite;
   }
 
+  /* ── Slow ping for avatar overlay ── */
+  .animate-ping-slow {
+    animation: ping-slow 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
   /* ── Monitor screen flicker ── */
   .animate-screen-flicker {
     animation: screen-flicker 3s ease-in-out infinite;
   }
 
-  /* ── Slow pulse (reused from status) ── */
+  /* ── Slow pulse ── */
   .animate-pulse-slow {
     animation: pulse-slow 2.5s ease-in-out infinite;
   }
@@ -142,6 +173,56 @@
 }
 
 /* ── Keyframes ── */
+
+/* Working agent: green glow pulse */
+@keyframes working-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.2), 0 0 2px rgba(52, 211, 153, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.5), 0 0 6px rgba(52, 211, 153, 0.3);
+  }
+}
+
+/* Waiting agent: amber glow */
+@keyframes waiting-glow {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(251, 191, 36, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
+  }
+}
+
+/* Error agent: red glow */
+@keyframes error-glow {
+  0%, 100% {
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.45);
+  }
+}
+
+/* Desk background pulse when working */
+@keyframes desk-working-bg {
+  0%, 100% {
+    background-color: rgba(6, 78, 59, 0.15);
+  }
+  50% {
+    background-color: rgba(6, 78, 59, 0.35);
+  }
+}
+
+/* Meeting room ambient glow */
+@keyframes meeting-room-ambient {
+  0%, 100% {
+    border-color: rgba(99, 102, 241, 0.2);
+  }
+  50% {
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+}
 
 @keyframes pulse-ring {
   0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.3); }
@@ -156,6 +237,11 @@
 @keyframes bounce-dot {
   0%, 100% { transform: translateY(0); opacity: 0.6; }
   50% { transform: translateY(-3px); opacity: 1; }
+}
+
+@keyframes ping-slow {
+  0% { transform: scale(1); opacity: 0.3; }
+  75%, 100% { transform: scale(1.6); opacity: 0; }
 }
 
 @keyframes screen-flicker {

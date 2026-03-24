@@ -1,4 +1,5 @@
 import { Agent, WorkLog } from '../types/agent'
+import AvatarSVG from './AvatarSVG'
 import StatusBadge from './StatusBadge'
 
 interface AgentDetailProps {
@@ -34,7 +35,13 @@ export default function AgentDetail({
       {/* Header */}
       <div className="border-b border-slate-700/50 p-4">
         <div className="mb-3 flex items-center gap-3">
-          <span className="text-4xl">{agent.icon}</span>
+          <AvatarSVG
+            agentId={agent.id}
+            tier={agent.tier}
+            displayName={agent.displayName}
+            size={52}
+            className="rounded-full ring-2 ring-slate-600/50"
+          />
           <div>
             <h2 className="text-lg font-bold text-slate-100">
               {agent.displayName}
@@ -79,9 +86,15 @@ export default function AgentDetail({
             {collaborators.map((c) => (
               <span
                 key={c.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-slate-700/60 px-3 py-1 text-xs text-slate-300"
+                className="inline-flex items-center gap-1.5 rounded-full bg-slate-700/60 px-2.5 py-1 text-xs text-slate-300"
               >
-                <span>{c.icon}</span>
+                <AvatarSVG
+                  agentId={c.id}
+                  tier={c.tier}
+                  displayName={c.displayName}
+                  size={18}
+                  className="rounded-full"
+                />
                 {c.displayName}
               </span>
             ))}
