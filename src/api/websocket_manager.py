@@ -91,6 +91,15 @@ class WebSocketManager:
         }
         await self.broadcast(message)
 
+    async def broadcast_agent_message(self, agent_message: dict[str, Any]) -> None:
+        """廣播代理間訊息至前端，用於虛擬辦公室的訊息流視覺化。"""
+        message = {
+            "type": "agent_message",
+            "timestamp": datetime.now().isoformat(),
+            "payload": agent_message,
+        }
+        await self.broadcast(message)
+
 
 # 全域單例實例
 manager = WebSocketManager()

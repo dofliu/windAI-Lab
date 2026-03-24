@@ -63,7 +63,20 @@ WS_MESSAGE_TYPES: dict[str, str] = {
     "AGENT_STATUS_UPDATE": "agent_status_update",
     "WORK_LOG_ENTRY": "work_log_entry",
     "TASK_PROGRESS": "task_progress",
+    "AGENT_MESSAGE": "agent_message",
     "WORKFLOW_START": "workflow_start",
     "WORKFLOW_COMPLETE": "workflow_complete",
     "WORKFLOW_ERROR": "workflow_error",
+}
+
+# ── 代理間訊息類型 ──
+AGENT_MESSAGE_TYPES: dict[str, str] = {
+    "task_request": "請求代理執行任務",
+    "task_result": "任務結果回報",
+    "task_progress": "任務進度更新",
+    "task_error": "任務失敗通知",
+    "query": "查詢訊息",
+    "response": "回覆訊息",
+    "notification": "通知訊息",
+    "delegation": "任務委派",
 }

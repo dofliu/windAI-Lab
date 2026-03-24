@@ -1,6 +1,9 @@
 """WindAI Lab 代理協調引擎。
 
 負責執行工作流程，依序或平行調度代理，並透過 WebSocket 即時廣播狀態變更。
+支援兩種模式：
+- 模擬模式（simulate=True）：漸進式進度動畫，無實際計算
+- 真實模式（simulate=False）：呼叫 BaseAgent.execute() 執行真實邏輯
 """
 
 from __future__ import annotations
@@ -94,22 +97,54 @@ class OrchestrationEngine:
     async def _run_agent_step(
         self, agent_id: str, step: WorkflowStep, collaborators: list[str] | None = None
     ) -> None:
-        """執行單一代理的工作步驟，模擬漸進式進度。"""
-        agent = get_agent(agent_id)
-        if not agent:
+        """執行單一代理的工作步驟。
+
+        優先使用已註冊的真實代理實例（BaseAgent.execute），
+        若代理未實作則退回至模擬進度動畫。
+        """
+        from src.agents.base import TaskContext
+        from src.agents.registry import agent_instances
+
+        agent_model = get_agent(agent_id)
+        if not agent_model:
             return
 
-        display_name = agent.display_name
+        display_name = agent_model.display_name
         other_agents = [aid for aid in step.agent_ids if aid != agent_id]
 
-        # 開始工作
+        # ── 真實代理路徑 ──
+        real_agent = agent_instances.get(agent_id)
+        if real_agent is not None:
+            ctx = TaskContext(
+                parameters={"step_name": step.name},
+                collaborators=other_agents,
+            )
+            log = self._create_log(agent_id, display_name, f"開始：{step.description}")
+            await ws_manager.broadcast_work_log(log)
+
+            result = await real_agent.run_task(step.description, ctx)
+
+            # 發送子訊息（workflow 層級的補充說明）
+            for msg in step.sub_messages:
+                log = self._create_log(agent_id, display_name, msg, "success")
+                await ws_manager.broadcast_work_log(log)
+                await asyncio.sleep(0.3)
+
+            log = self._create_log(
+                agent_id, display_name,
+                f"完成：{step.description}（{result.status.value}）",
+                "success" if result.status.value == "success" else "warning",
+            )
+            await ws_manager.broadcast_work_log(log)
+            return
+
+        # ── 模擬路徑（向下相容） ──
         await self._update_and_broadcast(
             agent_id, AgentStatus.WORKING, step.description, 0.0, other_agents
         )
         log = self._create_log(agent_id, display_name, f"開始：{step.description}")
         await ws_manager.broadcast_work_log(log)
 
-        # 模擬漸進式進度
         total_duration = step.duration
         increments = 10
         increment_time = total_duration / increments
@@ -118,7 +153,6 @@ class OrchestrationEngine:
             await asyncio.sleep(increment_time)
             progress = i / increments
 
-            # 檢查是否有進度訊息
             progress_pct = int(progress * 100)
             if progress_pct in step.progress_messages:
                 msg = step.progress_messages[progress_pct]
@@ -129,13 +163,11 @@ class OrchestrationEngine:
                 agent_id, AgentStatus.WORKING, step.description, progress, other_agents
             )
 
-        # 發送子訊息
         for msg in step.sub_messages:
             log = self._create_log(agent_id, display_name, msg, "success")
             await ws_manager.broadcast_work_log(log)
             await asyncio.sleep(0.3)
 
-        # 完成
         await self._update_and_broadcast(
             agent_id, AgentStatus.COMPLETED, f"已完成：{step.description}", 1.0
         )
@@ -209,6 +241,70 @@ class OrchestrationEngine:
         task = asyncio.create_task(_run())
         self._running_tasks[task_id] = task
         return task_id
+
+    # ── 真實代理執行模式 ──────────────────────────────────────
+
+    async def execute_agent_task(
+        self,
+        agent_id: str,
+        task: str,
+        parameters: dict | None = None,
+        collaborators: list[str] | None = None,
+    ) -> dict:
+        """直接呼叫已註冊的 BaseAgent 實例執行任務。
+
+        與模擬工作流不同，此方法使用代理的真實 execute() 邏輯。
+
+        Args:
+            agent_id: 代理 ID。
+            task: 任務描述。
+            parameters: 任務參數。
+            collaborators: 協作代理 ID 列表。
+
+        Returns:
+            任務結果 dict。
+        """
+        from src.agents.base import TaskContext
+        from src.agents.registry import agent_instances
+
+        agent = agent_instances.get(agent_id)
+        if agent is None:
+            logger.warning(f"代理 {agent_id} 未註冊實例，無法執行真實任務")
+            return {"error": f"Agent {agent_id} not registered"}
+
+        ctx = TaskContext(
+            parameters=parameters or {},
+            collaborators=collaborators or [],
+        )
+
+        log = self._create_log(
+            "system", "系統",
+            f"🚀 指派任務至 {agent.display_name}：{task}",
+        )
+        await ws_manager.broadcast_work_log(log)
+
+        result = await agent.run_task(task, ctx)
+
+        log = self._create_log(
+            "system", "系統",
+            f"{'✅' if result.status == 'success' else '⚠️'} "
+            f"{agent.display_name}：{result.summary}",
+            "success" if result.status == "success" else "warning",
+        )
+        await ws_manager.broadcast_work_log(log)
+
+        # 延遲後重設代理
+        await asyncio.sleep(2)
+        await self._update_and_broadcast(agent_id, AgentStatus.IDLE, None, 0.0)
+
+        return {
+            "agent_id": agent_id,
+            "task": task,
+            "status": result.status.value,
+            "data": result.data,
+            "summary": result.summary,
+            "errors": result.errors,
+        }
 
 
 # 全域單例
