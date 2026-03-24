@@ -14,7 +14,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-
 _DEFAULT_RATED_POWER = 2050
 _DEFAULT_CUT_IN = 3.0
 
@@ -121,7 +120,7 @@ def detect_temperature_anomalies(
             continue
 
         # 對每筆資料計算期望值與偏差
-        for idx, row in df.iterrows():
+        for idx, _row in df.iterrows():
             p_val = pwr.get(idx, np.nan)
             t_val = temp.get(idx, np.nan)
             pb = power_bins.get(idx, np.nan)
@@ -140,21 +139,24 @@ def detect_temperature_anomalies(
             deviation = (t_val - expected) / std
 
             if abs(deviation) > threshold_std:
-                all_anomalies.append({
-                    "timestamp": str(idx),
-                    "component": component_name,
-                    "actual_temp": round(float(t_val), 1),
-                    "expected_temp": round(float(expected), 1),
-                    "deviation": round(float(deviation), 2),
-                })
+                all_anomalies.append(
+                    {
+                        "timestamp": str(idx),
+                        "component": component_name,
+                        "actual_temp": round(float(t_val), 1),
+                        "expected_temp": round(float(expected), 1),
+                        "deviation": round(float(deviation), 2),
+                    }
+                )
 
         # 限制每個元件最多回報 50 個異常（取偏差最大的）
         comp_anomalies = [a for a in all_anomalies if a["component"] == component_name]
         if len(comp_anomalies) > 50:
             comp_anomalies.sort(key=lambda x: abs(x["deviation"]), reverse=True)
-            kept = set(a["timestamp"] for a in comp_anomalies[:50])
+            kept = {a["timestamp"] for a in comp_anomalies[:50]}
             all_anomalies = [
-                a for a in all_anomalies
+                a
+                for a in all_anomalies
                 if a["component"] != component_name or a["timestamp"] in kept
             ]
 
@@ -246,14 +248,13 @@ def detect_power_curve_anomalies(
         if bin_mid < _DEFAULT_CUT_IN:
             theoretical = 0
         elif bin_mid < 12.5:
-            theoretical = rated_power * ((bin_mid - _DEFAULT_CUT_IN) / (12.5 - _DEFAULT_CUT_IN)) ** 3
+            theoretical = (
+                rated_power * ((bin_mid - _DEFAULT_CUT_IN) / (12.5 - _DEFAULT_CUT_IN)) ** 3
+            )
         else:
             theoretical = rated_power
 
-        if theoretical > 10:
-            dev_pct = ((actual_mean - theoretical) / theoretical) * 100
-        else:
-            dev_pct = 0.0
+        dev_pct = ((actual_mean - theoretical) / theoretical) * 100 if theoretical > 10 else 0.0
 
         deviations.append(dev_pct)
 
@@ -261,13 +262,15 @@ def detect_power_curve_anomalies(
             worst_dev = dev_pct
             worst_bin = f"{bin_interval.left:.1f}-{bin_interval.right:.1f} m/s"
 
-        bin_analysis.append({
-            "wind_speed_bin": f"{bin_interval.left:.1f}-{bin_interval.right:.1f}",
-            "actual_mean_kw": round(actual_mean, 1),
-            "theoretical_kw": round(theoretical, 1),
-            "deviation_pct": round(dev_pct, 1),
-            "sample_count": int(row["count"]),
-        })
+        bin_analysis.append(
+            {
+                "wind_speed_bin": f"{bin_interval.left:.1f}-{bin_interval.right:.1f}",
+                "actual_mean_kw": round(actual_mean, 1),
+                "theoretical_kw": round(theoretical, 1),
+                "deviation_pct": round(dev_pct, 1),
+                "sample_count": int(row["count"]),
+            }
+        )
 
     mean_dev = float(np.mean(deviations)) if deviations else 0.0
 
@@ -281,7 +284,9 @@ def detect_power_curve_anomalies(
             if ws_val < _DEFAULT_CUT_IN:
                 theoretical_total += 0
             elif ws_val < 12.5:
-                theoretical_total += rated_power * ((ws_val - _DEFAULT_CUT_IN) / (12.5 - _DEFAULT_CUT_IN)) ** 3
+                theoretical_total += (
+                    rated_power * ((ws_val - _DEFAULT_CUT_IN) / (12.5 - _DEFAULT_CUT_IN)) ** 3
+                )
             else:
                 theoretical_total += rated_power
 
@@ -472,9 +477,9 @@ def generate_diagnosis_report(df: pd.DataFrame, turbine_id: str) -> dict:
     if "operating_state" in df.columns:
         state_counts = df["operating_state"].value_counts()
         total = len(df)
-        ops["operating_hours"] = round(
-            state_counts.get("partial", 0) + state_counts.get("full", 0)
-        ) * 10 / 60  # 10 分鐘 -> 小時
+        ops["operating_hours"] = (
+            round(state_counts.get("partial", 0) + state_counts.get("full", 0)) * 10 / 60
+        )  # 10 分鐘 -> 小時
         ops["idle_hours"] = round(state_counts.get("idle", 0) * 10 / 60, 1)
         operating_count = state_counts.get("partial", 0) + state_counts.get("full", 0)
         ops["availability"] = round(operating_count / total * 100, 1) if total > 0 else 0.0
@@ -491,9 +496,9 @@ def generate_diagnosis_report(df: pd.DataFrame, turbine_id: str) -> dict:
         if power_col:
             pwr = df[power_col].astype(float)
             total_valid = len(pwr.dropna())
-            ops["availability"] = round(
-                (pwr > 0).sum() / total_valid * 100, 1
-            ) if total_valid > 0 else 0.0
+            ops["availability"] = (
+                round((pwr > 0).sum() / total_valid * 100, 1) if total_valid > 0 else 0.0
+            )
         else:
             ops["availability"] = 0.0
 

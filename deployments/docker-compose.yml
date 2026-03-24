@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: windai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - WINDAI_HOST=0.0.0.0
+      - WINDAI_PORT=8000
+      - WINDAI_DEBUG=true
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - WINDAI_DATA_ROOT=/app/data
+      - WINDAI_MODEL_REGISTRY=/app/models/registry
+    volumes:
+      - ../data:/app/data
+      - ../models:/app/models
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: windai-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: windai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.11.1
+    container_name: windai-mlflow
+    ports:
+      - "5000:5000"
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  mlflow-data:

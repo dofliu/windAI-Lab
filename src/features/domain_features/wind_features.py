@@ -11,13 +11,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 # Senvion MM92 預設參數
-_DEFAULT_RATED_POWER = 2050    # 額定功率 (kW)
-_DEFAULT_ROTOR_DIAMETER = 92   # 轉子直徑 (m)
-_DEFAULT_CUT_IN = 3.0          # 切入風速 (m/s)
-_DEFAULT_RATED_WIND = 12.5     # 額定風速 (m/s)
-_DEFAULT_CUT_OUT = 25.0        # 切出風速 (m/s)
+_DEFAULT_RATED_POWER = 2050  # 額定功率 (kW)
+_DEFAULT_ROTOR_DIAMETER = 92  # 轉子直徑 (m)
+_DEFAULT_CUT_IN = 3.0  # 切入風速 (m/s)
+_DEFAULT_RATED_WIND = 12.5  # 額定風速 (m/s)
+_DEFAULT_CUT_OUT = 25.0  # 切出風速 (m/s)
 
 
 def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:
@@ -54,7 +53,9 @@ def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> s
     return None
 
 
-def _theoretical_power(wind_speed: pd.Series, rated_power: float = _DEFAULT_RATED_POWER) -> pd.Series:
+def _theoretical_power(
+    wind_speed: pd.Series, rated_power: float = _DEFAULT_RATED_POWER
+) -> pd.Series:
     """計算理論功率曲線（簡化三次方模型）。
 
     使用切入風速至額定風速間的三次方關係估算理論功率。
@@ -76,9 +77,10 @@ def _theoretical_power(wind_speed: pd.Series, rated_power: float = _DEFAULT_RATE
 
     # 切入 ~ 額定風速：三次方關係
     partial_mask = (ws >= _DEFAULT_CUT_IN) & (ws < _DEFAULT_RATED_WIND)
-    power[partial_mask] = rated_power * (
-        (ws[partial_mask] - _DEFAULT_CUT_IN) / (_DEFAULT_RATED_WIND - _DEFAULT_CUT_IN)
-    ) ** 3
+    power[partial_mask] = (
+        rated_power
+        * ((ws[partial_mask] - _DEFAULT_CUT_IN) / (_DEFAULT_RATED_WIND - _DEFAULT_CUT_IN)) ** 3
+    )
 
     # 額定風速 ~ 切出風速：額定功率
     full_mask = (ws >= _DEFAULT_RATED_WIND) & (ws <= _DEFAULT_CUT_OUT)
@@ -182,9 +184,9 @@ def compute_temperature_features(df: pd.DataFrame) -> pd.DataFrame:
         df["gear_oil_temp_delta"] = df[gear_oil_col].astype(float) - ambient
 
     if gear_oil_inlet_col and gear_oil_col:
-        df["gear_oil_temp_diff_inlet"] = (
-            df[gear_oil_col].astype(float) - df[gear_oil_inlet_col].astype(float)
-        )
+        df["gear_oil_temp_diff_inlet"] = df[gear_oil_col].astype(float) - df[
+            gear_oil_inlet_col
+        ].astype(float)
 
     if gen_front_col and ambient is not None:
         df["gen_bearing_front_delta"] = df[gen_front_col].astype(float) - ambient
@@ -212,9 +214,7 @@ def compute_temperature_features(df: pd.DataFrame) -> pd.DataFrame:
 
     if gen_front_col:
         gen_f = df[gen_front_col].astype(float)
-        df["gen_front_rolling_mean"] = gen_f.rolling(
-            window=rolling_window, min_periods=72
-        ).mean()
+        df["gen_front_rolling_mean"] = gen_f.rolling(window=rolling_window, min_periods=72).mean()
 
     return df
 
@@ -248,10 +248,10 @@ def compute_operational_features(df: pd.DataFrame) -> pd.DataFrame:
         pwr = df[power_col].astype(float)
 
         conditions = [
-            (ws < _DEFAULT_CUT_IN) | (pwr <= 0),                    # idle
+            (ws < _DEFAULT_CUT_IN) | (pwr <= 0),  # idle
             (ws >= _DEFAULT_CUT_IN) & (pwr > 0) & (pwr < _DEFAULT_RATED_POWER * 0.95),  # partial
-            pwr >= _DEFAULT_RATED_POWER * 0.95,                      # full
-            ws > _DEFAULT_CUT_OUT,                                   # shutdown
+            pwr >= _DEFAULT_RATED_POWER * 0.95,  # full
+            ws > _DEFAULT_CUT_OUT,  # shutdown
         ]
         choices = ["idle", "partial", "full", "shutdown"]
         df["operating_state"] = np.select(conditions, choices, default="unknown")

@@ -192,7 +192,6 @@ def create_lit_search_workflow(topic: str = "wind turbine fault diagnosis LLM") 
 
 
 # Import real workflow
-from src.agents.orchestrator.real_workflows import run_real_diagnose
 
 # 可用的工作流程註冊表
 AVAILABLE_WORKFLOWS = {

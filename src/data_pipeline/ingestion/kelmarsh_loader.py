@@ -54,8 +54,7 @@ def _find_zip_path(year: int = 2016) -> Path:
     zip_path = _DATA_DIR / f"Kelmarsh_SCADA_{year}.zip"
     if not zip_path.exists():
         raise FileNotFoundError(
-            f"找不到 SCADA 資料檔案：{zip_path}\n"
-            f"請確認資料已下載至 {_DATA_DIR}"
+            f"找不到 SCADA 資料檔案：{zip_path}\n" f"請確認資料已下載至 {_DATA_DIR}"
         )
     return zip_path
 
@@ -124,46 +123,42 @@ def load_turbine_data(turbine_id: str, year: int = 2016) -> pd.DataFrame:
 
     if turbine_id not in csv_map:
         available = list(csv_map.keys())
-        raise ValueError(
-            f"找不到風機 '{turbine_id}' 的資料。"
-            f"可用的風機：{available}"
-        )
+        raise ValueError(f"找不到風機 '{turbine_id}' 的資料。" f"可用的風機：{available}")
 
     csv_name = csv_map[turbine_id]
 
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        with zf.open(csv_name) as f:
-            # Kelmarsh CSV 格式：前數行以 '#' 開頭為註解，
-            # 最後一行 '#' 行是 header（格式：# Date and time,Wind speed (m/s),...）
-            import csv
-            import io
+    with zipfile.ZipFile(zip_path, "r") as zf, zf.open(csv_name) as f:
+        # Kelmarsh CSV 格式：前數行以 '#' 開頭為註解，
+        # 最後一行 '#' 行是 header（格式：# Date and time,Wind speed (m/s),...）
+        import csv
+        import io
 
-            raw = f.read().decode("utf-8", errors="replace")
-            lines = raw.splitlines(keepends=True)
+        raw = f.read().decode("utf-8", errors="replace")
+        lines = raw.splitlines(keepends=True)
 
-            # 找出 header 行（最後一個 # 開頭的行）和資料起始行
-            header_idx = 0
-            for i, line in enumerate(lines):
-                if line.startswith("#"):
-                    header_idx = i
-                else:
-                    break
+        # 找出 header 行（最後一個 # 開頭的行）和資料起始行
+        header_idx = 0
+        for i, line in enumerate(lines):
+            if line.startswith("#"):
+                header_idx = i
+            else:
+                break
 
-            # Header 行去掉 '# ' 前綴
-            header_line = lines[header_idx].lstrip("# ").strip()
+        # Header 行去掉 '# ' 前綴
+        header_line = lines[header_idx].lstrip("# ").strip()
 
-            # 用 csv reader 正確解析含逗號的帶引號欄位名
-            reader = csv.reader(io.StringIO(header_line))
-            columns = next(reader)
+        # 用 csv reader 正確解析含逗號的帶引號欄位名
+        reader = csv.reader(io.StringIO(header_line))
+        columns = next(reader)
 
-            # 讀取資料行
-            data_text = "".join(lines[header_idx + 1:])
-            df = pd.read_csv(
-                io.StringIO(data_text),
-                header=None,
-                names=columns,
-                low_memory=False,
-            )
+        # 讀取資料行
+        data_text = "".join(lines[header_idx + 1 :])
+        df = pd.read_csv(
+            io.StringIO(data_text),
+            header=None,
+            names=columns,
+            low_memory=False,
+        )
 
     # 第一個欄位是 "Date and time"
     ts_col = columns[0]  # "Date and time"

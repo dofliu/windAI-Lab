@@ -6,6 +6,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.0
 websockets==12.0
 pydantic==2.9.0
+pydantic-settings==2.5.0
 
 # 資料處理
 pandas==2.2.0
@@ -38,6 +39,7 @@ ruff==0.6.0
 black==24.8.0
 mypy==1.11.0
 pytest==8.3.0
+pytest-asyncio==0.24.0
 
 # 工具套件
 python-dotenv==1.0.0
