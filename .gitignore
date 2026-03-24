@@ -55,3 +55,10 @@ mlruns/
 # Temp
 *.tmp
 *.bak
+
+# DVC
+/data/*.dvc
+/data/.dvc
+
+# Docker
+*.pid
