@@ -2,6 +2,7 @@
 
 使用代理框架（BaseAgent）協調真實的 Kelmarsh SCADA 資料分析。
 各步驟委派至已註冊的代理實例，由代理自行管理狀態與進度廣播。
+包含 ML Pipeline 整合（NBM、故障分類器、RUL 退化模型）。
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ PARTICIPATING_AGENTS = [
     "research-lead",
     "predictive-modeler",
     "fault-diagnostician",
+    "power-curve-expert",
     "literature-reviewer",
     "paper-writer",
 ]
@@ -74,10 +76,10 @@ async def _reset_agents() -> None:
 
 
 async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
-    """執行真實的故障診斷工作流程。
+    """執行真實的故障診斷工作流程（含 ML Pipeline）。
 
     透過代理框架協調多個代理，使用 Kelmarsh SCADA 真實資料。
-    各代理的 execute() 方法處理實際邏輯，自動管理狀態與進度。
+    包含 NBM 功率曲線建模、ML 故障分類、RUL 退化預測。
 
     Args:
         turbine_id: 風機 ID（支援 WT-XX 或 Kelmarsh_X 格式）。
@@ -95,7 +97,11 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
     if director:
         ctx = TaskContext(
             parameters={"turbine_id": turbine_id, "data_id": data_id},
-            collaborators=["fault-diagnostician", "predictive-modeler"],
+            collaborators=[
+                "fault-diagnostician",
+                "predictive-modeler",
+                "power-curve-expert",
+            ],
         )
         await director.run_task(f"確認 {turbine_id} 風機資訊並分派故障診斷任務", ctx)
         await _broadcast_log(
@@ -107,15 +113,15 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
         await _broadcast_log(
             "project-director",
             "專案總監",
-            f"🚀 啟動 {turbine_id} 故障診斷工作流程",
+            f"啟動 {turbine_id} 故障診斷工作流程（含 ML Pipeline）",
         )
 
-    # ── Step 2-5: 故障診斷師執行完整診斷 ──
+    # ── Step 2-5: 故障診斷師執行完整診斷（含 ML 分類 + NBM）──
     diagnostician = agent_instances.get("fault-diagnostician")
     if diagnostician:
         ctx = TaskContext(
             parameters={"turbine_id": data_id},
-            collaborators=["predictive-modeler"],
+            collaborators=["predictive-modeler", "power-curve-expert"],
         )
         diag_result = await diagnostician.run_task(f"診斷 {data_id} 風機故障", ctx)
 
@@ -123,10 +129,10 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             results["diagnosis"] = diag_result.data.get("report", {})
             results["quality_report"] = diag_result.data.get("quality_report", {})
 
-            # 廣播關鍵發現
             health = diag_result.data.get("health_score", 0)
             report = diag_result.data.get("report", {})
 
+            # 廣播統計異常
             temp_anomalies = report.get("temperature_anomalies", [])
             if temp_anomalies:
                 await _broadcast_log(
@@ -136,6 +142,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
                     "warning",
                 )
 
+            # 廣播功率曲線分析
             pc = report.get("power_curve_analysis", {})
             if pc:
                 dev = pc.get("mean_deviation_pct", 0)
@@ -144,6 +151,32 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
                     "故障診斷師",
                     f"Power Curve 平均偏差：{dev:.1f}%",
                     "success" if abs(dev) < 5 else "warning",
+                )
+
+            # 廣播 ML 分類結果
+            ml_clf = report.get("ml_fault_classification", {})
+            if ml_clf:
+                severity = ml_clf.get("severity_distribution", {})
+                multi = severity.get("multi_fault", 0)
+                single = severity.get("single_fault", 0)
+                await _broadcast_log(
+                    "fault-diagnostician",
+                    "故障診斷師",
+                    f"ML 故障分類：{single} 單一故障, {multi} 多重故障時段"
+                    f"（F1={ml_clf.get('model_f1_macro', 0):.2f}）",
+                    "info",
+                )
+
+            # 廣播 NBM 結果
+            nbm = report.get("nbm_analysis", {})
+            if nbm:
+                await _broadcast_log(
+                    "fault-diagnostician",
+                    "故障診斷師",
+                    f"NBM 模型 R²={nbm.get('model_r2', 0):.4f}, "
+                    f"異常點 {nbm.get('anomaly_count', 0)} 個"
+                    f"（比率 {nbm.get('anomaly_ratio', 0):.2%}）",
+                    "info",
                 )
 
             ops = report.get("operational_summary", {})
@@ -160,7 +193,40 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
     else:
         logger.warning("fault-diagnostician 代理未註冊，跳過診斷")
 
-    # ── Step 6: 文獻佐證 ──
+    # ── Step 6: 功率曲線專家 NBM 分析 ──
+    pc_expert = agent_instances.get("power-curve-expert")
+    if pc_expert:
+        ctx = TaskContext(parameters={"turbine_id": data_id})
+        pc_result = await pc_expert.run_task(f"NBM 功率曲線建模 {data_id}", ctx)
+        if pc_result.status == TaskStatus.SUCCESS:
+            results["power_curve_nbm"] = pc_result.data
+            r2 = pc_result.data.get("performance", {}).get("r2", 0)
+            await _broadcast_log(
+                "power-curve-expert",
+                "功率曲線專家",
+                f"NBM 建模完成 — R²={r2:.4f}",
+                "success",
+            )
+
+    # ── Step 7: RUL 預測 ──
+    modeler = agent_instances.get("predictive-modeler")
+    if modeler:
+        ctx = TaskContext(
+            parameters={"turbine_id": data_id, "component": "gearbox"},
+        )
+        rul_result = await modeler.run_task(f"RUL 壽命預測 {data_id}", ctx)
+        if rul_result.status == TaskStatus.SUCCESS:
+            results["rul_prediction"] = rul_result.data
+            rul_days = rul_result.data.get("rul_days", 0)
+            trend = rul_result.data.get("trend", "unknown")
+            await _broadcast_log(
+                "predictive-modeler",
+                "預測模型師",
+                f"RUL 預測：{rul_days:.0f} 天, 趨勢：{trend}",
+                "info",
+            )
+
+    # ── Step 8: 文獻佐證 ──
     lit_reviewer = agent_instances.get("literature-reviewer")
     if lit_reviewer:
         ctx = TaskContext(
@@ -171,7 +237,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
     else:
         logger.warning("literature-reviewer 代理未註冊，跳過文獻搜索")
 
-    # ── Step 7: 生成報告 ──
+    # ── Step 9: 生成報告 ──
     paper_writer = agent_instances.get("paper-writer")
     if paper_writer:
         ctx = TaskContext(
@@ -186,14 +252,14 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
             await _broadcast_log("paper-writer", "論文撰寫員", f"⚠️ {w}", "warning")
             await asyncio.sleep(0.3)
         for r in diagnosis.get("recommendations", [])[:3]:
-            await _broadcast_log("paper-writer", "論文撰寫員", f"💡 建議：{r}", "info")
+            await _broadcast_log("paper-writer", "論文撰寫員", f"建議：{r}", "info")
             await asyncio.sleep(0.3)
 
         results["report"] = report_result.data
     else:
         logger.warning("paper-writer 代理未註冊，跳過報告生成")
 
-    # ── Step 8: 最終審核 ──
+    # ── Step 10: 最終審核 ──
     research_lead = agent_instances.get("research-lead")
     if research_lead:
         ctx = TaskContext(results=results)
@@ -201,10 +267,11 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
 
     # 專案總監最終確認
     health = results.get("diagnosis", {}).get("health_score", 0)
+    rul_days = results.get("rul_prediction", {}).get("rul_days", "N/A")
     await _broadcast_log(
         "project-director",
         "專案總監",
-        f"📋 {turbine_id} 故障診斷完成 — 健康分數 {health}/100",
+        f"📋 {turbine_id} 故障診斷完成 — 健康分數 {health}/100, RUL {rul_days} 天",
         "success",
     )
 
