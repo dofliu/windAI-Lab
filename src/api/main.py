@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from src.agents.orchestrator.engine import engine as orchestration_engine
 from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
@@ -308,6 +309,92 @@ async def list_commands() -> dict:
             {"name": "lit-search", "description": "系統性文獻搜索", "parameters": ["topic"]},
         ]
     }
+
+
+# ── ML Pipeline API ────────────────────────────────────────────
+
+# 全域 ML Pipeline 實例
+_ml_pipeline: Any = None
+
+
+def _get_ml_pipeline() -> Any:
+    """取得或建立 ML Pipeline 單例。"""
+    global _ml_pipeline  # noqa: PLW0603
+    if _ml_pipeline is None:
+        from src.services.ml_pipeline_service import MLPipeline
+
+        _ml_pipeline = MLPipeline()
+    return _ml_pipeline
+
+
+@app.post("/api/ml/train", tags=["ML Pipeline"])
+async def ml_train(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
+    """訓練 ML Pipeline（NBM + 故障分類器 + RUL 模型）。
+
+    使用指定風機的 SCADA 資料端到端訓練三個模型。
+    """
+    import asyncio
+
+    pipeline = _get_ml_pipeline()
+
+    async def _train() -> dict[str, Any]:
+        from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
+
+        loop = asyncio.get_event_loop()
+        df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
+        result = await loop.run_in_executor(None, lambda: pipeline.train_all(df))
+        return result
+
+    try:
+        result = await _train()
+        return JSONResponse(
+            content={
+                "status": "success",
+                "turbine_id": turbine_id,
+                "models": result,
+            }
+        )
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})
+    except Exception as e:
+        logger.exception("ML 訓練失敗")
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+@app.post("/api/ml/inference", tags=["ML Pipeline"])
+async def ml_inference(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
+    """使用已訓練的 ML Pipeline 進行推論。
+
+    需先呼叫 /api/ml/train 完成訓練。
+    """
+    import asyncio
+
+    pipeline = _get_ml_pipeline()
+    if not pipeline.is_trained:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "detail": "Pipeline 尚未訓練，請先呼叫 /api/ml/train"},
+        )
+
+    try:
+        from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
+
+        loop = asyncio.get_event_loop()
+        df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
+        result = await loop.run_in_executor(None, lambda: pipeline.run_inference(df, turbine_id))
+        return JSONResponse(content={"status": "success", **result})
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})
+    except Exception as e:
+        logger.exception("ML 推論失敗")
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+@app.get("/api/ml/summary", tags=["ML Pipeline"])
+async def ml_summary() -> dict[str, Any]:
+    """取得 ML Pipeline 模型摘要。"""
+    pipeline = _get_ml_pipeline()
+    return pipeline.get_pipeline_summary()
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────
