@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { Agent, SpeechBubble } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
 import { initialRooms } from '../utils/mockData'
+import CompactOffice from './CompactOffice'
+import DashboardView from './DashboardView'
 import OfficeWorld from './OfficeWorld'
-import Sidebar from './Sidebar'
 import CommandBar from './CommandBar'
 
 export default function App() {
@@ -20,7 +21,6 @@ export default function App() {
      those agents' status overlays on top of the simulation.
      ════════════════════════════════════════════════════════════════ */
 
-  // IDs of agents the backend is actively managing (working/waiting/error)
   const backendActiveIds = useMemo(() => {
     if (!hasBackend) return new Set<string>()
     return new Set(
@@ -28,7 +28,6 @@ export default function App() {
     )
   }, [hasBackend, ws.agents])
 
-  // Agents: sim base + backend overlay for active agents
   const agents = useMemo(() => {
     if (!hasBackend) return sim.agents
     const wsMap = new Map(ws.agents.map((a) => [a.id, a]))
@@ -38,7 +37,7 @@ export default function App() {
     })
   }, [hasBackend, sim.agents, ws.agents, backendActiveIds])
 
-  // Rooms: derived from merged agents
+  // Rooms (for OfficeWorld pixel mode)
   const rooms = useMemo(
     () =>
       initialRooms.map((room) => ({
@@ -48,7 +47,7 @@ export default function App() {
     [agents],
   )
 
-  // Speech bubbles: merge both (latest per agent wins)
+  // Speech bubbles
   const speechBubbles = useMemo(() => {
     if (!hasBackend) return sim.speechBubbles
     const merged = new Map<string, SpeechBubble>()
@@ -62,7 +61,6 @@ export default function App() {
     return Array.from(merged.values())
   }, [hasBackend, sim.speechBubbles, ws.speechBubbles])
 
-  // Work logs: merge both sources
   const workLogs = useMemo(() => {
     if (!hasBackend) return sim.workLogs
     return [...sim.workLogs, ...ws.workLogs]
@@ -71,6 +69,38 @@ export default function App() {
   }, [hasBackend, sim.workLogs, ws.workLogs])
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(260)
+  const isDragging = useRef(false)
+
+  // Threshold: >=550px shows pixel animation OfficeWorld
+  const PIXEL_MODE_THRESHOLD = 550
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDragging.current = true
+    const startX = e.clientX
+    const startW = sidebarWidth
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return
+      const newW = Math.max(48, Math.min(900, startW + (ev.clientX - startX)))
+      setSidebarWidth(newW)
+      if (newW <= 48) setSidebarCollapsed(true)
+      else setSidebarCollapsed(false)
+    }
+    const onUp = () => {
+      isDragging.current = false
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [sidebarWidth])
 
   const currentSelected = selectedAgent
     ? agents.find((a) => a.id === selectedAgent.id) ?? null
@@ -82,9 +112,7 @@ export default function App() {
   const SIM_COMMANDS = new Set(['bosscall', 'teatime'])
 
   const handleCommand = (command: string, parameters: Record<string, string>) => {
-    // Simulation always handles its own commands (bosscall, teatime)
     sim.sendCommand(command, parameters)
-    // Forward real workflow commands to backend when connected
     if (isConnected && !SIM_COMMANDS.has(command)) {
       ws.sendCommand(command, parameters)
     }
@@ -102,8 +130,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col bg-slate-900 text-slate-100">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/80 px-6 py-2 backdrop-blur-sm">
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/80 px-4 py-2 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600/20">
@@ -135,36 +163,94 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* ── Main Content: Resizable Sidebar + Dashboard ── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Office World + Command Bar */}
+        {/* Left: Resizable Office Panel */}
+        <aside
+          className="shrink-0 border-r border-slate-700/50 bg-slate-800/50 overflow-hidden"
+          style={{ width: sidebarCollapsed ? 48 : sidebarWidth }}
+        >
+          {/* Toggle button */}
+          <div className="flex items-center justify-between border-b border-slate-700/40 px-2 py-1">
+            {!sidebarCollapsed && sidebarWidth >= PIXEL_MODE_THRESHOLD && (
+              <span className="text-[8px] text-slate-600">🎮 像素模式</span>
+            )}
+            {!sidebarCollapsed && sidebarWidth < PIXEL_MODE_THRESHOLD && (
+              <span className="text-[8px] text-slate-600">← 拖拉邊框調寬度</span>
+            )}
+            <button
+              onClick={() => {
+                if (sidebarCollapsed) {
+                  setSidebarCollapsed(false)
+                  setSidebarWidth(260)
+                } else {
+                  setSidebarCollapsed(true)
+                }
+              }}
+              className="ml-auto rounded p-1 text-slate-500 transition-colors hover:bg-slate-700/40 hover:text-slate-300"
+              title={sidebarCollapsed ? '展開研究室面板' : '收合研究室面板'}
+            >
+              <svg
+                className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Office content — switches between compact and pixel mode */}
+          <div className="h-[calc(100%-32px)] overflow-hidden">
+            {sidebarWidth >= PIXEL_MODE_THRESHOLD && !sidebarCollapsed ? (
+              /* Pixel animation OfficeWorld mode */
+              <div className="h-full overflow-y-auto overflow-x-hidden">
+                <OfficeWorld
+                  rooms={rooms}
+                  selectedAgent={currentSelected}
+                  onSelectAgent={setSelectedAgent}
+                  speechBubbles={speechBubbles}
+                />
+              </div>
+            ) : (
+              /* Compact avatar mode */
+              <CompactOffice
+                agents={agents}
+                selectedAgent={currentSelected}
+                onSelectAgent={setSelectedAgent}
+                collapsed={sidebarCollapsed}
+              />
+            )}
+          </div>
+        </aside>
+
+        {/* Drag handle */}
+        {!sidebarCollapsed && (
+          <div
+            onMouseDown={handleMouseDown}
+            className="w-1.5 shrink-0 cursor-col-resize bg-slate-700/30 transition-colors hover:bg-indigo-500/40 active:bg-indigo-500/60"
+            title="拖拉調整寬度"
+          />
+        )}
+
+        {/* Right: Dashboard + AgentDetail + CommandBar */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Office World (pixel art) — takes all remaining space */}
-          <div className="flex-1 overflow-x-hidden overflow-y-auto">
-            <OfficeWorld
-              rooms={rooms}
+          {/* Dashboard */}
+          <div className="flex-1 overflow-hidden">
+            <DashboardView
+              workLogs={workLogs}
               selectedAgent={currentSelected}
-              onSelectAgent={setSelectedAgent}
-              speechBubbles={speechBubbles}
+              allAgents={agents}
             />
           </div>
 
-          {/* Command Bar (compact) */}
+          {/* Command Bar */}
           <div className="border-t border-slate-700/50 bg-slate-800/60 px-4 py-2">
-            <CommandBar
-              onExecute={handleCommand}
-            />
+            <CommandBar onExecute={handleCommand} />
           </div>
         </div>
-
-        {/* Sidebar: Agent Detail + Work Logs (tabbed) */}
-        <aside className="w-72 shrink-0 border-l border-slate-700/50 bg-slate-800/50">
-          <Sidebar
-            agent={currentSelected}
-            allAgents={agents}
-            workLogs={workLogs}
-          />
-        </aside>
       </div>
     </div>
   )

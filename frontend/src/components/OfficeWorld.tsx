@@ -22,18 +22,26 @@ const MEETING: RoomDef = {
 
 const BOSS_ROOM: RoomDef = {
   x: 1, y: 8, w: 9, h: 14,
-  label: '私密室', icon: '🔒',
+  label: '小房間', icon: '🚪',
   floor: 'rgba(236,72,153,0.08)',
   border: 'rgba(236,72,153,0.3)',
   labelColor: '#f472b6',
 }
 
 const TEA_ROOM: RoomDef = {
-  x: 90, y: 8, w: 9, h: 14,
+  x: 90, y: 2, w: 9, h: 10,
   label: '茶水間', icon: '☕',
   floor: 'rgba(251,191,36,0.06)',
   border: 'rgba(251,191,36,0.25)',
   labelColor: '#fbbf24',
+}
+
+const GAME_ROOM: RoomDef = {
+  x: 90, y: 14, w: 9, h: 10,
+  label: '遊戲間', icon: '🎮',
+  floor: 'rgba(168,85,247,0.08)',
+  border: 'rgba(168,85,247,0.3)',
+  labelColor: '#c084fc',
 }
 
 const ROOMS: Record<string, RoomDef> = {
@@ -78,12 +86,40 @@ function meetingSeats(count: number) {
 
 /* ── Room furniture decorations ── */
 const ROOM_DECO: Record<string, Array<{ emoji: string; x: number; y: number }>> = {
-  leadership:  [{ emoji: '🪴', x: 90, y: 85 }, { emoji: '☕', x: 10, y: 85 }],
-  data:        [{ emoji: '🖥️', x: 92, y: 30 }, { emoji: '📊', x: 92, y: 60 }],
-  'ai-ml':     [{ emoji: '🧪', x: 92, y: 85 }, { emoji: '⚡', x: 8, y: 85 }],
-  domain:      [{ emoji: '📐', x: 92, y: 85 }, { emoji: '🌬️', x: 8, y: 85 }],
-  engineering: [{ emoji: '🔧', x: 92, y: 85 }, { emoji: '💻', x: 8, y: 85 }],
-  research:    [{ emoji: '📖', x: 92, y: 85 }, { emoji: '✏️', x: 8, y: 85 }],
+  leadership:  [{ emoji: '🪴', x: 90, y: 85 }, { emoji: '☕', x: 10, y: 85 }, { emoji: '🏆', x: 50, y: 88 }],
+  data:        [{ emoji: '🖥️', x: 92, y: 30 }, { emoji: '📊', x: 92, y: 60 }, { emoji: '💾', x: 8, y: 88 }],
+  'ai-ml':     [{ emoji: '🧪', x: 92, y: 85 }, { emoji: '⚡', x: 8, y: 85 }, { emoji: '🤖', x: 50, y: 88 }],
+  domain:      [{ emoji: '📐', x: 92, y: 85 }, { emoji: '🌬️', x: 8, y: 85 }, { emoji: '🏭', x: 50, y: 88 }],
+  engineering: [{ emoji: '🔧', x: 92, y: 85 }, { emoji: '💻', x: 8, y: 85 }, { emoji: '⚙️', x: 50, y: 88 }],
+  research:    [{ emoji: '📖', x: 92, y: 85 }, { emoji: '✏️', x: 8, y: 85 }, { emoji: '🎓', x: 50, y: 88 }],
+}
+
+/* ── Room background patterns (SVG pixel-art style) ── */
+const ROOM_BG_PATTERN: Record<string, { pattern: string; opacity: number }> = {
+  leadership: {
+    pattern: `url("data:image/svg+xml,%3Csvg width='16' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='14' width='16' height='2' fill='%23f59e0b' opacity='0.06'/%3E%3Crect x='7' y='12' width='2' height='2' fill='%23f59e0b' opacity='0.04'/%3E%3C/svg%3E")`,
+    opacity: 1,
+  },
+  data: {
+    pattern: `url("data:image/svg+xml,%3Csvg width='12' height='12' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='1' height='1' fill='%2310b981' opacity='0.08'/%3E%3Crect x='6' y='6' width='1' height='1' fill='%2310b981' opacity='0.08'/%3E%3C/svg%3E")`,
+    opacity: 1,
+  },
+  'ai-ml': {
+    pattern: `url("data:image/svg+xml,%3Csvg width='16' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='1' fill='%238b5cf6' opacity='0.06'/%3E%3Cline x1='4' y1='4' x2='12' y2='12' stroke='%238b5cf6' opacity='0.03' stroke-width='0.5'/%3E%3C/svg%3E")`,
+    opacity: 1,
+  },
+  domain: {
+    pattern: `url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 2 L12 8 L10 6 L8 8 Z' fill='%23ec4899' opacity='0.04'/%3E%3C/svg%3E")`,
+    opacity: 1,
+  },
+  engineering: {
+    pattern: `url("data:image/svg+xml,%3Csvg width='16' height='16' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='8' height='8' fill='%23f97316' opacity='0.03'/%3E%3Crect x='8' y='8' width='8' height='8' fill='%23f97316' opacity='0.03'/%3E%3C/svg%3E")`,
+    opacity: 1,
+  },
+  research: {
+    pattern: `url("data:image/svg+xml,%3Csvg width='14' height='14' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='0' y1='13' x2='14' y2='13' stroke='%2306b6d4' opacity='0.06' stroke-width='1'/%3E%3C/svg%3E")`,
+    opacity: 1,
+  },
 }
 
 /* ================================================================
@@ -131,6 +167,14 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
       const cx = TEA_ROOM.x + TEA_ROOM.w / 2
       const cy = TEA_ROOM.y + TEA_ROOM.h * 0.55
       pos.set(agent.id, { x: cx + (i - (inTea.length - 1) / 2) * 3, y: cy })
+      sIds.add(agent.id)
+    })
+
+    const inGame = allAgents.filter((a) => a.location === 'game-room')
+    inGame.forEach((agent, i) => {
+      const cx = GAME_ROOM.x + GAME_ROOM.w / 2
+      const cy = GAME_ROOM.y + GAME_ROOM.h * 0.55
+      pos.set(agent.id, { x: cx + (i - (inGame.length - 1) / 2) * 3, y: cy })
       sIds.add(agent.id)
     })
 
@@ -237,7 +281,20 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
           top: `${TEA_ROOM.y - 1}%`,
           transform: 'translate(-50%, -50%)',
         }}>
-          <span>☕</span><span>🎮</span><span>🍪</span>
+          <span>☕</span><span>🍪</span>
+        </div>
+      )}
+
+      {/* ════ Game Room ════ */}
+      <RoomBox room={GAME_ROOM} count={allAgents.filter((a) => a.location === 'game-room').length} />
+      {allAgents.some((a) => a.location === 'game-room') && (
+        <div style={{
+          position: 'absolute',
+          left: `${GAME_ROOM.x + GAME_ROOM.w / 2}%`,
+          top: `${GAME_ROOM.y - 1}%`,
+          transform: 'translate(-50%, -50%)',
+        }}>
+          <span className="text-xs animate-bounce">🎮</span><span className="text-xs">🕹️</span>
         </div>
       )}
 
@@ -335,7 +392,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
                 top: `${pos.y}%`,
               }}
             >
-              <span className="text-[8px] text-slate-600 whitespace-nowrap">{agent.location === 'boss-room' ? '私密中' : agent.location === 'tea-room' ? '休息中' : '會議中'}</span>
+              <span className="text-[8px] text-slate-600 whitespace-nowrap">{agent.location === 'boss-room' ? '小房間' : agent.location === 'tea-room' ? '休息中' : agent.location === 'game-room' ? '打電動' : '會議中'}</span>
             </div>
           )
         })
@@ -455,7 +512,7 @@ function RoomBox({
         <span className="ml-auto text-[8px] opacity-40">{count} 人</span>
       </div>
 
-      {/* Pixel floor tile pattern */}
+      {/* Floor tile grid */}
       <div
         className="absolute inset-0 rounded-xl pointer-events-none"
         style={{
@@ -467,6 +524,22 @@ function RoomBox({
           backgroundSize: '8px 8px',
         }}
       />
+      {/* Room-specific SVG background pattern */}
+      {(() => {
+        // Find matching tier for this room
+        const tierKey = Object.entries(ROOMS).find(([, r]) => r === room)?.[0]
+        const bg = tierKey ? ROOM_BG_PATTERN[tierKey] : undefined
+        if (!bg) return null
+        return (
+          <div
+            className="absolute inset-0 rounded-xl pointer-events-none"
+            style={{
+              backgroundImage: bg.pattern,
+              opacity: bg.opacity,
+            }}
+          />
+        )
+      })()}
     </div>
   )
 }

@@ -102,15 +102,22 @@ def bootstrap_agents() -> AgentInstanceRegistry:
     Returns:
         已初始化的 AgentInstanceRegistry。
     """
+    from src.agents.ai.anomaly_detector import AnomalyDetector
+    from src.agents.ai.experiment_tracker import ExperimentTracker
     from src.agents.ai.fault_diagnostician import FaultDiagnostician
+    from src.agents.ai.feature_engineer import FeatureEngineer
+    from src.agents.ai.hyperparameter_tuner import HyperparameterTuner
     from src.agents.ai.predictive_modeler import PredictiveModeler
     from src.agents.ai.rag_architect import RagArchitect
+    from src.agents.data.etl_engineer import EtlEngineer
     from src.agents.data.quality_checker import QualityChecker
     from src.agents.data.scada_processor import ScadaProcessor
     from src.agents.domain.maintenance_planner import MaintenancePlanner
     from src.agents.domain.power_curve_expert import PowerCurveExpert
+    from src.agents.domain.wake_analyst import WakeAnalyst
     from src.agents.engineering.backend_dev import BackendDev
     from src.agents.engineering.devops_engineer import DevOpsEngineer
+    from src.agents.engineering.frontend_dev import FrontendDev
     from src.agents.engineering.test_engineer import TestEngineer
     from src.agents.leadership.director import ProjectDirector
     from src.agents.leadership.project_manager import ProjectManager
@@ -118,6 +125,8 @@ def bootstrap_agents() -> AgentInstanceRegistry:
     from src.agents.leadership.tech_lead import TechLead
     from src.agents.research.literature_reviewer import LiteratureReviewer
     from src.agents.research.paper_writer import PaperWriter
+    from src.agents.research.rag_curator import RagCurator
+    from src.agents.research.report_generator import ReportGenerator
 
     agents_to_register: list[BaseAgent] = [
         # Tier 1 — Leadership
@@ -128,20 +137,29 @@ def bootstrap_agents() -> AgentInstanceRegistry:
         # Tier 2 — Data Engineering
         ScadaProcessor(),
         QualityChecker(),
+        EtlEngineer(),
         # Tier 3 — AI/ML
         FaultDiagnostician(),
         PredictiveModeler(),
         RagArchitect(),
+        ExperimentTracker(),
+        FeatureEngineer(),
+        HyperparameterTuner(),
+        AnomalyDetector(),
         # Tier 4 — Domain Knowledge
         PowerCurveExpert(),
         MaintenancePlanner(),
+        WakeAnalyst(),
         # Tier 5 — Software Engineering
         BackendDev(),
         TestEngineer(),
         DevOpsEngineer(),
+        FrontendDev(),
         # Tier 6 — Research & Docs
         PaperWriter(),
         LiteratureReviewer(),
+        RagCurator(),
+        ReportGenerator(),
     ]
 
     for agent in agents_to_register:

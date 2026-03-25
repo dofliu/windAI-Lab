@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -279,6 +280,9 @@ async def execute_command(command_name: str, parameters: dict[str, Any] | None =
     elif command_name == "lit-search":
         topic = parameters.get("topic", "wind turbine fault diagnosis")
         workflow = workflow_factory(topic)
+    elif command_name in ("data:load", "data:clean", "ai:train", "ai:evaluate"):
+        turbine_id = parameters.get("turbine_id", "Kelmarsh_1")
+        workflow = workflow_factory(turbine_id)
     else:
         workflow = workflow_factory()
 
@@ -298,17 +302,13 @@ async def list_commands() -> dict:
     """列出所有可用的 slash 指令。"""
     return {
         "commands": [
-            {
-                "name": "diagnose",
-                "description": "風機故障診斷（模擬）",
-                "parameters": ["turbine_id"],
-            },
-            {
-                "name": "diagnose-real",
-                "description": "風機故障診斷（Kelmarsh 真實資料）",
-                "parameters": ["turbine_id"],
-            },
+            {"name": "diagnose", "description": "風機故障診斷（模擬）", "parameters": ["turbine_id"]},
+            {"name": "diagnose-real", "description": "風機故障診斷（Kelmarsh 真實資料）", "parameters": ["turbine_id"]},
             {"name": "lit-search", "description": "系統性文獻搜索", "parameters": ["topic"]},
+            {"name": "data:load", "description": "智慧載入 SCADA 資料（自動偵測格式與欄位）", "parameters": ["turbine_id"]},
+            {"name": "data:clean", "description": "自動資料清洗（去重、插值、異常過濾）", "parameters": ["turbine_id"]},
+            {"name": "ai:train", "description": "端到端 ML 模型訓練（NBM + 故障分類 + RUL）", "parameters": ["turbine_id"]},
+            {"name": "ai:evaluate", "description": "模型效能評估（殘差分析、混淆矩陣）", "parameters": ["turbine_id"]},
         ]
     }
 
@@ -397,6 +397,339 @@ async def ml_summary() -> dict[str, Any]:
     """取得 ML Pipeline 模型摘要。"""
     pipeline = _get_ml_pipeline()
     return pipeline.get_pipeline_summary()
+
+
+# ── SCADA 資料視覺化 API ──────────────────────────────────────────
+
+
+def _safe_float(value: Any, decimals: int = 2) -> float | None:
+    """將數值安全轉為 JSON 相容的 float，NaN/Inf 回傳 None。"""
+    try:
+        v = float(value)
+        if math.isfinite(v):
+            return round(v, decimals)
+        return None
+    except (TypeError, ValueError):
+        return None
+
+
+@app.get("/api/scada/{turbine_id}/overview", tags=["SCADA 資料"])
+async def scada_overview(turbine_id: str = "Kelmarsh_1", limit: int = 2000) -> JSONResponse:
+    """取得指定風機的 SCADA 資料概覽（用於前端圖表視覺化）。
+
+    智慧載入：先嘗試 Kelmarsh 專用 loader，失敗自動切換通用 smart_load，
+    無需針對每種資料來源撰寫專用程式碼。
+    """
+    import asyncio
+
+    try:
+        from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
+        from src.data_pipeline.ingestion.smart_loader import smart_load
+
+        loop = asyncio.get_event_loop()
+
+        # 智慧載入策略：Kelmarsh → smart_load fallback
+        try:
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
+        except (FileNotFoundError, ValueError):
+            # 在所有資料目錄中搜尋匹配的檔案
+            from pathlib import Path as _Path
+            data_root = _Path(__file__).resolve().parents[2] / "data"
+            df = None
+            for sub in ["raw", "external", "processed"]:
+                d = data_root / sub
+                if not d.exists():
+                    continue
+                for f in sorted(d.iterdir()):
+                    if f.is_file() and turbine_id.lower() in f.stem.lower():
+                        df = await loop.run_in_executor(
+                            None, lambda fp=f: smart_load(fp, turbine_id=turbine_id)
+                        )
+                        break
+                    if f.suffix.lower() == ".zip":
+                        try:
+                            df = await loop.run_in_executor(
+                                None, lambda fp=f: smart_load(fp, turbine_id=turbine_id)
+                            )
+                            break
+                        except (ValueError, KeyError):
+                            continue
+                if df is not None:
+                    break
+            if df is None:
+                raise FileNotFoundError(f"找不到風機 '{turbine_id}' 的資料")
+
+        # 取樣以控制前端資料量
+        df_sample = df.sample(n=limit, random_state=42).sort_index() if len(df) > limit else df
+
+        # 風速-功率散佈圖資料
+        scatter_data: list[dict[str, Any]] = []
+        ws_col = next((c for c in df_sample.columns if "wind_speed" in c.lower()), None)
+        pw_col = next((c for c in df_sample.columns if "power" in c.lower()), None)
+
+        if ws_col and pw_col:
+            for _, row in df_sample[[ws_col, pw_col]].dropna().iterrows():
+                ws = _safe_float(row[ws_col], 2)
+                pw = _safe_float(row[pw_col], 2)
+                if ws is not None and pw is not None:
+                    scatter_data.append({"windSpeed": ws, "power": pw})
+
+        # 時序趨勢（每日平均）
+        ts_col = next(
+            (c for c in df.columns if "timestamp" in c.lower() or "time" in c.lower()), None
+        )
+        trend_data: list[dict[str, Any]] = []
+        if ts_col and ws_col and pw_col:
+            import pandas as pd
+
+            df_ts = df.copy()
+            df_ts[ts_col] = pd.to_datetime(df_ts[ts_col], errors="coerce")
+            daily = df_ts.set_index(ts_col)[[ws_col, pw_col]].resample("D").mean().dropna()
+            for idx, row in daily.tail(90).iterrows():
+                ws = _safe_float(row[ws_col], 2)
+                pw = _safe_float(row[pw_col], 2)
+                if ws is not None and pw is not None:
+                    trend_data.append(
+                        {"date": idx.strftime("%Y-%m-%d"), "windSpeed": ws, "power": pw}
+                    )
+
+        # 基本統計（NaN 安全）
+        stats: dict[str, Any] = {}
+        numeric = df.select_dtypes(include=["number"])
+        for col in numeric.columns[:10]:
+            col_stats = {
+                "mean": _safe_float(numeric[col].mean(), 3),
+                "std": _safe_float(numeric[col].std(), 3),
+                "min": _safe_float(numeric[col].min(), 3),
+                "max": _safe_float(numeric[col].max(), 3),
+            }
+            # 跳過全為 None 的欄位
+            if any(v is not None for v in col_stats.values()):
+                stats[col] = col_stats
+
+        return JSONResponse(
+            content={
+                "status": "success",
+                "turbine_id": turbine_id,
+                "total_records": len(df),
+                "scatter": scatter_data[:limit],
+                "trend": trend_data,
+                "statistics": stats,
+            }
+        )
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})
+    except Exception as e:
+        logger.exception("SCADA 概覽查詢失敗")
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+@app.get("/api/scada/turbines", tags=["SCADA 資料"])
+async def list_turbines() -> dict[str, Any]:
+    """列出可用的風機清單（自動掃描所有資料來源）。"""
+    from pathlib import Path
+
+    turbines: list[str] = []
+    seen: set[str] = set()
+    data_root = Path(__file__).resolve().parents[2] / "data"
+
+    # 掃描 raw/ 目錄的 CSV/Parquet
+    for sub in ["raw", "external", "processed"]:
+        d = data_root / sub
+        if not d.exists():
+            continue
+        for f in sorted(d.iterdir()):
+            if f.is_file() and f.suffix.lower() in (".csv", ".parquet", ".xlsx"):
+                if f.stem not in seen:
+                    turbines.append(f.stem)
+                    seen.add(f.stem)
+
+    # 嘗試 Kelmarsh ZIP 自動發現
+    try:
+        from src.data_pipeline.ingestion.kelmarsh_loader import load_all_turbines
+        for tid in [f"Kelmarsh_{i}" for i in range(1, 7)]:
+            if tid not in seen:
+                turbines.append(tid)
+                seen.add(tid)
+    except Exception:
+        if not turbines:
+            turbines = [f"Kelmarsh_{i}" for i in range(1, 7)]
+
+    return {"turbines": turbines}
+
+
+@app.get("/api/scada/discover", tags=["SCADA 資料"])
+async def discover_sources() -> dict[str, Any]:
+    """智慧掃描所有資料目錄，自動發現並分析可用的資料來源。
+
+    回傳每個檔案的欄位偵測結果，包含：
+    - 自動識別的標準欄位（風速、功率等）
+    - 資料筆數
+    - 是否可用於分析
+    """
+    import asyncio
+
+    try:
+        from src.data_pipeline.ingestion.smart_loader import discover_data_sources
+
+        loop = asyncio.get_event_loop()
+        sources = await loop.run_in_executor(None, discover_data_sources)
+        return {
+            "status": "success",
+            "total_sources": len(sources),
+            "usable_sources": sum(1 for s in sources if s.get("usable")),
+            "sources": sources,
+        }
+    except Exception as e:
+        logger.exception("資料來源掃描失敗")
+        return {"status": "error", "detail": str(e), "sources": []}
+
+
+# ── 特徵分析 API ─────────────────────────────────────────────────
+
+
+@app.get("/api/scada/{turbine_id}/features", tags=["特徵分析"])
+async def feature_analysis(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
+    """對指定風機執行全自動特徵分析。
+
+    自動偵測所有欄位、計算相關性、特徵重要度、異常值、分佈、漂移。
+    不需要預先知道欄位名稱 — 資料分析師自動判斷。
+    """
+    import asyncio
+
+    try:
+        from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
+        from src.data_pipeline.ingestion.smart_loader import smart_load
+        from src.features.auto_feature_analysis import analyze_features
+
+        loop = asyncio.get_event_loop()
+
+        # 智慧載入
+        try:
+            df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
+        except (FileNotFoundError, ValueError):
+            from pathlib import Path as _Path
+            data_root = _Path(__file__).resolve().parents[2] / "data"
+            df = None
+            for sub in ["raw", "external", "processed"]:
+                d = data_root / sub
+                if not d.exists():
+                    continue
+                for f in sorted(d.iterdir()):
+                    if f.is_file() and turbine_id.lower() in f.stem.lower():
+                        df = await loop.run_in_executor(
+                            None, lambda fp=f: smart_load(fp, turbine_id=turbine_id)
+                        )
+                        break
+                if df is not None:
+                    break
+            if df is None:
+                raise FileNotFoundError(f"找不到風機 '{turbine_id}' 的資料")
+
+        # 執行自動特徵分析
+        report = await loop.run_in_executor(None, lambda: analyze_features(df))
+
+        return JSONResponse(content={
+            "status": "success",
+            "turbine_id": turbine_id,
+            **report,
+        })
+
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})
+    except Exception as e:
+        logger.exception("特徵分析失敗")
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+# ── RAG 知識庫 API ────────────────────────────────────────────────
+
+
+_rag_service: Any = None
+
+
+def _get_rag_service() -> Any:
+    """取得或建立 RAG Service 單例。"""
+    global _rag_service  # noqa: PLW0603
+    if _rag_service is None:
+        from src.services.rag_service import RAGService
+
+        _rag_service = RAGService()
+    return _rag_service
+
+
+@app.post("/api/knowledge-base/search", tags=["知識庫"])
+async def kb_search(
+    query: str = "",
+    n_results: int = 5,
+    collection: str | None = None,
+) -> JSONResponse:
+    """語意搜尋知識庫。"""
+    if not query:
+        return JSONResponse(
+            status_code=400, content={"status": "error", "detail": "query 不可為空"}
+        )
+
+    try:
+        rag = _get_rag_service()
+        results = rag.search(query=query, n_results=n_results, collection_name=collection)
+        return JSONResponse(
+            content={
+                "status": "success",
+                "query": query,
+                "results": [
+                    {
+                        "doc_id": r.doc_id,
+                        "content": r.content[:500],
+                        "relevance": round(r.relevance_score, 3),
+                        "metadata": r.metadata,
+                    }
+                    for r in results
+                ],
+                "total": len(results),
+            }
+        )
+    except Exception as e:
+        logger.exception("知識庫搜尋失敗")
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+@app.post("/api/knowledge-base/ingest", tags=["知識庫"])
+async def kb_ingest(
+    file_path: str = "",
+    collection: str | None = None,
+) -> JSONResponse:
+    """匯入文件至知識庫。"""
+    if not file_path:
+        return JSONResponse(
+            status_code=400, content={"status": "error", "detail": "file_path 不可為空"}
+        )
+
+    try:
+        rag = _get_rag_service()
+        result = rag.ingest_text_file(file_path=file_path, collection_name=collection)
+        return JSONResponse(content={"status": "success", **result})
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})
+    except Exception as e:
+        logger.exception("文件嵌入失敗")
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+@app.get("/api/knowledge-base/stats", tags=["知識庫"])
+async def kb_stats() -> dict[str, Any]:
+    """取得知識庫統計資訊。"""
+    try:
+        rag = _get_rag_service()
+        collections = rag.list_collections()
+        return {
+            "status": "success",
+            "collections": collections,
+            "total_collections": len(collections),
+            "total_documents": sum(c["count"] for c in collections),
+        }
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────

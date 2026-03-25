@@ -52,34 +52,34 @@ export default function MLDashboard() {
   const handleInfer = () => apiCall(`http://localhost:8000/api/ml/inference?turbine_id=${turbineId}`, setInferResult)
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
-      <h3 className="text-xs font-bold text-slate-300">ML Pipeline</h3>
-
-      {/* Turbine selector + actions */}
-      <div className="flex items-center gap-2">
-        <select
-          value={turbineId}
-          onChange={(e) => setTurbineId(e.target.value)}
-          className="rounded bg-slate-700 px-2 py-1 text-[10px] text-slate-200 outline-none"
-        >
-          {turbines.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        <button
-          onClick={handleTrain}
-          disabled={loading}
-          className="rounded bg-indigo-600 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {loading ? '...' : '訓練'}
-        </button>
-        <button
-          onClick={handleInfer}
-          disabled={loading}
-          className="rounded bg-emerald-600 px-2 py-1 text-[10px] font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50"
-        >
-          推論
-        </button>
+    <div className="flex h-full flex-col gap-3 overflow-y-auto">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-slate-200">🧠 ML Pipeline</h3>
+        <div className="flex items-center gap-3">
+          <select
+            value={turbineId}
+            onChange={(e) => setTurbineId(e.target.value)}
+            className="rounded-md bg-slate-700 px-3 py-1.5 text-xs text-slate-200 outline-none ring-1 ring-slate-600 focus:ring-indigo-500"
+          >
+            {turbines.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleTrain}
+            disabled={loading}
+            className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {loading ? '...' : '訓練'}
+          </button>
+          <button
+            onClick={handleInfer}
+            disabled={loading}
+            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50"
+          >
+            推論
+          </button>
+        </div>
       </div>
 
       {error && (

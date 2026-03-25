@@ -261,7 +261,7 @@ export function useAgentSimulation() {
     }
 
     showBubble(DIRECTOR_ID, `${target.displayName}，來`, 3000)
-    addLog(DIRECTOR_ID, `召喚 ${target.displayName} 到私密室`)
+    addLog(DIRECTOR_ID, `召喚 ${target.displayName} 到小房間`)
 
     setTimeout(() => {
       showBubble(target.id, '好的 😳', 3000)
@@ -269,8 +269,8 @@ export function useAgentSimulation() {
 
     setTimeout(() => {
       batchUpdate({
-        [DIRECTOR_ID]: { status: 'waiting', location: 'boss-room', currentTask: '私密會談中...', progress: undefined },
-        [target.id]: { status: 'waiting', location: 'boss-room', currentTask: '私密會談中...', progress: undefined },
+        [DIRECTOR_ID]: { status: 'waiting', location: 'boss-room', currentTask: '小房間會談中...', progress: undefined },
+        [target.id]: { status: 'waiting', location: 'boss-room', currentTask: '小房間會談中...', progress: undefined },
       })
       showBubble(DIRECTOR_ID, '🔒', 2500)
 
@@ -285,7 +285,7 @@ export function useAgentSimulation() {
         })
         showBubble(DIRECTOR_ID, '回去吧 😏', 3000)
         showBubble(target.id, '......😊', 3000)
-        addLog(DIRECTOR_ID, `與 ${target.displayName} 的私密會談結束`)
+        addLog(DIRECTOR_ID, `與 ${target.displayName} 的小房間會談結束`)
       }, 10000)
     }, 2500)
   }, [addLog, showBubble, batchUpdate])
@@ -334,14 +334,160 @@ export function useAgentSimulation() {
     }, 1800)
   }, [addLog, batchUpdate, showBubble])
 
+  /* ── Game time handler ── */
+  const handleGameTime = useCallback(() => {
+    const cur = agentsRef.current
+    const available = cur.filter((a) => (a.status === 'idle' || a.status === 'completed') && !a.location)
+
+    if (available.length < 2) {
+      showBubble(DIRECTOR_ID, '沒人有空 😅', 3000)
+      return
+    }
+
+    const count = Math.min(available.length, 2 + Math.floor(Math.random() * 2))
+    const chosen = pickRandom(available, count)
+
+    const names = chosen.map((a) => a.displayName).join('、')
+    addLog('system', `${names} 去遊戲間打電動 🎮`)
+
+    chosen.forEach((a, i) => {
+      setTimeout(() => showBubble(a.id, '🎮', 3000), i * 300)
+    })
+
+    setTimeout(() => {
+      const updates: Record<string, Partial<Agent>> = {}
+      chosen.forEach((a) => {
+        updates[a.id] = { status: 'waiting', location: 'game-room', currentTask: '打電動中 🎮', progress: undefined }
+      })
+      batchUpdate(updates)
+
+      setTimeout(() => {
+        const speaker = randomItem(chosen)
+        showBubble(speaker.id, randomItem(['GG!', '贏了!', '再一場!', '😆', '太強了']), 3000)
+      }, 4000)
+
+      setTimeout(() => {
+        const speaker = randomItem(chosen)
+        showBubble(speaker.id, randomItem(['好玩!', '下次再來', '差點贏']), 3000)
+      }, 8000)
+
+      setTimeout(() => {
+        const clearUpdates: Record<string, Partial<Agent>> = {}
+        chosen.forEach((a) => {
+          clearUpdates[a.id] = { status: 'idle', location: undefined, currentTask: undefined }
+        })
+        batchUpdate(clearUpdates)
+        const speaker = randomItem(chosen)
+        showBubble(speaker.id, '回去了 💪', 3000)
+      }, 15000)
+    }, 1800)
+  }, [addLog, batchUpdate, showBubble])
+
+  /* ── Quick mission trigger for slash commands ── */
+  const triggerSlashMission = useCallback((command: string, turbineId: string) => {
+    const missionMap: Record<string, { name: string; agents: string[]; tasks: Record<string, string> }> = {
+      'data:load': {
+        name: `資料載入 — ${turbineId}`,
+        agents: ['scada-processor', 'quality-checker', 'feature-engineer'],
+        tasks: {
+          'scada-processor': `智慧載入 ${turbineId} SCADA 資料`,
+          'quality-checker': '資料品質檢查與驗證',
+          'feature-engineer': '自動特徵偵測與分析',
+        },
+      },
+      'data:clean': {
+        name: `資料清洗 — ${turbineId}`,
+        agents: ['scada-processor', 'quality-checker'],
+        tasks: {
+          'scada-processor': `清洗 ${turbineId} 資料（去重、插值）`,
+          'quality-checker': '異常值過濾與品質報告',
+        },
+      },
+      'ai:train': {
+        name: `ML 訓練 — ${turbineId}`,
+        agents: ['model-trainer', 'fault-diagnostician', 'predictive-modeler', 'experiment-tracker'],
+        tasks: {
+          'model-trainer': 'NBM 功率曲線訓練',
+          'fault-diagnostician': '故障分類器訓練',
+          'predictive-modeler': 'RUL 退化模型擬合',
+          'experiment-tracker': '記錄實驗結果至 MLflow',
+        },
+      },
+      'ai:evaluate': {
+        name: `模型評估 — ${turbineId}`,
+        agents: ['fault-diagnostician', 'predictive-modeler', 'report-generator'],
+        tasks: {
+          'fault-diagnostician': 'NBM 殘差分析與異常偵測',
+          'predictive-modeler': 'RUL 預測誤差評估',
+          'report-generator': '彙整效能評估報告',
+        },
+      },
+    }
+
+    const mission = missionMap[command]
+    if (!mission) return
+
+    // Director announces
+    addLog('system', `指令 /${command} 已執行：${mission.name}`)
+    showBubble(DIRECTOR_ID, `開始！`, 3000)
+
+    // Activate agents
+    setTimeout(() => {
+      const updates: Record<string, Partial<Agent>> = {}
+      mission.agents.forEach((id) => {
+        updates[id] = {
+          status: 'working',
+          currentTask: mission.tasks[id] || '執行中...',
+          progress: 0,
+        }
+      })
+      batchUpdate(updates)
+
+      // Progress simulation
+      let prog = 0
+      const progTimer = setInterval(() => {
+        prog += 15 + Math.random() * 10
+        if (prog >= 100) {
+          clearInterval(progTimer)
+          const doneUpdates: Record<string, Partial<Agent>> = {}
+          mission.agents.forEach((id) => {
+            doneUpdates[id] = { status: 'completed', progress: 100 }
+          })
+          batchUpdate(doneUpdates)
+          addLog('system', `✅ ${mission.name} 完成`)
+          showBubble(DIRECTOR_ID, '完成！👏', 3000)
+
+          // Reset to idle after 5s
+          setTimeout(() => {
+            const resetUpdates: Record<string, Partial<Agent>> = {}
+            mission.agents.forEach((id) => {
+              resetUpdates[id] = { status: 'idle', currentTask: undefined, progress: undefined }
+            })
+            batchUpdate(resetUpdates)
+          }, 5000)
+        } else {
+          const progUpdates: Record<string, Partial<Agent>> = {}
+          mission.agents.forEach((id) => {
+            progUpdates[id] = { progress: Math.min(prog + Math.random() * 10, 99) }
+          })
+          batchUpdate(progUpdates)
+        }
+      }, 2000)
+    }, 1500)
+  }, [addLog, showBubble, batchUpdate])
+
   /* ── sendCommand: external command handler ── */
   const sendCommand = useCallback((command: string, params: Record<string, string> = {}) => {
     if (command === 'bosscall') {
       handleBossCall(params.target ?? '')
     } else if (command === 'teatime') {
       handleTeaTime()
+    } else if (command === 'gametime') {
+      handleGameTime()
+    } else if (['data:load', 'data:clean', 'ai:train', 'ai:evaluate'].includes(command)) {
+      triggerSlashMission(command, params.turbine_id || 'Kelmarsh_1')
     }
-  }, [handleBossCall, handleTeaTime])
+  }, [handleBossCall, handleTeaTime, handleGameTime, triggerSlashMission])
 
   /* ── Mission lifecycle ── */
 
@@ -363,7 +509,12 @@ export function useAgentSimulation() {
       const delay = 25000 + Math.random() * 15000
       autoTeaTimer = setTimeout(() => {
         if (!cancelled) {
-          handleTeaTime()
+          // 30% 機率去遊戲間，70% 去茶水間
+          if (Math.random() < 0.3) {
+            handleGameTime()
+          } else {
+            handleTeaTime()
+          }
           schedAutoTea()
         }
       }, delay)

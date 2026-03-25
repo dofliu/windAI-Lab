@@ -6,11 +6,21 @@ interface CommandBarProps {
 }
 
 const COMMANDS = [
-  { name: 'diagnose-real', label: '/diagnose-real', description: '真實資料故障診斷', paramHint: '風機 ID (如 WT-01)' },
-  { name: 'diagnose', label: '/diagnose', description: '風機故障診斷 (模擬)', paramHint: '風機 ID (如 WT-07)' },
-  { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題' },
-  { name: 'bosscall', label: '/bosscall', description: '老闆密室召喚 ❤️', paramHint: '員工名稱' },
-  { name: 'teatime', label: '/teatime', description: '茶水間休息時間 ☕', paramHint: '' },
+  // 資料操作
+  { name: 'data:load', label: '/data:load', description: '智慧載入 SCADA 資料', paramHint: '風機 ID', category: 'data' },
+  { name: 'data:clean', label: '/data:clean', description: '自動資料清洗', paramHint: '風機 ID', category: 'data' },
+  // 模型操作
+  { name: 'ai:train', label: '/ai:train', description: '端到端 ML 模型訓練', paramHint: '風機 ID', category: 'ai' },
+  { name: 'ai:evaluate', label: '/ai:evaluate', description: '模型效能評估', paramHint: '風機 ID', category: 'ai' },
+  // 診斷
+  { name: 'diagnose-real', label: '/diagnose-real', description: '真實資料故障診斷', paramHint: '風機 ID', category: 'diagnose' },
+  { name: 'diagnose', label: '/diagnose', description: '風機故障診斷 (模擬)', paramHint: '風機 ID', category: 'diagnose' },
+  // 研究
+  { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題', category: 'research' },
+  // 辦公室互動
+  { name: 'bosscall', label: '/bosscall', description: '小房間召喚 ❤️', paramHint: '員工名稱', category: 'fun' },
+  { name: 'teatime', label: '/teatime', description: '茶水間休息 ☕', paramHint: '', category: 'fun' },
+  { name: 'gametime', label: '/gametime', description: '遊戲間打電動 🎮', paramHint: '', category: 'fun' },
 ]
 
 export default function CommandBar({ onExecute, disabled = false }: CommandBarProps) {
@@ -29,7 +39,7 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
     const cmd = COMMANDS.find(c => c.name === cmdName)
     if (cmd) {
       const params: Record<string, string> = {}
-      if ((cmdName === 'diagnose' || cmdName === 'diagnose-real') && paramValue) {
+      if (['diagnose', 'diagnose-real', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate'].includes(cmdName) && paramValue) {
         params.turbine_id = paramValue
       } else if (cmdName === 'lit-search' && paramValue) {
         params.topic = paramValue
@@ -81,7 +91,13 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
                   onMouseDown={() => handleSuggestionClick(cmd.name)}
                   className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-slate-700/50"
                 >
-                  <span className="font-mono text-cyan-400">{cmd.label}</span>
+                  <span className={`font-mono ${
+                    cmd.category === 'data' ? 'text-emerald-400' :
+                    cmd.category === 'ai' ? 'text-purple-400' :
+                    cmd.category === 'diagnose' ? 'text-orange-400' :
+                    cmd.category === 'research' ? 'text-blue-400' :
+                    'text-yellow-400'
+                  }`}>{cmd.label}</span>
                   <span className="text-slate-400">{cmd.description}</span>
                   <span className="ml-auto text-xs text-slate-500">{cmd.paramHint}</span>
                 </button>

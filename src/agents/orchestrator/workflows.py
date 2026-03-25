@@ -191,11 +191,216 @@ def create_lit_search_workflow(topic: str = "wind turbine fault diagnosis LLM") 
     )
 
 
-# Import real workflow
+def create_data_load_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+    """建立 /data:load 資料載入工作流程。"""
+    return Workflow(
+        id="data-load",
+        name=f"資料載入 — {turbine_id}",
+        description=f"智慧載入 {turbine_id} 的 SCADA 資料並執行初步分析",
+        steps=[
+            WorkflowStep(
+                name="智慧資料偵測",
+                agent_ids=["scada-processor"],
+                description=f"自動辨識 {turbine_id} 的檔案格式與欄位結構",
+                duration=3.0,
+                sub_messages=[
+                    f"掃描資料目錄，搜尋 {turbine_id} 相關檔案...",
+                    "自動偵測欄位映射完成",
+                ],
+                progress_messages={
+                    30: "正在偵測檔案格式（CSV/Parquet/ZIP）...",
+                    70: "欄位辨識中：風速、功率、溫度...",
+                },
+            ),
+            WorkflowStep(
+                name="資料品質檢查",
+                agent_ids=["quality-checker"],
+                description="驗證資料完整性、缺失值與異常值分析",
+                duration=4.0,
+                sub_messages=[
+                    "品質檢查完成",
+                    "產出資料品質報告",
+                ],
+                progress_messages={
+                    25: "檢查缺失值比例...",
+                    50: "驗證資料範圍合理性...",
+                    75: "偵測異常值...",
+                },
+            ),
+            WorkflowStep(
+                name="特徵自動探索",
+                agent_ids=["feature-engineer", "scada-processor"],
+                description="自動分析所有欄位的特徵重要度、相關性、分佈",
+                duration=5.0,
+                step_type=StepType.PARALLEL,
+                sub_messages=[
+                    "特徵重要度排序完成",
+                    "發現高相關欄位對",
+                ],
+                progress_messages={
+                    30: "計算欄位間相關性矩陣...",
+                    60: "分析特徵重要度...",
+                    90: "產出分析建議...",
+                },
+            ),
+        ],
+    )
+
+
+def create_data_clean_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+    """建立 /data:clean 資料清洗工作流程。"""
+    return Workflow(
+        id="data-clean",
+        name=f"資料清洗 — {turbine_id}",
+        description=f"對 {turbine_id} 執行自動資料清洗與異常過濾",
+        steps=[
+            WorkflowStep(
+                name="載入原始資料",
+                agent_ids=["scada-processor"],
+                description="從資料源載入原始 SCADA 資料",
+                duration=2.0,
+                sub_messages=["原始資料已載入"],
+                progress_messages={50: f"正在載入 {turbine_id} 的資料..."},
+            ),
+            WorkflowStep(
+                name="自動清洗處理",
+                agent_ids=["quality-checker", "scada-processor"],
+                description="執行去重、插值、異常值過濾",
+                duration=6.0,
+                step_type=StepType.PARALLEL,
+                sub_messages=[
+                    "移除重複時間戳記",
+                    "小間隙插值完成",
+                    "異常值已標記過濾",
+                ],
+                progress_messages={
+                    20: "移除重複時間戳記...",
+                    40: "處理缺失值（線性插值）...",
+                    60: "過濾異常值（負功率、超額定等）...",
+                    80: "產出品質報告...",
+                },
+            ),
+            WorkflowStep(
+                name="驗證與報告",
+                agent_ids=["quality-checker"],
+                description="驗證清洗結果並產出品質報告",
+                duration=2.0,
+                sub_messages=["清洗完成，品質報告已產出"],
+                progress_messages={50: "驗證清洗後資料品質..."},
+            ),
+        ],
+    )
+
+
+def create_ai_train_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+    """建立 /ai:train 模型訓練工作流程。"""
+    return Workflow(
+        id="ai-train",
+        name=f"ML 模型訓練 — {turbine_id}",
+        description=f"端到端訓練三個 ML 模型：NBM 功率曲線、故障分類器、RUL 退化模型",
+        steps=[
+            WorkflowStep(
+                name="資料準備",
+                agent_ids=["scada-processor", "feature-engineer"],
+                description="載入、清洗並計算訓練特徵",
+                duration=5.0,
+                step_type=StepType.PARALLEL,
+                sub_messages=[
+                    f"正在載入 {turbine_id} SCADA 資料...",
+                    "特徵工程：功率曲線特徵、溫度特徵、運營特徵",
+                ],
+                progress_messages={
+                    25: "載入原始資料...",
+                    50: "執行資料清洗...",
+                    75: "計算特徵...",
+                },
+            ),
+            WorkflowStep(
+                name="模型訓練（平行）",
+                agent_ids=["fault-diagnostician", "predictive-modeler", "anomaly-detector"],
+                description="同時訓練 NBM、故障分類器、RUL 退化模型",
+                duration=8.0,
+                step_type=StepType.PARALLEL,
+                sub_messages=[
+                    "NBM 功率曲線模型訓練中...",
+                    "故障分類器訓練中...",
+                    "RUL 退化模型擬合中...",
+                ],
+                progress_messages={
+                    20: "NBM: Gradient Boosting 訓練中...",
+                    40: "故障分類器: Random Forest 訓練中...",
+                    60: "RUL: 退化曲線擬合中...",
+                    80: "計算評估指標...",
+                },
+            ),
+            WorkflowStep(
+                name="結果評估",
+                agent_ids=["experiment-tracker"],
+                description="記錄實驗結果、比較模型效能",
+                duration=3.0,
+                sub_messages=[
+                    "所有模型評估完成",
+                    "已記錄至實驗追蹤系統",
+                ],
+                progress_messages={
+                    50: "彙整三個模型的評估指標...",
+                },
+            ),
+        ],
+    )
+
+
+def create_ai_evaluate_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+    """建立 /ai:evaluate 模型評估工作流程。"""
+    return Workflow(
+        id="ai-evaluate",
+        name=f"模型效能評估 — {turbine_id}",
+        description="評估已訓練模型的效能，包含交叉驗證、殘差分析、泛化測試",
+        steps=[
+            WorkflowStep(
+                name="載入訓練結果",
+                agent_ids=["experiment-tracker"],
+                description="從實驗追蹤系統取得最近的訓練結果",
+                duration=2.0,
+                sub_messages=["已載入最新模型"],
+                progress_messages={50: "正在讀取模型與訓練紀錄..."},
+            ),
+            WorkflowStep(
+                name="效能分析",
+                agent_ids=["fault-diagnostician", "predictive-modeler"],
+                description="執行殘差分析、混淆矩陣、校準曲線",
+                duration=5.0,
+                step_type=StepType.PARALLEL,
+                sub_messages=[
+                    "NBM 殘差分析完成",
+                    "故障分類器混淆矩陣已產出",
+                    "RUL 預測誤差分析完成",
+                ],
+                progress_messages={
+                    30: "計算 NBM 殘差分佈...",
+                    60: "分析故障分類精準度...",
+                    90: "評估 RUL 預測可靠度...",
+                },
+            ),
+            WorkflowStep(
+                name="報告產出",
+                agent_ids=["report-generator"],
+                description="彙整所有評估結果，產出效能報告",
+                duration=2.0,
+                sub_messages=["效能評估報告已產出"],
+                progress_messages={50: "撰寫評估報告..."},
+            ),
+        ],
+    )
+
 
 # 可用的工作流程註冊表
 AVAILABLE_WORKFLOWS = {
     "diagnose": create_diagnose_workflow,
     "lit-search": create_lit_search_workflow,
     "diagnose-real": None,  # Special handler — see main.py (uses run_real_diagnose)
+    "data:load": create_data_load_workflow,
+    "data:clean": create_data_clean_workflow,
+    "ai:train": create_ai_train_workflow,
+    "ai:evaluate": create_ai_evaluate_workflow,
 }
