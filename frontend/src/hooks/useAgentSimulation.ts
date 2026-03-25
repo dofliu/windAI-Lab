@@ -10,6 +10,8 @@ interface Mission {
   name: string
   agentIds: string[]
   tasks: Record<string, string>
+  /** 每個代理在各進度階段的氣泡文字（簡短 ≤4 字） */
+  progressLabels: Record<string, string[]>
 }
 
 const MISSIONS: Mission[] = [
@@ -22,6 +24,12 @@ const MISSIONS: Mission[] = [
       'predictive-modeler': '預測剩餘使用壽命 (RUL)',
       'quality-checker': '驗證資料品質與完整性',
     },
+    progressLabels: {
+      'fault-diagnostician': ['載入資料', '特徵萃取', '故障分類', '嚴重度評估'],
+      'scada-processor': ['讀取檔案', '解析欄位', '資料清洗', '格式轉換'],
+      'predictive-modeler': ['健康指標', '退化擬合', 'RUL 計算', '信賴區間'],
+      'quality-checker': ['完整度檢查', '範圍驗證', '品質標記', '報告彙整'],
+    },
   },
   {
     name: '風能預測論文撰寫',
@@ -30,6 +38,11 @@ const MISSIONS: Mission[] = [
       'paper-writer': '撰寫方法論章節',
       'literature-reviewer': '整理相關文獻比較表',
       'research-lead': '審閱實驗設計方案',
+    },
+    progressLabels: {
+      'paper-writer': ['擬定大綱', '撰寫初稿', '修訂措辭', '排版校對'],
+      'literature-reviewer': ['文獻搜索', '篩選分類', '比較整理', '引用彙整'],
+      'research-lead': ['閱讀草稿', '方法審查', '結果驗證', '綜合評語'],
     },
   },
   {
@@ -41,6 +54,12 @@ const MISSIONS: Mission[] = [
       'hyperparameter-tuner': '執行 Optuna 超參數搜索',
       'feature-engineer': '計算風速-功率特徵',
     },
+    progressLabels: {
+      'model-trainer': ['載入資料', '模型訓練', '交叉驗證', '儲存模型'],
+      'experiment-tracker': ['初始化 run', '記錄參數', '記錄指標', '產出報告'],
+      'hyperparameter-tuner': ['定義空間', '搜索中...', '最佳組合', '回報結果'],
+      'feature-engineer': ['原始特徵', '衍生計算', '重要度排序', '輸出完成'],
+    },
   },
   {
     name: 'RAG 知識庫建置',
@@ -49,6 +68,11 @@ const MISSIONS: Mission[] = [
       'rag-architect': '優化向量檢索管線',
       'rag-curator': '索引新批次論文文獻',
       'backend-dev': '實作 RAG API 端點',
+    },
+    progressLabels: {
+      'rag-architect': ['分析查詢', '優化索引', '測試召回', '效能調校'],
+      'rag-curator': ['解析文件', '切割分段', '向量嵌入', '索引建置'],
+      'backend-dev': ['API 設計', '端點實作', '錯誤處理', '整合測試'],
     },
   },
   {
@@ -60,6 +84,12 @@ const MISSIONS: Mission[] = [
       'power-curve-expert': '建立功率曲線模型',
       'data-validator': '驗證感測器資料範圍',
     },
+    progressLabels: {
+      'wind-resource-analyst': ['風速統計', 'Weibull 擬合', '風花圖', '發電預估'],
+      'wake-analyst': ['風場建模', '尾流模擬', '效應計算', '結果匯出'],
+      'power-curve-expert': ['資料篩選', 'NBM 訓練', '偏差分析', '報告產出'],
+      'data-validator': ['範圍檢查', '一致性驗證', '品質標記', '結果彙整'],
+    },
   },
   {
     name: '前端儀表板開發',
@@ -69,13 +99,18 @@ const MISSIONS: Mission[] = [
       'api-designer': '設計 WebSocket 訊息格式',
       'devops-engineer': '設定 CI/CD 自動部署流程',
     },
+    progressLabels: {
+      'frontend-dev': ['元件設計', '實作邏輯', '樣式調整', '效能優化'],
+      'api-designer': ['格式定義', '文件撰寫', '範例測試', '版本確認'],
+      'devops-engineer': ['腳本撰寫', '流程設定', '部署測試', '監控確認'],
+    },
   },
 ]
 
 const DIRECTOR_ID = 'project-director'
 
 /** 泡泡自動消失時間 (ms) */
-const BUBBLE_TTL = 5000
+const BUBBLE_TTL = 4000
 
 // Reset all initial agents to idle so first mission speech bubble is clearly visible
 const idleAgents: Agent[] = initialAgents.map((a) => ({
@@ -90,6 +125,11 @@ function randomItem<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, Math.min(n, arr.length))
+}
+
 function agentName(id: string): string {
   return initialAgents.find((a) => a.id === id)?.displayName ?? id
 }
@@ -97,71 +137,29 @@ function agentName(id: string): string {
 let logSeq = initialWorkLogs.length + 1
 
 /* ════════════════════════════════════════════
-   Idle chatter — 待命時的隨機對話與表情
+   氣泡策略 1: 任務進行中 — 閒置員工微反應
+   只有 2~3 個隨機閒置員工，顯示 emoji 或 ≤2 字
    ════════════════════════════════════════════ */
 
-const IDLE_CHATTER: Record<string, string[]> = {
-  'project-director':  ['今天進度不錯 👍', '來看看報告...', '☕ 先喝杯咖啡', '嗯...下個季度計畫...', '💼', '大家辛苦了！'],
-  'research-lead':     ['這篇 paper 很有趣', '🤔 假設需要再驗證', '實驗數據看起來不錯', '📊', '跟學生約好 3 點開會'],
-  'project-manager':   ['甘特圖更新完了', '📋 任務排好了', '下週的 sprint 要規劃', '會議紀錄寫完了 ✅', '🗓️'],
-  'tech-lead':         ['code review 中...', '🔍 這段可以重構', '架構圖畫好了', 'CI 又紅了 😅', '💻'],
-  'scada-processor':   ['資料匯入中... ⏳', '10min 均值計算完畢', 'Parquet 真好用', '📊 又一批新資料', '🔄'],
-  'quality-checker':   ['品質分數 97.2% ✅', '這筆資料有點可疑...', '🔍 異常值偵測中', 'flag 標記完成', '✅'],
-  'etl-engineer':      ['pipeline 跑完了', '🔧 修好那個 bug 了', 'Airflow DAG 更新', '☕ 等 job 跑完', '🔄'],
-  'data-validator':    ['範圍檢查 pass ✅', '這個感測器的值怪怪的', '📐 校驗規則更新', '完整度 98.5%', '🛡️'],
-  'stream-processor':  ['Kafka lag 正常', '🌊 串流穩定中', '每秒 3000 筆', '延遲 < 100ms 👍', '📡'],
-  'storage-manager':   ['磁碟空間還夠', '💾 備份完成', '壓縮率 72%', '該清舊資料了...', '🗄️'],
-  'metadata-curator':  ['標籤分類更新了', '🏷️ 新增 metadata 欄位', '索引重建中...', '分類標準化完成', '📝'],
-  'pipeline-monitor':  ['所有 pipeline 正常 🟢', '⚠️ 有個 job 慢了', '監控面板刷新', '報警規則調整中', '📡'],
-  'predictive-modeler':['loss 還在降 📉', '🤖 模型收斂了！', 'epoch 87/100...', 'RMSE 降到 2.8 了', 'GPU 溫度 72°C 😰'],
-  'rag-architect':     ['向量搜尋好快 ⚡', '🔍 retrieval 準確率 93%', 'chunk size 調到 512', 'embedding 跑完了', '🧠'],
-  'fault-diagnostician':['齒輪箱振動正常', '🔧 #3 號機要注意', '故障模式分析中', '預警等級：低 🟢', '⚠️'],
-  'model-trainer':     ['訓練中... 🏋️', 'batch 256 效果不錯', 'checkpoint 存好了', '又要等 GPU 了 😴', '📈'],
-  'experiment-tracker':['MLflow 記錄完成', '📈 這次 run 最好', '實驗 #42 結果出來了', 'metrics 已更新', '📊'],
-  'hyperparameter-tuner':['Optuna 搜索中 🎛️', '找到更好的 lr 了！', '試過 200 組了...', '最佳組合更新', '🎯'],
-  'feature-engineer':  ['新特徵計算完成', '🧬 特徵重要度排序', '風速^3 果然重要', 'PCA 降維中...', '📐'],
-  'model-evaluator':   ['混淆矩陣看起來不錯', '📐 F1 score: 0.94', 'AUC 提升 2%', '交叉驗證跑完了', '✅'],
-  'inference-deployer':['模型已部署 🚀', 'API 延遲 50ms', '版本 v2.3 上線', '負載測試通過', '🟢'],
-  'anomaly-detector':  ['今天沒有異常 ✅', '🚨 偵測到微小偏移', '監控正常運行中', '閾值調整完成', '👀'],
-  'iec-specialist':    ['IEC 61400 合規 ✅', '📜 標準更新了', '安全距離符合規定', '認證文件準備中', '⚖️'],
-  'wake-analyst':      ['尾流效應 -8% 功率', '🌀 模擬跑完了', 'Jensen 模型對比中', '風場佈局優化', '🌬️'],
-  'power-curve-expert':['功率曲線擬合完成', '📉 偏差在 2% 內', 'Cp 值計算中', '額定風速 12 m/s', '⚡'],
-  'maintenance-planner':['下次維護：4/15', '🔩 備件清單更新', '預防性維護排程', '成本估算完成', '📋'],
-  'wind-resource-analyst':['年均風速 7.2 m/s', '🌬️ Weibull k=2.1', '風花圖更新了', '發電量預估中', '📊'],
-  'regulatory-advisor':['環評報告審查中', '⚖️ 法規合規 OK', '噪音標準符合', '鳥類衝擊評估', '📜'],
-  'backend-dev':       ['API 寫好了 ✅', '🖥️ debug 中...', 'PostgreSQL 查詢優化', '又是 500 error 😤', '💻'],
-  'frontend-dev':      ['元件 render 太多次 😩', '🎨 CSS 調好了', 'React 真香', '圖表動畫完成 ✨', '🖌️'],
-  'devops-engineer':   ['Docker build 成功 🐳', '🔧 CI/CD 修好了', 'deploy 中...', 'k8s pod 重啟了', '☁️'],
-  'api-designer':      ['OpenAPI spec 更新', '🔌 endpoint 設計好了', 'REST vs GraphQL...', '文件寫好了', '📄'],
-  'database-admin':    ['查詢最佳化 -40% ⚡', '🗄️ 索引重建完成', '備份已排程', '連線池調整', '💾'],
-  'test-engineer':     ['所有測試通過 ✅', '🧪 覆蓋率 87%', '發現一個 edge case', 'E2E 跑完了', '🐛'],
-  'security-analyst':  ['安全掃描正常 🔒', '🛡️ 漏洞已修補', 'OWASP 檢查通過', '權限設定更新', '🔐'],
-  'infra-manager':     ['伺服器負載正常', '☁️ 成本報告出來了', '擴容方案準備好', '監控告警正常', '📡'],
-  'paper-writer':      ['寫到第三章了 ✏️', '📝 這段要改措辭', '引用格式統一中', '字數已達 5000', '☕ 寫論文好累'],
-  'literature-reviewer':['又找到一篇好論文！', '📚 文獻庫更新', '這作者發了好多篇', '引用數統計中', '🔍'],
-  'teaching-assistant':['作業批改中 📝', '🎓 學生問題好多', '教材更新完成', '下午要上課', '✏️'],
-  'rag-curator':       ['新增 50 篇文獻', '📦 索引更新中', '分類標籤整理', '知識庫擴充完成', '🏷️'],
-  'report-generator':  ['月報產生中...', '📄 圖表插入完成', '數據視覺化 OK', '報告匯出 PDF', '📊'],
-  'data-storyteller':  ['這個趨勢很有趣 🤔', '📢 故事線整理好了', '視覺化敘事設計中', '簡報做好了', '🎯'],
-}
+const IDLE_MICRO_REACTIONS: string[] = [
+  '👀', '🤔', '💪', '👍', '☕', '📝', '😊', '💻',
+  '🔍', '📊', '⚡', '✅', '🎯', '📈', '🧠', '🌬️',
+  '嗯', '好的', '收到', '加油', '不錯', '哈',
+  '噢', 'OK', '嘿', '讚', '喔', '嗯嗯',
+]
 
-/** 兩人閒聊對話組 */
-const IDLE_CONVERSATIONS: Array<{ a: string; b: string; lines: [string, string] }> = [
-  { a: 'paper-writer', b: 'literature-reviewer', lines: ['這篇 reference 幫我確認一下？', '沒問題，我查查看 📚'] },
-  { a: 'frontend-dev', b: 'backend-dev', lines: ['API 回傳格式可以改嗎？', '什麼格式？跟我說 🤔'] },
-  { a: 'model-trainer', b: 'hyperparameter-tuner', lines: ['lr=0.001 好像太大了', '我再跑一組試試 🎛️'] },
-  { a: 'predictive-modeler', b: 'fault-diagnostician', lines: ['#7 號機的資料你看了嗎？', '看了，振動頻率有異常 ⚠️'] },
-  { a: 'scada-processor', b: 'quality-checker', lines: ['新資料匯入了喔', '好，我來檢查品質 ✅'] },
-  { a: 'project-director', b: 'research-lead', lines: ['下季度計畫寫好了嗎？', '快好了，明天給你 📋'] },
-  { a: 'devops-engineer', b: 'test-engineer', lines: ['CI 怎麼又紅了？', '有個 flaky test 😅'] },
-  { a: 'rag-architect', b: 'rag-curator', lines: ['新文獻 embedding 完了嗎？', '剛跑完，recall 提升了 👍'] },
-  { a: 'wake-analyst', b: 'wind-resource-analyst', lines: ['這個風場佈局你覺得怎樣？', '間距可以再大一點 🌬️'] },
-  { a: 'teaching-assistant', b: 'paper-writer', lines: ['學生問我論文怎麼寫...', '叫他先看我的範本 📝'] },
-  { a: 'database-admin', b: 'storage-manager', lines: ['空間快不夠了 😰', '我來清理舊備份 💾'] },
-  { a: 'security-analyst', b: 'infra-manager', lines: ['這個 port 要關掉', '好，防火牆更新 🔒'] },
-  { a: 'project-manager', b: 'tech-lead', lines: ['sprint 進度如何？', '還差兩個 ticket 💻'] },
-  { a: 'experiment-tracker', b: 'model-evaluator', lines: ['run #42 的 metrics 出來了', 'F1 看起來不錯 📊'] },
-  { a: 'power-curve-expert', b: 'maintenance-planner', lines: ['功率偏差超過 3% 了', '排個檢修時間 🔩'] },
+/* ════════════════════════════════════════════
+   氣泡策略 2: 全場閒置 10 分鐘 — 辦公室日常對話
+   隨機 5 個員工，氣泡文字 ≤5 字
+   ════════════════════════════════════════════ */
+
+const IDLE_OFFICE_CHAT: string[] = [
+  '好無聊...', '☕ 喝咖啡', '午餐吃啥？', '快下班了', '天氣好好',
+  '要開會嗎', '好想睡 😴', '週五了！', '加油加油', '看個新聞',
+  '休息一下', '伸展筋骨', '出去走走', '好累喔', '寫文件中',
+  '來杯茶 🍵', '整理桌面', '回個信', '查個資料', '等消息中',
+  '打個哈欠', '看報告...', '還好嗎？', '嗯嗯', '好的 👌',
+  '☀️ 好熱', '下雨了 🌧️', '肚子餓了', '😎', '💤',
 ]
 
 /* ════════════════════════════════════════════
@@ -175,6 +173,11 @@ export function useAgentSimulation() {
 
   const agentsRef = useRef(agents)
   agentsRef.current = agents
+
+  /** 上次有任務的時間戳 */
+  const lastMissionEndRef = useRef<number>(0)
+  /** 是否有任務進行中 */
+  const missionActiveRef = useRef(false)
 
   // Derive rooms from agents
   const rooms = useMemo<OfficeRoom[]>(
@@ -239,7 +242,7 @@ export function useAgentSimulation() {
     const cur = agentsRef.current
 
     if (!targetName.trim()) {
-      showBubble(DIRECTOR_ID, '要叫誰來？請指定員工名稱 🤔', 4000)
+      showBubble(DIRECTOR_ID, '叫誰？🤔', 3000)
       addLog(DIRECTOR_ID, '未指定員工名稱')
       return
     }
@@ -252,17 +255,16 @@ export function useAgentSimulation() {
     )
 
     if (!target) {
-      showBubble(DIRECTOR_ID, `找不到「${targetName}」這位員工 🤷`, 4000)
+      showBubble(DIRECTOR_ID, '找不到 🤷', 3000)
       addLog(DIRECTOR_ID, `找不到員工：${targetName}`)
       return
     }
 
-    // Director bubble + target responds
-    showBubble(DIRECTOR_ID, `${target.displayName}，來我辦公室一下 ❤️`, 3500)
+    showBubble(DIRECTOR_ID, `${target.displayName}，來`, 3000)
     addLog(DIRECTOR_ID, `召喚 ${target.displayName} 到私密室`)
 
     setTimeout(() => {
-      showBubble(target.id, '好...好的老闆 😳', 3000)
+      showBubble(target.id, '好的 😳', 3000)
     }, 1200)
 
     setTimeout(() => {
@@ -270,7 +272,7 @@ export function useAgentSimulation() {
         [DIRECTOR_ID]: { status: 'waiting', location: 'boss-room', currentTask: '私密會談中...', progress: undefined },
         [target.id]: { status: 'waiting', location: 'boss-room', currentTask: '私密會談中...', progress: undefined },
       })
-      showBubble(DIRECTOR_ID, '🔒 門已鎖上', 3000)
+      showBubble(DIRECTOR_ID, '🔒', 2500)
 
       setTimeout(() => {
         showBubble(target.id, '😳❤️', 3000)
@@ -281,36 +283,31 @@ export function useAgentSimulation() {
           [DIRECTOR_ID]: { status: 'idle', location: undefined, currentTask: undefined },
           [target.id]: { status: 'idle', location: undefined, currentTask: undefined },
         })
-        showBubble(DIRECTOR_ID, '好了，回去工作吧 😏', 4000)
-        showBubble(target.id, '......😊', 4000)
+        showBubble(DIRECTOR_ID, '回去吧 😏', 3000)
+        showBubble(target.id, '......😊', 3000)
         addLog(DIRECTOR_ID, `與 ${target.displayName} 的私密會談結束`)
       }, 10000)
     }, 2500)
   }, [addLog, showBubble, batchUpdate])
 
-  /* ── Tea time handler (picks from idle OR completed agents) ── */
+  /* ── Tea time handler ── */
   const handleTeaTime = useCallback(() => {
     const cur = agentsRef.current
-    // Allow idle or completed agents (not those already in a special room)
     const available = cur.filter((a) => (a.status === 'idle' || a.status === 'completed') && !a.location)
 
     if (available.length < 2) {
-      showBubble(DIRECTOR_ID, '大家都在忙，沒人能去休息 😅', 4000)
+      showBubble(DIRECTOR_ID, '都在忙 😅', 3000)
       return
     }
 
-    // Pick 2-4 random agents
-    const shuffled = [...available].sort(() => Math.random() - 0.5)
-    const count = Math.min(shuffled.length, available.length >= 4 ? 2 + Math.floor(Math.random() * 3) : 2)
-    const chosen = shuffled.slice(0, count)
+    const count = Math.min(available.length, available.length >= 4 ? 2 + Math.floor(Math.random() * 3) : 2)
+    const chosen = pickRandom(available, count)
 
     const names = chosen.map((a) => a.displayName).join('、')
     addLog('system', `${names} 去茶水間休息`)
 
-    // Show excited bubbles
-    const teaEmoji = ['☕ 泡茶去！', '休息一下～ 🍪', '走走走！☕', '終於可以休息了 😊']
     chosen.forEach((a, i) => {
-      setTimeout(() => showBubble(a.id, randomItem(teaEmoji), 4000), i * 400)
+      setTimeout(() => showBubble(a.id, '☕', 3000), i * 400)
     })
 
     setTimeout(() => {
@@ -320,11 +317,9 @@ export function useAgentSimulation() {
       })
       batchUpdate(updates)
 
-      // Chat while in tea room
       setTimeout(() => {
-        const teaChat = ['這個餅乾不錯 🍪', '你聽說了嗎...', '最近好忙啊 😮‍💨', '哈哈哈 😂', '老闆今天心情如何？', '週五要聚餐嗎？🍻']
         const speaker = randomItem(chosen)
-        showBubble(speaker.id, randomItem(teaChat), 4000)
+        showBubble(speaker.id, randomItem(['好喝 ☕', '休息~', '😊']), 3000)
       }, 4000)
 
       setTimeout(() => {
@@ -333,10 +328,8 @@ export function useAgentSimulation() {
           clearUpdates[a.id] = { status: 'idle', location: undefined, currentTask: undefined }
         })
         batchUpdate(clearUpdates)
-        // Show return bubbles
-        const returnMsg = ['回去工作了 💪', '充電完畢 ⚡', '好，繼續！', '休息夠了 👍']
         const speaker = randomItem(chosen)
-        showBubble(speaker.id, randomItem(returnMsg), 3000)
+        showBubble(speaker.id, '回去了 💪', 3000)
       }, 12000)
     }, 1800)
   }, [addLog, batchUpdate, showBubble])
@@ -367,7 +360,7 @@ export function useAgentSimulation() {
 
     function schedAutoTea() {
       if (cancelled) return
-      const delay = 25000 + Math.random() * 15000 // ~25-40s
+      const delay = 25000 + Math.random() * 15000
       autoTeaTimer = setTimeout(() => {
         if (!cancelled) {
           handleTeaTime()
@@ -376,36 +369,48 @@ export function useAgentSimulation() {
       }, delay)
     }
 
-    /* ── Idle chatter: random bubbles from idle agents ── */
+    /* ═══════════════════════════════════════════
+       氣泡策略分流
+       ═══════════════════════════════════════════ */
     function schedIdleChat() {
       if (cancelled) return
-      const delay = 3000 + Math.random() * 5000 // 3-8s
+      const delay = 5000 + Math.random() * 8000 // 5-13s 間距，比以前稀疏
       idleChatTimer = setTimeout(() => {
         if (cancelled) return
         const cur = agentsRef.current
-        const idleAgents = cur.filter((a) => a.status === 'idle' && !a.location)
+        const idle = cur.filter((a) => a.status === 'idle' && !a.location)
+        const working = cur.filter((a) => a.status === 'working')
+        const hasActiveMission = missionActiveRef.current || working.length > 0
 
-        if (idleAgents.length > 0) {
-          // 30% chance of a 2-person conversation, 70% solo chatter
-          if (Math.random() < 0.3 && idleAgents.length >= 2) {
-            // Try to find a matching conversation pair
-            const available = IDLE_CONVERSATIONS.filter(
-              (c) => idleAgents.some((a) => a.id === c.a) && idleAgents.some((a) => a.id === c.b),
-            )
-            if (available.length > 0) {
-              const conv = randomItem(available)
-              showBubble(conv.a, conv.lines[0], 5000)
-              sched(() => showBubble(conv.b, conv.lines[1], 5000), 1500)
-            } else {
-              // Fallback: random solo
-              const agent = randomItem(idleAgents)
-              const lines = IDLE_CHATTER[agent.id]
-              if (lines) showBubble(agent.id, randomItem(lines), 4500)
+        if (hasActiveMission) {
+          // ── 策略 1: 任務進行中 → 2~3 個閒置員工微反應 ──
+          if (idle.length > 0) {
+            const count = Math.min(idle.length, 2 + Math.floor(Math.random() * 2)) // 2~3
+            const chosen = pickRandom(idle, count)
+            chosen.forEach((a, i) => {
+              sched(() => showBubble(a.id, randomItem(IDLE_MICRO_REACTIONS), 3000), i * 800)
+            })
+          }
+        } else {
+          // 計算閒置時間
+          const idleMinutes = lastMissionEndRef.current > 0
+            ? (Date.now() - lastMissionEndRef.current) / 60000
+            : 999 // 第一次啟動視為已閒置
+
+          if (idleMinutes >= 10 && idle.length >= 5) {
+            // ── 策略 2: 閒置超過 10 分鐘 → 5 個員工辦公室日常 ──
+            const chosen = pickRandom(idle, 5)
+            chosen.forEach((a, i) => {
+              sched(() => showBubble(a.id, randomItem(IDLE_OFFICE_CHAT), 4000), i * 1200)
+            })
+          } else if (idle.length > 0) {
+            // 閒置未滿 10 分鐘 → 偶爾 1~2 個微反應
+            if (Math.random() < 0.4) {
+              const chosen = pickRandom(idle, Math.min(idle.length, 2))
+              chosen.forEach((a, i) => {
+                sched(() => showBubble(a.id, randomItem(IDLE_MICRO_REACTIONS), 3000), i * 600)
+              })
             }
-          } else {
-            const agent = randomItem(idleAgents)
-            const lines = IDLE_CHATTER[agent.id]
-            if (lines) showBubble(agent.id, randomItem(lines), 4500)
           }
         }
 
@@ -415,36 +420,34 @@ export function useAgentSimulation() {
 
     function runMission() {
       if (cancelled) return
+      missionActiveRef.current = true
       const mission = randomItem(MISSIONS)
       const names = mission.agentIds.map(agentName).join('、')
 
       // ═══ Phase 1: Director announces (0s) ═══
-      const announcement = `收到任務！請${names}到會議室集合。`
-      showBubble(DIRECTOR_ID, announcement, 4000)
+      showBubble(DIRECTOR_ID, '集合！', 3000)
       batchUpdate({
         [DIRECTOR_ID]: { status: 'working', currentTask: `指派任務：${mission.name}`, progress: undefined },
       })
-      addLog(DIRECTOR_ID, announcement)
+      addLog(DIRECTOR_ID, `收到任務：${mission.name}，召集 ${names}`)
 
       // ═══ Phase 2: Agents gather (3.5s) ═══
       sched(() => {
         const updates: Record<string, Partial<Agent>> = {
-          [DIRECTOR_ID]: { status: 'waiting', currentTask: '前往會議室主持...' },
+          [DIRECTOR_ID]: { status: 'waiting', currentTask: '分配工作...' },
         }
-        const responses = ['收到！', '好的 👍', '馬上到！', '了解 🫡', '來了來了', 'OK 👌']
+        const responses = ['收到', '好的', '馬上', '了解', '來了', 'OK']
         mission.agentIds.forEach((id, i) => {
           updates[id] = { status: 'waiting', currentTask: '前往會議室...', progress: undefined }
-          // Stagger response bubbles
-          sched(() => showBubble(id, randomItem(responses), 3000), i * 600)
+          sched(() => showBubble(id, randomItem(responses), 2500), i * 500)
         })
         batchUpdate(updates)
-        addLog(DIRECTOR_ID, `召集${names}前往會議室`)
       }, 3500)
 
       // ═══ Phase 3: Assign & start working (7.5s) ═══
       sched(() => {
-        showBubble(DIRECTOR_ID, `${mission.name}：開始分配工作！`, 4000)
-        addLog(DIRECTOR_ID, `開始分配 ${mission.name} 任務`)
+        showBubble(DIRECTOR_ID, '開始！', 3000)
+        addLog(DIRECTOR_ID, `分配 ${mission.name} 任務`)
 
         const updates: Record<string, Partial<Agent>> = {
           [DIRECTOR_ID]: { status: 'working', currentTask: `監督：${mission.name}`, progress: undefined },
@@ -461,14 +464,7 @@ export function useAgentSimulation() {
         })
         batchUpdate(updates)
 
-        // Show agents acknowledging their tasks
-        sched(() => {
-          const ack = ['開始處理 💪', '沒問題！', '我來搞定 🔥', '進行中...', '馬上開始 ⚡']
-          const speaker = randomItem(mission.agentIds)
-          showBubble(speaker, randomItem(ack), 3500)
-        }, 1500)
-
-        // ═══ Phase 3b: Progress ticking ═══
+        // ═══ Phase 3b: Progress ticking — 策略 3: 根據進度顯示氣泡 ═══
         let tickCount = 0
         progressInterval = setInterval(() => {
           if (cancelled) {
@@ -480,17 +476,23 @@ export function useAgentSimulation() {
           setAgents((prev) => prev.map((a) => {
             if (!mission.agentIds.includes(a.id) || a.status !== 'working' || a.progress === undefined) return a
             const inc = Math.random() * 14 + 4
-            return { ...a, progress: Math.min(100, Math.round(a.progress + inc)) }
+            const newProgress = Math.min(100, Math.round(a.progress + inc))
+
+            // ── 策略 3: 根據進度顯示任務階段氣泡 ──
+            const labels = mission.progressLabels[a.id]
+            if (labels) {
+              const oldPhase = Math.min(Math.floor(a.progress / 25), 3)
+              const newPhase = Math.min(Math.floor(newProgress / 25), 3)
+              if (newPhase > oldPhase) {
+                // 進入新階段，顯示對應的氣泡
+                showBubble(a.id, labels[newPhase], 3500)
+              }
+            }
+
+            return { ...a, progress: newProgress }
           }))
 
-          // Occasional progress chatter during work
-          if (tickCount % 3 === 0) {
-            const progressChat = ['進度不錯 👍', '快好了...', '這邊有點卡 🤔', '再一下下！', '數據看起來 OK']
-            const speaker = randomItem(mission.agentIds)
-            showBubble(speaker, randomItem(progressChat), 3500)
-          }
-
-          // Check if all done (read from ref after a tick)
+          // Check if all done
           sched(() => {
             const cur = agentsRef.current
             const allDone = mission.agentIds.every((id) => {
@@ -504,16 +506,16 @@ export function useAgentSimulation() {
 
             // ═══ Phase 4: Complete & return ═══
             sched(() => {
-              showBubble(DIRECTOR_ID, `${mission.name} 全部完成，辛苦了！👏`, 5000)
+              showBubble(DIRECTOR_ID, '完成！👏', 4000)
               const updates: Record<string, Partial<Agent>> = {
                 [DIRECTOR_ID]: { status: 'completed', currentTask: `${mission.name} 已完成` },
               }
-              const doneReactions = ['完成了！🎉', '搞定 ✅', '終於好了 😊', 'Done! 💪', '太好了！']
+              const doneReactions = ['完成 🎉', '搞定 ✅', '好了 😊', 'Done!', '✅']
               mission.agentIds.forEach((id, i) => {
                 const task = mission.tasks[id] ?? '任務'
                 updates[id] = { status: 'completed', currentTask: `已完成：${task}`, progress: 100 }
                 addLog(id, `完成：${task}`, 'success')
-                sched(() => showBubble(id, randomItem(doneReactions), 4000), i * 500)
+                sched(() => showBubble(id, randomItem(doneReactions), 3000), i * 400)
               })
               addLog(DIRECTOR_ID, `${mission.name} 所有任務已完成`, 'success')
               batchUpdate(updates)
@@ -529,20 +531,24 @@ export function useAgentSimulation() {
                 })
                 batchUpdate(updates)
 
+                // 標記任務結束時間
+                missionActiveRef.current = false
+                lastMissionEndRef.current = Date.now()
+
                 // ═══ Schedule next mission ═══
                 sched(runMission, 6000 + Math.random() * 10000)
-              }, 4000) // walk back
-            }, 500) // brief pause
-          }, 80) // let state settle
-        }, 1500) // progress tick interval
-      }, 7500) // announce + gather duration
+              }, 4000)
+            }, 500)
+          }, 80)
+        }, 1500)
+      }, 7500)
     }
 
     // Start first mission after 2s
     sched(runMission, 2000)
-    // Start idle chatter immediately
+    // Start idle chatter
     schedIdleChat()
-    // Start auto tea with a longer initial delay
+    // Start auto tea
     sched(schedAutoTea, 8000)
 
     return () => {
