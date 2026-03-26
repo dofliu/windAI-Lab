@@ -103,9 +103,7 @@ class AnomalyDetector(BaseAgent):
             # 4. Isolation Forest
             if method in ("combined", "isolation_forest"):
                 await self.update_progress(0.75, "Isolation Forest 無監督偵測")
-                iso_result = await self._isolation_forest_detection(
-                    df, ws_col, pw_col, loop
-                )
+                iso_result = await self._isolation_forest_detection(df, ws_col, pw_col, loop)
                 anomaly_counts["isolation_forest"] = iso_result["count"]
                 results["isolation_forest"] = iso_result
 
@@ -113,9 +111,11 @@ class AnomalyDetector(BaseAgent):
             total_anomalies = sum(anomaly_counts.values())
             results["anomaly_counts"] = anomaly_counts
             results["total_anomalies_detected"] = total_anomalies
-            results["anomaly_rate"] = round(
-                total_anomalies / (len(df) * len(anomaly_counts)) * 100, 2
-            ) if anomaly_counts else 0.0
+            results["anomaly_rate"] = (
+                round(total_anomalies / (len(df) * len(anomaly_counts)) * 100, 2)
+                if anomaly_counts
+                else 0.0
+            )
 
             await self.update_progress(1.0, f"偵測完成：{total_anomalies} 個異常")
 

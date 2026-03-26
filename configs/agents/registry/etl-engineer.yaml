@@ -1,0 +1,14 @@
+id: "etl-engineer"
+name: "wData:etl-engineer"
+display_name: "ETL 工程師"
+tier: "data"
+color: "#10b981"
+icon: "🔄"
+core: false
+description: "ETL 資料管線建置與自動化"
+skills:
+  - "scada_ingestion"
+  - "scada_cleaning"
+task_routing:
+  - match: ["ETL", "管線", "pipeline", "匯入"]
+    pipeline: ["scada_ingestion", "scada_cleaning"]

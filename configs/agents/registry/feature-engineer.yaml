@@ -1,0 +1,12 @@
+id: "feature-engineer"
+name: "wAI:feature-engineer"
+display_name: "特徵工程師"
+tier: "ai-ml"
+color: "#8b5cf6"
+icon: "⚙️"
+core: true
+description: "設計與萃取風力發電領域特徵、特徵選擇與重要度分析"
+skills: ["domain_feature_extraction"]
+task_routing:
+  - match: ["feature", "特徵", "萃取"]
+    pipeline: ["domain_feature_extraction"]

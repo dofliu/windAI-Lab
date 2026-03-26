@@ -57,9 +57,16 @@ def analyze_features(
     df_work = _prepare_data(df, max_features, sample_size)
 
     if df_work.empty or len(df_work.columns) == 0:
-        return {"error": "資料為空或沒有數值欄位", "summary": {}, "correlations": {},
-                "feature_importance": [], "anomalies": {}, "distributions": {},
-                "drift": {}, "recommendations": []}
+        return {
+            "error": "資料為空或沒有數值欄位",
+            "summary": {},
+            "correlations": {},
+            "feature_importance": [],
+            "anomalies": {},
+            "distributions": {},
+            "drift": {},
+            "recommendations": [],
+        }
 
     # 自動偵測目標變數
     if target_col is None:
@@ -85,7 +92,9 @@ def analyze_features(
 
 
 def _prepare_data(
-    df: pd.DataFrame, max_features: int, sample_size: int,
+    df: pd.DataFrame,
+    max_features: int,
+    sample_size: int,
 ) -> pd.DataFrame:
     """準備分析用資料：只保留數值欄位、取樣、處理無限值。"""
     # 只保留數值欄位
@@ -94,9 +103,8 @@ def _prepare_data(
     # 排除全為 NaN 或常數的欄位
     valid_cols = []
     for col in numeric.columns:
-        if numeric[col].notna().sum() > 10:  # 至少 10 個有效值
-            if numeric[col].std() > 0:  # 非常數
-                valid_cols.append(col)
+        if numeric[col].notna().sum() > 10 and numeric[col].std() > 0:  # 至少 10 個有效值且非常數
+            valid_cols.append(col)
 
     numeric = numeric[valid_cols[:max_features]]
 
@@ -208,12 +216,14 @@ def _compute_correlations(df: pd.DataFrame) -> dict[str, Any]:
         for j in range(i + 1, len(cols)):
             r = _safe_float(pearson.iloc[i, j])
             if r is not None:
-                pairs.append({
-                    "col_a": cols[i],
-                    "col_b": cols[j],
-                    "pearson": r,
-                    "abs_pearson": _safe_float(abs(pearson.iloc[i, j])),
-                })
+                pairs.append(
+                    {
+                        "col_a": cols[i],
+                        "col_b": cols[j],
+                        "pearson": r,
+                        "abs_pearson": _safe_float(abs(pearson.iloc[i, j])),
+                    }
+                )
 
     # 按絕對值排序，取 top 30
     pairs.sort(key=lambda x: x.get("abs_pearson", 0) or 0, reverse=True)
@@ -223,9 +233,7 @@ def _compute_correlations(df: pd.DataFrame) -> dict[str, Any]:
     matrix: dict[str, dict[str, float | None]] = {}
     if n_cols <= 20:
         for col in pearson.columns:
-            matrix[col] = {
-                c: _safe_float(pearson.loc[col, c]) for c in pearson.columns
-            }
+            matrix[col] = {c: _safe_float(pearson.loc[col, c]) for c in pearson.columns}
 
     return {
         "top_pairs": top_pairs,
@@ -235,7 +243,8 @@ def _compute_correlations(df: pd.DataFrame) -> dict[str, Any]:
 
 
 def _compute_importance(
-    df: pd.DataFrame, target_col: str | None,
+    df: pd.DataFrame,
+    target_col: str | None,
 ) -> list[dict[str, Any]]:
     """計算特徵重要度（使用多種方法）。
 
@@ -295,9 +304,7 @@ def _compute_importance(
         if entry.get("mutual_info") is not None:
             scores.append(min(entry["mutual_info"], 1.0))  # 正規化
 
-        entry["composite_score"] = _safe_float(
-            sum(scores) / len(scores) if scores else 0
-        )
+        entry["composite_score"] = _safe_float(sum(scores) / len(scores) if scores else 0)
 
         results.append(entry)
 
@@ -322,7 +329,7 @@ def _estimate_mutual_info(x: np.ndarray, y: np.ndarray, n_bins: int = 20) -> flo
     # 計算聯合分佈和邊際分佈
     n = len(x)
     joint = np.zeros((n_bins + 1, n_bins + 1))
-    for xi, yi in zip(x_bins, y_bins):
+    for xi, yi in zip(x_bins, y_bins, strict=False):
         joint[xi, yi] += 1
     joint /= n
 
@@ -367,14 +374,16 @@ def _detect_anomalies(df: pd.DataFrame) -> dict[str, Any]:
         else:
             z_outliers = pd.Series(dtype=float)
 
-        results.append({
-            "column": col,
-            "iqr_outliers": len(outliers),
-            "iqr_outlier_pct": _safe_float(len(outliers) / len(series) * 100, 2),
-            "zscore_outliers": len(z_outliers),
-            "lower_bound": _safe_float(lower),
-            "upper_bound": _safe_float(upper),
-        })
+        results.append(
+            {
+                "column": col,
+                "iqr_outliers": len(outliers),
+                "iqr_outlier_pct": _safe_float(len(outliers) / len(series) * 100, 2),
+                "zscore_outliers": len(z_outliers),
+                "lower_bound": _safe_float(lower),
+                "upper_bound": _safe_float(upper),
+            }
+        )
 
     # 按異常比例排序
     results.sort(key=lambda x: x.get("iqr_outlier_pct", 0) or 0, reverse=True)
@@ -427,15 +436,17 @@ def _analyze_distributions(df: pd.DataFrame) -> list[dict[str, Any]]:
         else:
             dist_type = "中等偏態"
 
-        results.append({
-            "column": col,
-            "distribution_type": dist_type,
-            "skewness": _safe_float(skew),
-            "kurtosis": _safe_float(kurt),
-            "histogram": histogram,
-            "n_unique": int(series.nunique()),
-            "zero_pct": _safe_float((series == 0).sum() / len(series) * 100, 2),
-        })
+        results.append(
+            {
+                "column": col,
+                "distribution_type": dist_type,
+                "skewness": _safe_float(skew),
+                "kurtosis": _safe_float(kurt),
+                "histogram": histogram,
+                "n_unique": int(series.nunique()),
+                "zero_pct": _safe_float((series == 0).sum() / len(series) * 100, 2),
+            }
+        )
 
     return results
 
@@ -455,9 +466,9 @@ def _analyze_drift(df: pd.DataFrame) -> dict[str, Any]:
 
     segments = [
         df.iloc[:quarter],
-        df.iloc[quarter:quarter * 2],
-        df.iloc[quarter * 2:quarter * 3],
-        df.iloc[quarter * 3:],
+        df.iloc[quarter : quarter * 2],
+        df.iloc[quarter * 2 : quarter * 3],
+        df.iloc[quarter * 3 :],
     ]
     segment_labels = ["Q1", "Q2", "Q3", "Q4"]
 
@@ -475,20 +486,18 @@ def _analyze_drift(df: pd.DataFrame) -> dict[str, Any]:
         if overall_std > 0:
             has_drift = mean_range > 2 * overall_std
 
-        drift_results.append({
-            "column": col,
-            "segment_means": dict(zip(segment_labels, means)),
-            "segment_stds": dict(zip(segment_labels, stds)),
-            "has_drift": bool(has_drift),
-            "drift_magnitude": _safe_float(
-                mean_range / overall_std if overall_std > 0 else 0
-            ),
-        })
+        drift_results.append(
+            {
+                "column": col,
+                "segment_means": dict(zip(segment_labels, means, strict=False)),
+                "segment_stds": dict(zip(segment_labels, stds, strict=False)),
+                "has_drift": bool(has_drift),
+                "drift_magnitude": _safe_float(mean_range / overall_std if overall_std > 0 else 0),
+            }
+        )
 
     # 按漂移程度排序
-    drift_results.sort(
-        key=lambda x: x.get("drift_magnitude", 0) or 0, reverse=True
-    )
+    drift_results.sort(key=lambda x: x.get("drift_magnitude", 0) or 0, reverse=True)
 
     return {
         "available": True,
@@ -503,72 +512,80 @@ def _generate_recommendations(report: dict[str, Any]) -> list[dict[str, str]]:
 
     # 檢查缺失值
     summaries = report.get("summary", [])
-    high_missing = [
-        s for s in summaries
-        if (s.get("missing_pct") or 0) > 20
-    ]
+    high_missing = [s for s in summaries if (s.get("missing_pct") or 0) > 20]
     if high_missing:
         cols = ", ".join(s["column"] for s in high_missing[:3])
-        recs.append({
-            "type": "warning",
-            "title": "高缺失率欄位",
-            "detail": f"以下欄位缺失率 >20%：{cols}。建議檢查感測器是否故障或資料擷取是否中斷。",
-        })
+        recs.append(
+            {
+                "type": "warning",
+                "title": "高缺失率欄位",
+                "detail": f"以下欄位缺失率 >20%：{cols}。建議檢查感測器是否故障或資料擷取是否中斷。",
+            }
+        )
 
     # 檢查高相關性（多重共線性）
     top_pairs = report.get("correlations", {}).get("top_pairs", [])
     high_corr = [p for p in top_pairs if (p.get("abs_pearson") or 0) > 0.95]
     if high_corr:
         pair = high_corr[0]
-        recs.append({
-            "type": "info",
-            "title": "高度相關欄位",
-            "detail": f"{pair['col_a']} 與 {pair['col_b']} 相關性 {pair['pearson']}。"
-                      f"若用於建模，可考慮移除其中之一以避免多重共線性。",
-        })
+        recs.append(
+            {
+                "type": "info",
+                "title": "高度相關欄位",
+                "detail": f"{pair['col_a']} 與 {pair['col_b']} 相關性 {pair['pearson']}。"
+                f"若用於建模，可考慮移除其中之一以避免多重共線性。",
+            }
+        )
 
     # 檢查重要特徵
     importance = report.get("feature_importance", [])
     if importance:
         top3 = importance[:3]
         cols = ", ".join(f["column"] for f in top3)
-        recs.append({
-            "type": "success",
-            "title": "最重要特徵 Top 3",
-            "detail": f"對目標變數影響最大的欄位：{cols}。建議優先用於建模。",
-        })
+        recs.append(
+            {
+                "type": "success",
+                "title": "最重要特徵 Top 3",
+                "detail": f"對目標變數影響最大的欄位：{cols}。建議優先用於建模。",
+            }
+        )
 
     # 檢查異常值
     anomalies = report.get("anomalies", {})
     high_outliers = [
-        c for c in anomalies.get("columns", [])
-        if (c.get("iqr_outlier_pct") or 0) > 10
+        c for c in anomalies.get("columns", []) if (c.get("iqr_outlier_pct") or 0) > 10
     ]
     if high_outliers:
         cols = ", ".join(c["column"] for c in high_outliers[:3])
-        recs.append({
-            "type": "warning",
-            "title": "高異常值比例",
-            "detail": f"以下欄位異常值超過 10%：{cols}。可能是感測器範圍設定問題或極端工況。",
-        })
+        recs.append(
+            {
+                "type": "warning",
+                "title": "高異常值比例",
+                "detail": f"以下欄位異常值超過 10%：{cols}。可能是感測器範圍設定問題或極端工況。",
+            }
+        )
 
     # 檢查漂移
     drift = report.get("drift", {})
     if drift.get("available") and drift.get("drifted_count", 0) > 0:
         drifted = [c for c in drift.get("columns", []) if c.get("has_drift")][:3]
         cols = ", ".join(c["column"] for c in drifted)
-        recs.append({
-            "type": "warning",
-            "title": "偵測到概念漂移",
-            "detail": f"以下欄位在不同時間段有顯著統計變化：{cols}。"
-                      f"可能是風機老化、季節效應或感測器校正問題。",
-        })
+        recs.append(
+            {
+                "type": "warning",
+                "title": "偵測到概念漂移",
+                "detail": f"以下欄位在不同時間段有顯著統計變化：{cols}。"
+                f"可能是風機老化、季節效應或感測器校正問題。",
+            }
+        )
 
     if not recs:
-        recs.append({
-            "type": "success",
-            "title": "資料品質良好",
-            "detail": "未偵測到明顯的資料品質問題。可直接用於建模。",
-        })
+        recs.append(
+            {
+                "type": "success",
+                "title": "資料品質良好",
+                "detail": "未偵測到明顯的資料品質問題。可直接用於建模。",
+            }
+        )
 
     return recs

@@ -64,7 +64,7 @@ class HyperparameterTuner(BaseAgent):
         await self.update_progress(0.05, f"初始化 Optuna 超參數搜尋（{n_trials} 試驗）")
 
         try:
-            import optuna
+            import optuna  # noqa: F401
 
             from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
@@ -201,9 +201,7 @@ class HyperparameterTuner(BaseAgent):
             summary=f"故障分類器超參數建議完成（{n_trials} 次搜尋空間分析）",
         )
 
-    async def _fallback_optimization(
-        self, model_type: str, n_trials: int
-    ) -> TaskResult:
+    async def _fallback_optimization(self, model_type: str, n_trials: int) -> TaskResult:
         """Optuna 未安裝時的降級方案。"""
         await self.update_progress(0.3, "Optuna 未安裝，使用網格搜尋降級方案")
         await self.update_progress(1.0)

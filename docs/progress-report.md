@@ -1,6 +1,6 @@
 # WindAI Lab — 專案進度報告
 
-> 最後更新：2026-03-25（Phase 6a 完成 — 25/42 代理）
+> 最後更新：2026-03-26（Phase 8 — 技能管線實戰驗證 + 系統切換 + 架構文件）
 
 ---
 
@@ -8,17 +8,23 @@
 
 | 項目 | 已完成 | 目標 | 完成率 |
 |------|--------|------|--------|
-| **代理實作** | 25 | 42 | 60% |
+| **核心代理** | 12 (core) | 12 | 100% |
+| **可聘用代理** | 10 (hirable) | 10+ | 100% |
+| **技能模組** | 6 | 10+ | 60% |
 | **ML 模型** | 3 | 6+ | 50% |
-| **REST API 端點** | 22+ | 30+ | 73% |
-| **前端元件** | 16 | 20+ | 80% |
+| **REST API 端點** | 30+ | 35+ | 86% |
+| **前端元件** | 21 | 25+ | 84% |
 | **測試覆蓋** | 13 檔案 / 3,400+ 行 | — | 良好 |
 | **Docker 部署** | ✅ | ✅ | 100% |
 | **WebSocket 即時通訊** | ✅ | ✅ | 100% |
 | **RAG 知識庫** | ✅ | ✅ | 100% |
 | **資料視覺化** | ✅ | ✅ | 100% |
+| **檔案監控自動化** | ✅ | ✅ | 100% |
+| **智慧資料載入** | ✅ | ✅ | 100% |
+| **技能拆分架構** | ✅ | ✅ | 100% |
+| **聘用/解聘制度** | ✅ | ✅ | 100% |
 
-**整體評估：約 60% 完成度**
+**整體評估：約 80% 完成度**（架構重構完成，技能管線已驗證，進入資料泛化階段）
 
 ---
 
@@ -167,9 +173,173 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 - 異常偵測採用 4 種獨立方法交叉驗證，降低誤報率
 - 超參數調整整合 Optuna 框架，自動 pruning 無效試驗
 
+### Phase 6b — 前端強化 + 智慧資料載入（2026-03-25）
+
+**目標**：解決前端空間問題、新增互動房間、建立通用資料載入器。
+
+**開發過程**：
+1. **前端佈局重構**：左側研究室改為可拖拉調整寬度的 sidebar，加寬時顯示完整辦公室動畫
+2. **虛擬辦公室新增房間**：遊戲間 🎮（代理可去打電動）、「私密室」改名「小房間」🚪
+3. **代理頭像簡稱**：每個代理頭像下方顯示 1 個代表性漢字（總、研、專等），解決辨識問題
+4. **smart_loader 智慧資料載入器**：不需要為每種資料來源寫專用 loader
+   - 自動偵測檔案格式（CSV/Parquet/Excel/ZIP）
+   - 模糊匹配欄位名稱（60+ 關鍵字覆蓋主流格式）
+   - 支援 `H05|WindSpeed(m/s)` 等帶前綴/單位的欄位名（正規化匹配）
+   - 自動跳過 comment 行（Greenbyte `# Date and time` 格式）
+   - 嘗試多種時間格式解析
+
+**技術亮點**：
+- `_normalize()` 函式：去除設備前綴 `H05|`、括號單位 `(kW)`，統一為 `snake_case` 再匹配
+- 測試：Kelmarsh（Greenbyte 格式）、ENGIE（`Va_avg`）、自有風場（`H05|` 前綴）全部自動辨識
+
+**產出**：
+- [x] smart_loader.py — 通用資料載入器
+- [x] `/api/scada/discover` — 自動掃描資料來源
+- [x] 遊戲間 + 小房間 + 代理簡稱
+- [x] 可拖拉寬度 sidebar
+
+### Phase 6c — 檔案監控自動任務系統（2026-03-25）
+
+**目標**：丟檔案進 data/raw/ 就自動觸發代理工作流程。
+
+**開發過程**：
+1. **FileWatcherService**：asyncio 定期輪詢（30 秒），偵測新檔案或修改的檔案
+2. **自動處理流程**：偵測 → smart_load → detect_columns → 特徵分析 → WebSocket 廣播
+3. **與 orchestration engine 串接**：偵測到新檔案後自動派任代理工作流程
+4. **前端 FileWatcherStatus 元件**：監控狀態、開關按鈕、強制掃描、歷史記錄
+
+**安全機制**：
+- 檔案 `路徑+大小` 為唯一鍵，不重複處理
+- 最後修改時間超過 5 秒才處理（避免讀到半寫檔案）
+- 啟動時記錄現有檔案，只對之後新增的觸發
+
+**產出**：
+- [x] FileWatcherService（自動監控 + 處理）
+- [x] 5 個 API 端點（start/stop/status/scan/history）
+- [x] WebSocket 廣播 file_detected/processed/error
+- [x] 前端 FileWatcherStatus 元件（監控開關 + 歷史記錄）
+- [x] 自動派任代理工作流程
+
+### Phase 7 — 架構重構：技能拆分 + 聘用制 + YAML 驅動（2026-03-25）
+
+**目標**：從 42 人固定團隊改為「12 核心 + 按需聘用」的模組化架構。
+
+**問題分析**：
+- 42 個代理中只有 ~12 個有真正核心邏輯
+- 技能邏輯綁死在代理 class 內（如 `FaultDiagnostician._run_diagnosis` 直接 import 所有 ML 模組）
+- 同一段資料載入/清洗邏輯重複出現在 6+ 個代理中
+- 新增代理需改 3 個檔案（Python class + registry + mockData）
+
+**架構重構內容**：
+
+1. **技能模組拆分** (`src/skills/`)：
+   - BaseSkill 抽象介面（統一 SkillInput/SkillOutput）
+   - 6 個獨立技能：scada_ingestion, scada_cleaning, fault_classification, nbm_training, rul_prediction, domain_feature_extraction
+   - SkillRegistry 自動發現（掃描 `src/skills/` 子目錄）
+
+2. **YAML 驅動代理定義** (`configs/agents/registry/`)：
+   - 一個代理一個 YAML 檔，可直接編輯
+   - 定義 skills 列表、task_routing（關鍵字 → 技能管線）
+   - `core: true/false` 控制啟動時是否自動載入
+
+3. **DynamicAgentRegistry** (`src/agents/dynamic_registry.py`)：
+   - 統一管理代理「定義」「狀態」「實例」
+   - `hire(agent_id)` / `fire(agent_id)` / `upgrade_skills()`
+   - 向下相容舊版 API（`get_agent()`, `update_agent_status()`）
+
+4. **SkillComposingAgent** (`src/agents/skill_composing_agent.py`)：
+   - 通用代理 class，根據 YAML 的 task_routing 自動組合技能
+   - 大多數代理不再需要獨立的 Python class
+
+5. **前端人事管理面板** (`AgentManagement.tsx`)：
+   - 「👥 人事管理」Tab
+   - 可聘用人員清單 + 聘用按鈕
+   - 技能模組清單
+
+**關鍵設計決策**：
+| 決策 | 原因 |
+|------|------|
+| 技能獨立於代理 | 避免邏輯重複，一個技能可被多個代理共用 |
+| YAML 定義而非硬編碼 | 新增代理只需 1 個 YAML 檔，不改程式碼 |
+| 12 核心 + 按需聘用 | 減少啟動負擔，聚焦真正有用的代理 |
+| 新舊系統並行 | 漸進式遷移，不一次性破壞現有功能 |
+
+**產出**：
+- [x] `src/skills/` — 6 個技能模組 + BaseSkill + SkillRegistry
+- [x] `configs/agents/registry/` — 22 個 YAML 代理定義
+- [x] DynamicAgentRegistry — hire/fire/upgrade
+- [x] SkillComposingAgent — 通用技能組合代理
+- [x] 5 個新 API（hire/fire/available/skills/update-skills）
+- [x] 前端 AgentManagement 人事管理面板
+
+### Phase 8 — 技能管線實戰驗證 + 系統切換（2026-03-26）
+
+**目標**：讓新架構真正取代舊系統，技能管線能端到端執行真實 ML 分析。
+
+**開發過程**：
+1. **切換主資料來源**：`agent_registry.py` 的 `get_all_agents()` / `get_agent()` 委託給 `DynamicAgentRegistry`
+2. **移除舊系統**：lifespan 不再呼叫 `bootstrap_agents()`（42 個硬編碼）
+3. **mockData 精簡**：687 行 → ~200 行，只保留 12 核心代理
+4. **修復技能 API 映射**：
+   - `FaultClassifier.train()` 而非 `train_and_evaluate()`
+   - `PowerCurveNBM.train()` → 回傳 `NBMResult` dataclass
+   - `RULModel`: 先 `compute_health_index()` 再 `.fit()`
+   - `fault_classifier` 路徑修正: `src.models.classification.fault_classifier`
+5. **修復 DataFrame 傳遞**：`SkillInput` 加入 `dataframe` 欄位，避免 dict 覆蓋 DataFrame
+6. **新增 WebSocket 指令**：`diagnose-real`、`train-nbm`、`predict-rul` 直接走技能管線
+7. **驗證結果**（真實 Kelmarsh 52,416 筆 SCADA 資料）：
+   - `fault-diagnostician`: ingestion → cleaning → features → classification → **F1=1.0000** ✅
+   - `power-curve-expert`: ingestion → cleaning → features → NBM → **R²=0.9964, MAE=15.3** ✅
+   - `predictive-modeler`: ingestion → cleaning → features → RUL → 退化趨勢分析 ✅
+
+**已知問題（規劃中修復）**：
+- 所有 ML 模型硬編碼 Senvion MM92 參數（rated_power=2050 等）
+- 滾動視窗固定 144 筆（= 24h @ 10min），不適應其他取樣頻率
+- 不支援警報事件清單、故障標籤資料、無風速/功率的資料
+
+**產出**：
+- [x] 舊→新系統切換完成
+- [x] 3 條技能管線端到端驗證通過
+- [x] `docs/architecture-design.md` 完整架構設計文件
+- [x] `docs/TODO-roadmap.md` + `docs/progress-report.md` 更新
+
 ---
 
-## 3. 已實作代理清單（25/42）
+## 3. 代理架構（新制）
+
+### 核心代理（12 個，啟動時自動載入）
+
+| # | ID | 顯示名稱 | 技能 |
+|---|-----|---------|------|
+| 1 | scada-processor | SCADA 資料工程師 | scada_ingestion, scada_cleaning |
+| 2 | quality-checker | 品質檢查師 | scada_cleaning |
+| 3 | fault-diagnostician | 故障診斷師 | fault_classification, nbm_training |
+| 4 | predictive-modeler | 預測模型師 | rul_prediction |
+| 5 | anomaly-detector | 異常偵測師 | scada_ingestion, scada_cleaning |
+| 6 | feature-engineer | 特徵工程師 | domain_feature_extraction |
+| 7 | power-curve-expert | 功率曲線專家 | nbm_training |
+| 8 | project-director | 專案總監 | （自訂 class） |
+| 9 | project-manager | 專案經理 | （自訂 class） |
+| 10 | rag-architect | RAG 架構師 | — |
+| 11 | maintenance-planner | 維護規劃師 | rul_prediction |
+| 12 | paper-writer | 論文撰寫員 | — |
+
+### 可聘用代理（10 個，透過 API 動態啟用）
+
+| ID | 顯示名稱 | 部門 |
+|-----|---------|------|
+| etl-engineer | ETL 工程師 | 資料 |
+| experiment-tracker | 實驗追蹤師 | 模型 |
+| hyperparameter-tuner | 超參數調整師 | 模型 |
+| wake-analyst | 尾流分析師 | 領域 |
+| literature-reviewer | 文獻審閱員 | 研究 |
+| research-lead | 研究主管 | 指揮 |
+| tech-lead | 技術主管 | 指揮 |
+| backend-dev | 後端開發師 | 工程 |
+| frontend-dev | 前端開發師 | 工程 |
+| report-generator | 報告產生器 | 研究 |
+
+### 已實作代理清單（舊制 25/42，已由新制取代）
 
 ### Tier 1 — Leadership（4/4 ✅）
 | 代理 | 狀態 | 說明 |
@@ -261,19 +431,18 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 
 | 指標 | 數值 |
 |------|------|
-| Python 原始碼檔案 | 73 |
-| 前端元件 (TSX/TS) | 21 |
+| Python 原始碼檔案 | 85+ |
+| 前端元件 (TSX/TS) | 23 |
 | 測試檔案 / 行數 | 13 / 3,400+ |
-| 代理邏輯程式碼 | 3,641 行 |
-| 後端核心 (API + Service + Model) | 3,545 行 |
-| 前端元件 (TSX) | 2,636 行 |
-| YAML 設定檔 | 6 |
+| 技能模組 | 6 (scada_ingestion, scada_cleaning, fault_classification, nbm_training, rul_prediction, domain_feature_extraction) |
+| YAML 代理定義 | 22 (12 core + 10 hirable) |
 | ML 模型 | 3 (NBM, FaultClassifier, RUL) |
+| REST API 端點 | 30+ |
 | Docker 服務 | 4 (backend, frontend, Redis, MLflow) |
 | 型別覆蓋率 | 100% (type hints) |
 | Linter | ruff (strict) |
 | Formatter | black (99 chars) |
-| 預估總程式碼行數 | ~12,000+ 行 |
+| 預估總程式碼行數 | ~15,000+ 行 |
 
 ---
 
@@ -289,3 +458,10 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 | ADR-06 | Jensen (Park) 尾流模型 | 業界標準、計算效率高、適合初期驗證 |
 | ADR-07 | Optuna 超參數搜尋 | 貝葉斯最佳化優於 Grid/Random Search，pruning 節省運算 |
 | ADR-08 | ChromaDB 向量資料庫 | 輕量內嵌式、Python 原生支援、適合研究環境 |
+| ADR-09 | smart_loader 通用載入器 | 不為每種資料來源寫專用 loader，模糊匹配欄位名自動辨識 |
+| ADR-10 | FileWatcher asyncio 輪詢 | 不用 watchdog/watchfiles 第三方套件，簡單可靠 |
+| ADR-11 | 技能拆分（Skill modules） | 技能獨立於代理，一個技能可被多個代理共用，避免邏輯重複 |
+| ADR-12 | YAML 驅動代理定義 | 新增代理只需 1 個 YAML 檔，不改程式碼 |
+| ADR-13 | 12 核心 + 按需聘用 | 42→12 核心精簡，其餘按需聘用，減少啟動負擔 |
+| ADR-14 | SkillComposingAgent 通用代理 | 大多數代理不需獨立 class，由 YAML task_routing 驅動 |
+| ADR-15 | 新舊系統並行 | 漸進式遷移，不一次性破壞現有功能 |

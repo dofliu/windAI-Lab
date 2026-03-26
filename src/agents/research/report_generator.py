@@ -63,8 +63,9 @@ class ReportGenerator(BaseAgent):
         await self.update_progress(0.1, f"收集 {turbine_id} 健康資料")
 
         try:
-            from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
             import asyncio
+
+            from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
@@ -135,15 +136,17 @@ class ReportGenerator(BaseAgent):
                 f"{s['min']} | {s['max']} | {s['missing_pct']}% |"
             )
 
-        lines.extend([
-            "",
-            "## 健康評估",
-            "",
-            "- 資料完整性：✅ 正常" if total_records > 1000 else "- 資料完整性：⚠️ 資料不足",
-            "",
-            "---",
-            f"*自動生成 by wRes:report-generator*",
-        ])
+        lines.extend(
+            [
+                "",
+                "## 健康評估",
+                "",
+                "- 資料完整性：✅ 正常" if total_records > 1000 else "- 資料完整性：⚠️ 資料不足",
+                "",
+                "---",
+                "*自動生成 by wRes:report-generator*",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -151,7 +154,7 @@ class ReportGenerator(BaseAgent):
         """生成 ML 模型評估報告。"""
         await self.update_progress(0.2, "收集模型訓練結果")
 
-        model_results = params.get("model_results", {})
+        _model_results = params.get("model_results", {})
         now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
         lines = [
@@ -168,7 +171,7 @@ class ReportGenerator(BaseAgent):
             "| RULModel | 退化追蹤 | 趨勢分析 | ✅ 運作中 |",
             "",
             "---",
-            f"*自動生成 by wRes:report-generator*",
+            "*自動生成 by wRes:report-generator*",
         ]
 
         await self.update_progress(1.0, "模型報告完成")
@@ -189,8 +192,9 @@ class ReportGenerator(BaseAgent):
         await self.update_progress(0.3, f"分析 {turbine_id} 資料品質")
 
         try:
-            from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
             import asyncio
+
+            from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
@@ -209,9 +213,7 @@ class ReportGenerator(BaseAgent):
                     for col in df.columns
                     if missing[col] > 0
                 },
-                "overall_completeness_pct": round(
-                    float((1 - df.isna().mean().mean()) * 100), 2
-                ),
+                "overall_completeness_pct": round(float((1 - df.isna().mean().mean()) * 100), 2),
             }
 
             await self.update_progress(1.0, "品質報告完成")

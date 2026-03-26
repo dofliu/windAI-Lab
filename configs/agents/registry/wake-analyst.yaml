@@ -1,0 +1,14 @@
+id: "wake-analyst"
+name: "wDomain:wake-analyst"
+display_name: "尾流分析師"
+tier: "domain"
+color: "#ec4899"
+icon: "🌀"
+core: false
+description: "風場尾流效應模擬與分析"
+skills:
+  - "scada_ingestion"
+  - "domain_feature_extraction"
+task_routing:
+  - match: ["wake", "尾流", "模擬"]
+    pipeline: ["scada_ingestion", "domain_feature_extraction"]

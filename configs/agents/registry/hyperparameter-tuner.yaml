@@ -1,0 +1,16 @@
+id: "hyperparameter-tuner"
+name: "wAI:hyperparameter-tuner"
+display_name: "超參數調整師"
+tier: "ai-ml"
+color: "#8b5cf6"
+icon: "🎯"
+core: false
+description: "Optuna 超參數搜索與最佳化"
+skills:
+  - "scada_ingestion"
+  - "scada_cleaning"
+  - "domain_feature_extraction"
+  - "nbm_training"
+task_routing:
+  - match: ["tune", "調整", "超參數", "optimize"]
+    pipeline: ["scada_ingestion", "scada_cleaning", "domain_feature_extraction", "nbm_training"]

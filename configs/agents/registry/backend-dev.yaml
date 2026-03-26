@@ -1,0 +1,12 @@
+id: "backend-dev"
+name: "wEng:backend-dev"
+display_name: "後端開發師"
+tier: "engineering"
+color: "#f97316"
+icon: "🖥️"
+core: false
+description: "FastAPI 後端開發"
+skills: []
+task_routing:
+  - match: ["backend", "後端", "API"]
+    pipeline: []

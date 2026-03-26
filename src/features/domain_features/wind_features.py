@@ -54,7 +54,7 @@ def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> s
 
 
 def _theoretical_power(
-    wind_speed: pd.Series, rated_power: float = _DEFAULT_RATED_POWER
+    wind_speed: pd.Series, rated_power: float = _DEFAULT_RATED_POWER, **kwargs: float
 ) -> pd.Series:
     """計算理論功率曲線（簡化三次方模型）。
 
@@ -75,19 +75,23 @@ def _theoretical_power(
     ws = wind_speed.copy()
     power = pd.Series(0.0, index=ws.index)
 
+    # 支援動態參數（從 turbine_profiler 推斷）
+    cut_in = kwargs.get("cut_in_speed", _DEFAULT_CUT_IN)
+    rated_wind = kwargs.get("rated_wind_speed", _DEFAULT_RATED_WIND)
+    cut_out = kwargs.get("cut_out_speed", _DEFAULT_CUT_OUT)
+
     # 切入 ~ 額定風速：三次方關係
-    partial_mask = (ws >= _DEFAULT_CUT_IN) & (ws < _DEFAULT_RATED_WIND)
-    power[partial_mask] = (
-        rated_power
-        * ((ws[partial_mask] - _DEFAULT_CUT_IN) / (_DEFAULT_RATED_WIND - _DEFAULT_CUT_IN)) ** 3
-    )
+    partial_mask = (ws >= cut_in) & (ws < rated_wind)
+    divisor = rated_wind - cut_in
+    if divisor > 0:
+        power[partial_mask] = rated_power * ((ws[partial_mask] - cut_in) / divisor) ** 3
 
     # 額定風速 ~ 切出風速：額定功率
-    full_mask = (ws >= _DEFAULT_RATED_WIND) & (ws <= _DEFAULT_CUT_OUT)
+    full_mask = (ws >= rated_wind) & (ws <= cut_out)
     power[full_mask] = rated_power
 
     # 超過切出風速：關機
-    power[ws > _DEFAULT_CUT_OUT] = 0.0
+    power[ws > cut_out] = 0.0
 
     return power
 
@@ -95,6 +99,7 @@ def _theoretical_power(
 def compute_power_curve_features(
     df: pd.DataFrame,
     rated_power: float = _DEFAULT_RATED_POWER,
+    **kwargs: float,
 ) -> pd.DataFrame:
     """計算功率曲線相關特徵。
 
@@ -127,7 +132,7 @@ def compute_power_curve_features(
         pwr = df[power_col].astype(float)
 
         # 理論功率
-        df["theoretical_power"] = _theoretical_power(ws, rated_power)
+        df["theoretical_power"] = _theoretical_power(ws, rated_power, **kwargs)
 
         # 功率曲線偏差
         df["power_curve_deviation"] = pwr - df["theoretical_power"]
@@ -200,21 +205,29 @@ def compute_temperature_features(df: pd.DataFrame) -> pd.DataFrame:
     if rear_bearing_col and ambient is not None:
         df["rear_bearing_delta"] = df[rear_bearing_col].astype(float) - ambient
 
-    # 滾動統計（144 筆 = 24 小時 @ 10 分鐘間隔）
-    rolling_window = 144
+    # 自適應滾動視窗（24 小時）
+    # 從時間索引推斷取樣頻率，動態計算視窗大小
+    if isinstance(df.index, pd.DatetimeIndex) and len(df) > 3:
+        median_interval = df.index.to_series().diff().dropna().median()
+        seconds = max(int(median_interval.total_seconds()), 1)
+        rolling_window = min(int(86400 / seconds), len(df) // 2)  # 24h 或資料的一半
+    else:
+        rolling_window = 144  # 預設: 10 分鐘取樣
 
     if gear_oil_col:
         gear_series = df[gear_oil_col].astype(float)
         df["gear_oil_temp_rolling_mean"] = gear_series.rolling(
-            window=rolling_window, min_periods=72
+            window=rolling_window, min_periods=max(rolling_window // 2, 1)
         ).mean()
         df["gear_oil_temp_rolling_std"] = gear_series.rolling(
-            window=rolling_window, min_periods=72
+            window=rolling_window, min_periods=max(rolling_window // 2, 1)
         ).std()
 
     if gen_front_col:
         gen_f = df[gen_front_col].astype(float)
-        df["gen_front_rolling_mean"] = gen_f.rolling(window=rolling_window, min_periods=72).mean()
+        df["gen_front_rolling_mean"] = gen_f.rolling(
+            window=rolling_window, min_periods=max(rolling_window // 2, 1)
+        ).mean()
 
     return df
 

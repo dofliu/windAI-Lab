@@ -1,0 +1,10 @@
+id: "project-director"
+name: "wLab:project-director"
+display_name: "專案總監"
+tier: "leadership"
+color: "#f59e0b"
+icon: "👔"
+core: true
+custom_class: "src.agents.leadership.director.ProjectDirector"
+description: "統籌全場任務分派、跨團隊協調、進度追蹤"
+skills: []

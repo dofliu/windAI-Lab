@@ -1,0 +1,12 @@
+id: "paper-writer"
+name: "wRes:paper-writer"
+display_name: "論文撰寫員"
+tier: "research"
+color: "#06b6d4"
+icon: "✏️"
+core: true
+description: "撰寫學術論文的方法論、結果、討論章節"
+skills: []
+task_routing:
+  - match: ["write", "撰寫", "論文"]
+    pipeline: []

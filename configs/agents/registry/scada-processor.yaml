@@ -1,0 +1,17 @@
+id: "scada-processor"
+name: "wData:scada-processor"
+display_name: "SCADA 資料師"
+tier: "data"
+color: "#10b981"
+icon: "📡"
+core: true
+description: "SCADA 資料載入、格式偵測與清洗"
+skills:
+  - "scada_ingestion"
+  - "turbine_profiler"
+  - "scada_cleaning"
+task_routing:
+  - match: ["load", "載入", "讀取", "匯入"]
+    pipeline: ["scada_ingestion", "turbine_profiler"]
+  - match: ["clean", "清洗", "清理", "處理", "分析"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning"]

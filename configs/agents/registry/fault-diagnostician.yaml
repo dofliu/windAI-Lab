@@ -1,0 +1,20 @@
+id: "fault-diagnostician"
+name: "wAI:fault-diagnostician"
+display_name: "故障診斷師"
+tier: "ai-ml"
+color: "#8b5cf6"
+icon: "🔧"
+core: true
+description: "風機故障分類與嚴重度評估"
+skills:
+  - "scada_ingestion"
+  - "turbine_profiler"
+  - "scada_cleaning"
+  - "domain_feature_extraction"
+  - "fault_classification"
+  - "nbm_training"
+task_routing:
+  - match: ["diagnose", "診斷", "故障"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "domain_feature_extraction", "fault_classification", "nbm_training"]
+  - match: ["anomaly", "異常"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "nbm_training"]

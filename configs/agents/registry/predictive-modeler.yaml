@@ -1,0 +1,17 @@
+id: "predictive-modeler"
+name: "wAI:predictive-modeler"
+display_name: "預測模型師"
+tier: "ai-ml"
+color: "#8b5cf6"
+icon: "🔮"
+core: true
+description: "預測剩餘使用壽命 (RUL)"
+skills:
+  - "scada_ingestion"
+  - "turbine_profiler"
+  - "scada_cleaning"
+  - "domain_feature_extraction"
+  - "rul_prediction"
+task_routing:
+  - match: ["RUL", "壽命", "predict", "預測", "退化"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "domain_feature_extraction", "rul_prediction"]

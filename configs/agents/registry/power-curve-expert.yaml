@@ -1,0 +1,17 @@
+id: "power-curve-expert"
+name: "wDomain:power-curve-expert"
+display_name: "功率曲線專家"
+tier: "domain"
+color: "#ec4899"
+icon: "📈"
+core: true
+description: "NBM 功率曲線建模與偏差分析"
+skills:
+  - "scada_ingestion"
+  - "turbine_profiler"
+  - "scada_cleaning"
+  - "domain_feature_extraction"
+  - "nbm_training"
+task_routing:
+  - match: ["train", "訓練", "NBM", "power curve", "功率曲線"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "domain_feature_extraction", "nbm_training"]

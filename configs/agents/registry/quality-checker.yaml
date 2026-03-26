@@ -1,0 +1,12 @@
+id: "quality-checker"
+name: "wData:quality-checker"
+display_name: "品質檢查師"
+tier: "data"
+color: "#10b981"
+icon: "✅"
+core: true
+description: "驗證資料完整性、缺失值與異常值分析、品質報告"
+skills: ["scada_cleaning"]
+task_routing:
+  - match: ["quality", "品質", "驗證", "檢查"]
+    pipeline: ["scada_cleaning"]

@@ -1,0 +1,12 @@
+id: "maintenance-planner"
+name: "wDomain:maintenance-planner"
+display_name: "維護規劃師"
+tier: "domain"
+color: "#ec4899"
+icon: "🔩"
+core: true
+description: "制定預測性維護策略、排程維護任務"
+skills: ["rul_prediction"]
+task_routing:
+  - match: ["maintenance", "維護", "保養"]
+    pipeline: ["rul_prediction"]

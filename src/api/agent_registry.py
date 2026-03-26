@@ -388,17 +388,40 @@ def _build_initial_state() -> dict[str, AgentModel]:
     return agents
 
 
-# 記憶體內狀態儲存
+# ── 雙軌模式：優先使用 DynamicAgentRegistry，fallback 到舊系統 ──
+
+# 舊系統狀態（作為 fallback）
 _agent_state: dict[str, AgentModel] = _build_initial_state()
+
+# 新系統旗標
+_use_dynamic: bool = False
+
+
+def _get_dynamic():
+    """延遲取得 dynamic_registry 以避免循環 import。"""
+    from src.agents.dynamic_registry import dynamic_registry
+
+    return dynamic_registry
+
+
+def enable_dynamic_registry() -> None:
+    """啟用新架構（由 lifespan 呼叫）。"""
+    global _use_dynamic  # noqa: PLW0603
+    _use_dynamic = True
 
 
 def get_all_agents() -> list[AgentModel]:
     """取得所有代理的當前狀態。"""
+    if _use_dynamic:
+        return _get_dynamic().get_all_agents()
     return list(_agent_state.values())
 
 
 def get_agent(agent_id: str) -> AgentModel | None:
     """依 ID 取得單一代理的狀態。若代理不存在則回傳 None。"""
+    if _use_dynamic:
+        agent = _get_dynamic().get_agent(agent_id)
+        return deepcopy(agent) if agent else None
     agent = _agent_state.get(agent_id)
     return deepcopy(agent) if agent else None
 
@@ -411,14 +434,20 @@ def update_agent_status(
     progress: float | None = None,
     collaborating_with: list[str] | None = None,
 ) -> AgentModel | None:
-    """更新指定代理的狀態欄位，回傳更新後的代理模型。
+    """更新指定代理的狀態欄位，回傳更新後的代理模型。"""
+    if _use_dynamic:
+        model = _get_dynamic().update_agent_status(
+            agent_id,
+            status=status,
+            current_task=current_task,
+            progress=progress,
+            collaborating_with=collaborating_with,
+        )
+        return deepcopy(model) if model else None
 
-    僅更新有提供值的欄位，未提供的欄位維持原值。
-    """
     agent = _agent_state.get(agent_id)
     if agent is None:
         return None
-
     if status is not None:
         agent.status = status
     if current_task is not None:
@@ -427,11 +456,10 @@ def update_agent_status(
         agent.progress = progress
     if collaborating_with is not None:
         agent.collaborating_with = collaborating_with
-
     return deepcopy(agent)
 
 
 def reset_all_agents() -> None:
     """重設所有代理至初始狀態。"""
-    global _agent_state
+    global _agent_state  # noqa: PLW0603
     _agent_state = _build_initial_state()

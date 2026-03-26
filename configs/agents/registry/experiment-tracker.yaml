@@ -1,0 +1,14 @@
+id: "experiment-tracker"
+name: "wAI:experiment-tracker"
+display_name: "實驗追蹤師"
+tier: "ai-ml"
+color: "#8b5cf6"
+icon: "📝"
+core: false
+description: "記錄實驗參數至 MLflow，追蹤模型效能"
+skills:
+  - "nbm_training"
+  - "fault_classification"
+task_routing:
+  - match: ["experiment", "實驗", "追蹤", "記錄"]
+    pipeline: ["nbm_training"]
