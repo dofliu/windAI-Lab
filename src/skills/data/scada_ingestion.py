@@ -24,10 +24,10 @@ class ScadaIngestionSkill(BaseSkill):
         """載入資料。
 
         Parameters (inp.parameters):
-            turbine_id: str — 風機 ID（如 "Kelmarsh_1"）
+            turbine_id: str — 風機 ID（如 "WT-01"）
             file_path: str | None — 指定檔案路徑（可選）
         """
-        turbine_id = inp.parameters.get("turbine_id", "Kelmarsh_1")
+        turbine_id = inp.parameters.get("turbine_id", "WT-01")
         file_path = inp.parameters.get("file_path")
 
         if progress_cb:

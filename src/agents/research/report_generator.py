@@ -59,7 +59,7 @@ class ReportGenerator(BaseAgent):
 
     async def _generate_health_report(self, params: dict[str, Any]) -> TaskResult:
         """生成風機健康狀態報告。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.1, f"收集 {turbine_id} 健康資料")
 
         try:
@@ -188,7 +188,7 @@ class ReportGenerator(BaseAgent):
 
     async def _generate_quality_report(self, params: dict[str, Any]) -> TaskResult:
         """生成 SCADA 資料品質報告。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.3, f"分析 {turbine_id} 資料品質")
 
         try:

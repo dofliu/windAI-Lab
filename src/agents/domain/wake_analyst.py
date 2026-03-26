@@ -67,16 +67,13 @@ class WakeAnalyst(BaseAgent):
         _hub_height = params.get("hub_height", 90.0)  # m
         wake_decay = params.get("wake_decay_constant", 0.04)  # Jensen k 值
 
-        # Kelmarsh 風場近似佈局（6 台風機）
+        # 示範用預設佈局（3 台風機排成一行，間距 500m）
         turbine_positions = params.get(
             "turbine_positions",
             [
-                {"id": "Kelmarsh_1", "x": 0, "y": 0},
-                {"id": "Kelmarsh_2", "x": 500, "y": 100},
-                {"id": "Kelmarsh_3", "x": 1000, "y": -50},
-                {"id": "Kelmarsh_4", "x": 200, "y": 600},
-                {"id": "Kelmarsh_5", "x": 700, "y": 550},
-                {"id": "Kelmarsh_6", "x": 1200, "y": 500},
+                {"id": "WT-01", "x": 0, "y": 0},
+                {"id": "WT-02", "x": 500, "y": 0},
+                {"id": "WT-03", "x": 1000, "y": 0},
             ],
         )
 

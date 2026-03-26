@@ -55,7 +55,7 @@ class FeatureEngineer(BaseAgent):
 
     async def _extract_features(self, params: dict[str, Any]) -> TaskResult:
         """從 SCADA 資料提取領域特徵。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.1, f"載入 {turbine_id} 的 SCADA 資料")
 
         try:
@@ -106,7 +106,7 @@ class FeatureEngineer(BaseAgent):
 
     async def _select_features(self, params: dict[str, Any]) -> TaskResult:
         """特徵選擇（基於相關性與方差）。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         threshold = params.get("correlation_threshold", 0.95)
 
         await self.update_progress(0.2, "載入資料並計算特徵")

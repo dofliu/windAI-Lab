@@ -10,10 +10,16 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# 風機運行參數預設值
-_DEFAULT_CUT_IN = 3.0  # 切入風速 (m/s)
-_DEFAULT_RATED_POWER = 2050  # 額定功率 (kW)
-_DEFAULT_CUT_OUT = 25.0  # 切出風速 (m/s)
+from src.core.constants import (
+    DEFAULT_CUT_IN_SPEED_MS,
+    DEFAULT_CUT_OUT_SPEED_MS,
+    DEFAULT_RATED_POWER_KW,
+)
+
+# 風機運行參數預設值（從全域常數取得，不再各自硬編碼）
+_DEFAULT_CUT_IN = DEFAULT_CUT_IN_SPEED_MS
+_DEFAULT_RATED_POWER = DEFAULT_RATED_POWER_KW
+_DEFAULT_CUT_OUT = DEFAULT_CUT_OUT_SPEED_MS
 _MAX_GAP_INTERPOLATE = 3  # 最大插值間隙（筆數，即 30 分鐘）
 
 

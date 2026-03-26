@@ -25,6 +25,7 @@ from src.core.constants import (
     STATUS_COLORS,
     TASK_ID_PREFIX,
     WS_MESSAGE_TYPES,
+    TurbineProfile,
 )
 from src.core.exceptions import (
     AgentBusyError,
@@ -323,7 +324,7 @@ class TestWindTurbineConstants:
     """風機運行參數常數的測試。"""
 
     def test_rated_power_is_2050_kw(self) -> None:
-        """確認額定功率預設值為 2050.0 kW（Senvion MM92）。"""
+        """確認額定功率預設值為 2050.0 kW。"""
         assert DEFAULT_RATED_POWER_KW == 2050.0
 
     def test_rotor_diameter_is_92_m(self) -> None:
@@ -345,6 +346,40 @@ class TestWindTurbineConstants:
     def test_air_density_is_1_225(self) -> None:
         """確認空氣密度預設值為 1.225 kg/m³（海平面標準值）。"""
         assert DEFAULT_AIR_DENSITY_KGM3 == 1.225
+
+
+class TestTurbineProfile:
+    """TurbineProfile 資料類別的測試。"""
+
+    def test_default_values(self) -> None:
+        """確認 TurbineProfile 預設值與全域常數一致。"""
+        p = TurbineProfile()
+        assert p.rated_power_kw == DEFAULT_RATED_POWER_KW
+        assert p.cut_in_speed_ms == DEFAULT_CUT_IN_SPEED_MS
+        assert p.cut_out_speed_ms == DEFAULT_CUT_OUT_SPEED_MS
+        assert p.rated_wind_speed_ms == DEFAULT_RATED_WIND_SPEED_MS
+        assert p.rotor_diameter_m == DEFAULT_ROTOR_DIAMETER_M
+
+    def test_custom_values(self) -> None:
+        """確認可建立自訂風機參數的 TurbineProfile。"""
+        p = TurbineProfile(rated_power_kw=3000, rotor_diameter_m=110)
+        assert p.rated_power_kw == 3000
+        assert p.rotor_diameter_m == 110
+
+    def test_from_profiler_dict(self) -> None:
+        """確認可從 TurbineProfilerSkill 輸出建構 TurbineProfile。"""
+        d = {
+            "rated_power_kw": 4200,
+            "cut_in_speed_ms": 3.5,
+            "rated_wind_speed_ms": 13.0,
+            "cut_out_speed_ms": 28.0,
+            "rotor_diameter_m": 136.0,
+        }
+        p = TurbineProfile.from_profiler_dict(d)
+        assert p.rated_power_kw == 4200
+        assert p.cut_in_speed_ms == 3.5
+        assert p.rated_wind_speed_ms == 13.0
+        assert p.rotor_diameter_m == 136.0
 
 
 class TestScadaConstants:

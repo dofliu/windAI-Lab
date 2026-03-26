@@ -45,7 +45,7 @@ class PowerCurveExpert(BaseAgent):
 
     async def _build_power_curve_nbm(self, params: dict[str, Any]) -> TaskResult:
         """使用 Gradient Boosting NBM 建立功率曲線模型。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
 
         await self.update_progress(0.1, f"載入 {turbine_id} 運行資料")
 
@@ -119,7 +119,7 @@ class PowerCurveExpert(BaseAgent):
 
     async def _analyze_deviation_nbm(self, params: dict[str, Any]) -> TaskResult:
         """使用 NBM 分析功率曲線偏差。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
 
         await self.update_progress(0.2, f"載入 {turbine_id} 資料")
 

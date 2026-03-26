@@ -59,7 +59,7 @@ class HyperparameterTuner(BaseAgent):
         """執行 Optuna 超參數最佳化。"""
         model_type = params.get("model_type", "power_curve_nbm")
         n_trials = params.get("n_trials", 20)
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
 
         await self.update_progress(0.05, f"初始化 Optuna 超參數搜尋（{n_trials} 試驗）")
 

@@ -31,10 +31,13 @@ class ScadaCleaningSkill(BaseSkill):
         if df is None:
             return SkillOutput(status=SkillStatus.ERROR, errors=["未收到輸入資料"])
 
-        # 從 turbine_profiler 推斷的參數自動注入（若無則用預設值）
-        rated_power = inp.parameters.get("rated_power", 2050.0)
-        cut_in = inp.parameters.get("cut_in_speed", 3.0)
-        cut_out = inp.parameters.get("cut_out_speed", 25.0)
+        # 從 turbine_profiler 推斷的參數自動注入（若無則用全域預設值）
+        from src.core.constants import TurbineProfile
+
+        _defaults = TurbineProfile()
+        rated_power = inp.parameters.get("rated_power", _defaults.rated_power_kw)
+        cut_in = inp.parameters.get("cut_in_speed", _defaults.cut_in_speed_ms)
+        cut_out = inp.parameters.get("cut_out_speed", _defaults.cut_out_speed_ms)
 
         if progress_cb:
             await progress_cb(0.1, f"開始清洗（額定 {rated_power:.0f} kW）...")
