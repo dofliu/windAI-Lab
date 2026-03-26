@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Agent, OfficeRoom, SpeechBubble } from '../types/agent'
+import { useTheme, getRoomColor } from '../themes'
 import PixelCharacter from './PixelCharacter'
 
 /* ================================================================
@@ -9,48 +10,37 @@ import PixelCharacter from './PixelCharacter'
 interface RoomDef {
   x: number; y: number; w: number; h: number
   label: string; icon: string
-  floor: string; border: string; labelColor: string
+  /** 主題中的 room key（用於查詢 theme.rooms） */
+  themeKey: string
 }
 
 const MEETING: RoomDef = {
   x: 11, y: 8, w: 78, h: 14,
-  label: '會議室', icon: '🏛️',
-  floor: 'rgba(99,102,241,0.06)',
-  border: 'rgba(99,102,241,0.25)',
-  labelColor: '#818cf8',
+  label: '會議室', icon: '🏛️', themeKey: 'meeting',
 }
 
 const BOSS_ROOM: RoomDef = {
   x: 1, y: 8, w: 9, h: 14,
-  label: '小房間', icon: '🚪',
-  floor: 'rgba(236,72,153,0.08)',
-  border: 'rgba(236,72,153,0.3)',
-  labelColor: '#f472b6',
+  label: '小房間', icon: '🚪', themeKey: 'boss-room',
 }
 
 const TEA_ROOM: RoomDef = {
   x: 90, y: 2, w: 9, h: 10,
-  label: '茶水間', icon: '☕',
-  floor: 'rgba(251,191,36,0.06)',
-  border: 'rgba(251,191,36,0.25)',
-  labelColor: '#fbbf24',
+  label: '茶水間', icon: '☕', themeKey: 'tea-room',
 }
 
 const GAME_ROOM: RoomDef = {
   x: 90, y: 14, w: 9, h: 10,
-  label: '遊戲間', icon: '🎮',
-  floor: 'rgba(168,85,247,0.08)',
-  border: 'rgba(168,85,247,0.3)',
-  labelColor: '#c084fc',
+  label: '遊戲間', icon: '🎮', themeKey: 'game-room',
 }
 
 const ROOMS: Record<string, RoomDef> = {
-  leadership:  { x: 1, y: 27, w: 31, h: 28, label: '指揮中心',   icon: '🏛️', floor: 'rgba(245,158,11,0.05)',  border: 'rgba(245,158,11,0.22)', labelColor: '#fbbf24' },
-  data:        { x: 35, y: 27, w: 30, h: 28, label: '資料工程室', icon: '🗃️', floor: 'rgba(16,185,129,0.05)',  border: 'rgba(16,185,129,0.22)', labelColor: '#34d399' },
-  'ai-ml':     { x: 68, y: 27, w: 31, h: 28, label: '模型實驗室', icon: '🧠', floor: 'rgba(139,92,246,0.05)',  border: 'rgba(139,92,246,0.22)', labelColor: '#a78bfa' },
-  domain:      { x: 1, y: 58, w: 31, h: 28, label: '領域知識庫', icon: '🌬️', floor: 'rgba(236,72,153,0.05)',  border: 'rgba(236,72,153,0.22)', labelColor: '#f472b6' },
-  engineering: { x: 35, y: 58, w: 30, h: 28, label: '軟體工程室', icon: '💻', floor: 'rgba(249,115,22,0.05)',  border: 'rgba(249,115,22,0.22)', labelColor: '#fb923c' },
-  research:    { x: 68, y: 58, w: 31, h: 28, label: '研究室',     icon: '📖', floor: 'rgba(6,182,212,0.05)',   border: 'rgba(6,182,212,0.22)',  labelColor: '#22d3ee' },
+  leadership:  { x: 1, y: 27, w: 31, h: 28, label: '指揮中心',   icon: '🏛️', themeKey: 'leadership' },
+  data:        { x: 35, y: 27, w: 30, h: 28, label: '資料工程室', icon: '🗃️', themeKey: 'data' },
+  'ai-ml':     { x: 68, y: 27, w: 31, h: 28, label: '模型實驗室', icon: '🧠', themeKey: 'ai-ml' },
+  domain:      { x: 1, y: 58, w: 31, h: 28, label: '領域知識庫', icon: '🌬️', themeKey: 'domain' },
+  engineering: { x: 35, y: 58, w: 30, h: 28, label: '軟體工程室', icon: '💻', themeKey: 'engineering' },
+  research:    { x: 68, y: 58, w: 31, h: 28, label: '研究室',     icon: '📖', themeKey: 'research' },
 }
 
 /* ── Position helpers ── */
@@ -134,6 +124,7 @@ interface Props {
 }
 
 export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speechBubbles = [] }: Props) {
+  const { theme } = useTheme()
   const allAgents = useMemo(() => rooms.flatMap((r) => r.agents), [rooms])
 
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -453,10 +444,10 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
                 )}
                 {agent.progress !== undefined && agent.status === 'working' && (
                   <div className="mt-1 flex items-center gap-1">
-                    <div className="h-1 flex-1 rounded-full bg-slate-700 overflow-hidden">
-                      <div className="h-full bg-emerald-400" style={{ width: `${agent.progress}%` }} />
+                    <div className="h-1 flex-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.global.border }}>
+                      <div className="h-full" style={{ width: `${agent.progress}%`, backgroundColor: theme.statuses.working.dot }} />
                     </div>
-                    <span className="text-emerald-400">{agent.progress}%</span>
+                    <span style={{ color: theme.statuses.working.text }}>{agent.progress}%</span>
                   </div>
                 )}
               </div>
@@ -487,6 +478,9 @@ function RoomBox({
   inMeeting?: number
   extra?: string
 }) {
+  const { theme } = useTheme()
+  const colors = getRoomColor(theme, room.themeKey)
+
   return (
     <div
       className="pixel-room"
@@ -495,12 +489,12 @@ function RoomBox({
         top: `${room.y}%`,
         width: `${room.w}%`,
         height: `${room.h}%`,
-        backgroundColor: room.floor,
-        borderColor: room.border,
+        backgroundColor: colors.floor,
+        borderColor: colors.border,
       }}
     >
       {/* Label */}
-      <div className="pixel-room-label" style={{ color: room.labelColor }}>
+      <div className="pixel-room-label" style={{ color: colors.label }}>
         <span className="mr-1">{room.icon}</span>
         <span className="font-semibold">{room.label}</span>
         {inMeeting > 0 && (

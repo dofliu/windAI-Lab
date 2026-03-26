@@ -1,52 +1,24 @@
 import { useState, useMemo } from 'react'
 import { Agent, AgentTier } from '../types/agent'
+import { useTheme, getTierColor, getStatusColor } from '../themes'
 
 /* ── Tier 設定 ── */
 
 interface TierConfig {
-  label: string      // 兩字簡寫
+  label: string
   icon: string
-  color: string       // tailwind border/text accent
-  bg: string          // dot & badge bg
 }
 
 const TIERS: Record<AgentTier, TierConfig> = {
-  leadership:  { label: '指揮', icon: '🏛️', color: 'amber',   bg: 'bg-amber-500'   },
-  data:        { label: '資料', icon: '🗃️', color: 'emerald', bg: 'bg-emerald-500' },
-  'ai-ml':     { label: '模型', icon: '🧠', color: 'violet',  bg: 'bg-violet-500'  },
-  domain:      { label: '領域', icon: '🌬️', color: 'pink',    bg: 'bg-pink-500'    },
-  engineering: { label: '工程', icon: '💻', color: 'orange',  bg: 'bg-orange-500'  },
-  research:    { label: '研究', icon: '📖', color: 'cyan',    bg: 'bg-cyan-500'    },
+  leadership:  { label: '指揮', icon: '🏛️' },
+  data:        { label: '資料', icon: '🗃️' },
+  'ai-ml':     { label: '模型', icon: '🧠' },
+  domain:      { label: '領域', icon: '🌬️' },
+  engineering: { label: '工程', icon: '💻' },
+  research:    { label: '研究', icon: '📖' },
 }
 
 const TIER_ORDER: AgentTier[] = ['leadership', 'data', 'ai-ml', 'domain', 'engineering', 'research']
-
-/* ── Shirt colors (matches PixelCharacter) ── */
-const TIER_SHIRT: Record<string, string> = {
-  leadership: '#d97706',
-  data: '#059669',
-  'ai-ml': '#7c3aed',
-  domain: '#db2777',
-  engineering: '#ea580c',
-  research: '#0891b2',
-}
-
-/* ── Status indicators ── */
-const STATUS_RING: Record<string, string> = {
-  idle:      'ring-slate-600',
-  working:   'ring-emerald-400',
-  waiting:   'ring-yellow-400',
-  completed: 'ring-blue-400',
-  error:     'ring-red-400',
-}
-
-const STATUS_DOT: Record<string, string> = {
-  idle:      'bg-slate-500',
-  working:   'bg-emerald-400 animate-pulse',
-  waiting:   'bg-yellow-400 animate-pulse',
-  completed: 'bg-blue-400',
-  error:     'bg-red-400',
-}
 
 /* ── 代理簡稱對照表（取一個代表字） ── */
 const SHORT_NAME: Record<string, string> = {
@@ -113,13 +85,18 @@ function MiniAvatar({ agent, size = 28, selected, onClick, showLabel = true }: {
   onClick?: () => void
   showLabel?: boolean
 }) {
+  const { theme } = useTheme()
   const h = hash(agent.id)
-  const shirt = TIER_SHIRT[agent.tier] || '#6366f1'
+  const tierColor = getTierColor(theme, agent.tier)
+  const statusColor = getStatusColor(theme, agent.status)
+  const shirt = tierColor.primary
   const skinColors = ['#f5c6a0', '#e8b896', '#d4a574', '#c49a6c', '#f0d5b8']
   const hairColors = ['#1a1a2e', '#3d2b1f', '#8b6914', '#5b2c6f', '#2c3e50']
   const skin = skinColors[h % skinColors.length]
   const hair = hairColors[h % hairColors.length]
   const shortName = getShortName(agent)
+
+  const statusAnim = agent.status === 'working' || agent.status === 'waiting' ? 'animate-pulse' : ''
 
   return (
     <button
@@ -128,41 +105,41 @@ function MiniAvatar({ agent, size = 28, selected, onClick, showLabel = true }: {
       className={`group relative flex shrink-0 flex-col items-center gap-0.5 transition-all hover:scale-105 ${selected ? 'scale-105' : ''}`}
     >
       {/* Avatar ring */}
-      <div className={`rounded-full ring-2 ${STATUS_RING[agent.status]} ${selected ? 'ring-offset-1 ring-offset-slate-700' : ''}`}>
+      <div
+        className="rounded-full ring-2"
+        style={{
+          ['--tw-ring-color' as string]: statusColor.dot,
+          ['--tw-ring-offset-color' as string]: selected ? theme.global.border : 'transparent',
+        }}
+      >
         <svg
           viewBox="0 0 16 14"
           width={size}
           height={size * 0.875}
           style={{ shapeRendering: 'crispEdges' }}
         >
-          {/* Hair */}
           <rect x="4" y="0" width="8" height="3" fill={hair} />
           <rect x="3" y="1" width="1" height="4" fill={hair} />
           <rect x="12" y="1" width="1" height="4" fill={hair} />
-          {/* Face */}
           <rect x="4" y="3" width="8" height="6" fill={skin} />
-          {/* Eyes */}
           <rect x="5" y="5" width="2" height="2" fill="#1a1a2e" />
           <rect x="9" y="5" width="2" height="2" fill="#1a1a2e" />
           <rect x="5" y="5" width="1" height="1" fill="white" />
           <rect x="9" y="5" width="1" height="1" fill="white" />
-          {/* Mouth */}
           <rect x="6" y="7" width="4" height="1" fill={skin} opacity="0.6" />
-          {/* Collar */}
           <rect x="4" y="9" width="8" height="3" fill={shirt} />
           <rect x="3" y="10" width="1" height="3" fill={shirt} />
           <rect x="12" y="10" width="1" height="3" fill={shirt} />
         </svg>
         {/* Status dot */}
-        <span className={`absolute top-0 -right-0.5 h-2 w-2 rounded-full border border-slate-800 ${STATUS_DOT[agent.status]}`} />
+        <span
+          className={`absolute top-0 -right-0.5 h-2 w-2 rounded-full border ${statusAnim}`}
+          style={{ backgroundColor: statusColor.dot, borderColor: theme.global.panelBg }}
+        />
       </div>
       {/* Short name label */}
       {showLabel && (
-        <span className={`text-[8px] leading-none ${
-          agent.status === 'working' ? 'text-emerald-400' :
-          agent.status === 'error' ? 'text-red-400' :
-          selected ? 'text-slate-200' : 'text-slate-500'
-        }`}>
+        <span className="text-[8px] leading-none" style={{ color: statusColor.text }}>
           {shortName}
         </span>
       )}
@@ -185,6 +162,7 @@ export default function CompactOffice({
   onSelectAgent,
   collapsed = false,
 }: CompactOfficeProps) {
+  const { theme } = useTheme()
   const [expandedTier, setExpandedTier] = useState<AgentTier | null>(null)
 
   const grouped = useMemo(() => {
@@ -203,13 +181,17 @@ export default function CompactOffice({
       <div className="flex flex-col items-center gap-3 py-4 px-1">
         {TIER_ORDER.map((tier) => {
           const cfg = TIERS[tier]
+          const tierColor = getTierColor(theme, tier)
           const tierAgents = grouped[tier]
           const working = tierAgents.filter((a) => a.status !== 'idle').length
           return (
             <div key={tier} className="relative" title={`${cfg.label} (${tierAgents.length}人)`}>
               <span className="text-base">{cfg.icon}</span>
               {working > 0 && (
-                <span className="absolute -top-1 -right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-[7px] font-bold text-white">
+                <span
+                  className="absolute -top-1 -right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold text-white"
+                  style={{ backgroundColor: tierColor.primary }}
+                >
                   {working}
                 </span>
               )}
@@ -217,15 +199,15 @@ export default function CompactOffice({
           )
         })}
         {/* Summary counts */}
-        <div className="mt-2 flex flex-col items-center gap-1 border-t border-slate-700/50 pt-2">
+        <div className="mt-2 flex flex-col items-center gap-1 border-t pt-2" style={{ borderColor: theme.global.border }}>
           <div className="flex items-center gap-1" title="工作中">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            <span className="text-[9px] text-slate-400">{workingCount}</span>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: theme.statuses.working.dot }} />
+            <span className="text-[9px]" style={{ color: theme.global.textSecondary }}>{workingCount}</span>
           </div>
           {waitingCount > 0 && (
             <div className="flex items-center gap-1" title="等待確認">
-              <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
-              <span className="text-[9px] text-slate-400">{waitingCount}</span>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: theme.statuses.waiting.dot }} />
+              <span className="text-[9px]" style={{ color: theme.global.textSecondary }}>{waitingCount}</span>
             </div>
           )}
         </div>
@@ -238,20 +220,20 @@ export default function CompactOffice({
     <div className="flex h-full flex-col overflow-y-auto px-3 py-3">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xs font-bold text-slate-300">
+        <h2 className="text-xs font-bold" style={{ color: theme.global.textPrimary }}>
           🏢 研究室
-          <span className="ml-1.5 text-[9px] font-normal text-slate-500">
+          <span className="ml-1.5 text-[9px] font-normal" style={{ color: theme.global.textMuted }}>
             {agents.length}人
           </span>
         </h2>
-        <div className="flex items-center gap-2 text-[9px] text-slate-500">
+        <div className="flex items-center gap-2 text-[9px]" style={{ color: theme.global.textMuted }}>
           <span className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: theme.statuses.working.dot }} />
             {workingCount}
           </span>
           {waitingCount > 0 && (
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: theme.statuses.waiting.dot }} />
               {waitingCount}
             </span>
           )}
@@ -262,6 +244,7 @@ export default function CompactOffice({
       <div className="flex flex-col gap-2">
         {TIER_ORDER.map((tier) => {
           const cfg = TIERS[tier]
+          const tierColor = getTierColor(theme, tier)
           const tierAgents = grouped[tier]
           const isExpanded = expandedTier === tier
           const tierWorking = tierAgents.filter((a) => a.status !== 'idle').length
@@ -269,11 +252,11 @@ export default function CompactOffice({
           return (
             <div
               key={tier}
-              className={`rounded-lg border transition-colors ${
-                isExpanded
-                  ? `border-${cfg.color}-500/30 bg-${cfg.color}-500/5`
-                  : 'border-slate-700/40 bg-slate-800/40 hover:bg-slate-800/60'
-              }`}
+              className="rounded-lg border transition-colors"
+              style={{
+                borderColor: isExpanded ? tierColor.primary + '4d' : theme.global.border + '66',
+                backgroundColor: isExpanded ? tierColor.primary + '0d' : theme.global.panelBg + '66',
+              }}
             >
               {/* Tier header */}
               <button
@@ -281,15 +264,15 @@ export default function CompactOffice({
                 className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left"
               >
                 <span className="text-xs">{cfg.icon}</span>
-                <span className="text-[10px] font-medium text-slate-300">{cfg.label}</span>
-                <span className="text-[9px] text-slate-500">{tierAgents.length}人</span>
+                <span className="text-[10px] font-medium" style={{ color: theme.global.textPrimary }}>{cfg.label}</span>
+                <span className="text-[9px]" style={{ color: theme.global.textMuted }}>{tierAgents.length}人</span>
                 {tierWorking > 0 && (
                   <span className="ml-auto flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[9px] text-emerald-400">{tierWorking}</span>
+                    <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: theme.statuses.working.dot }} />
+                    <span className="text-[9px]" style={{ color: theme.statuses.working.text }}>{tierWorking}</span>
                   </span>
                 )}
-                <span className={`ml-auto text-[8px] text-slate-600 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                <span className={`ml-auto text-[8px] transition-transform ${isExpanded ? 'rotate-90' : ''}`} style={{ color: theme.global.textMuted }}>
                   ▶
                 </span>
               </button>
@@ -309,24 +292,28 @@ export default function CompactOffice({
 
               {/* Expanded detail: agent names */}
               {isExpanded && (
-                <div className="border-t border-slate-700/30 px-2.5 py-2">
-                  {tierAgents.map((agent) => (
-                    <button
-                      key={agent.id}
-                      onClick={() => onSelectAgent(agent)}
-                      className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left transition-colors hover:bg-slate-700/30 ${
-                        selectedAgent?.id === agent.id ? 'bg-slate-700/40' : ''
-                      }`}
-                    >
-                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[agent.status]}`} />
-                      <span className="truncate text-[10px] text-slate-300">{agent.displayName}</span>
-                      {agent.status === 'working' && agent.currentTask && (
-                        <span className="ml-auto truncate text-[8px] text-emerald-400/70 max-w-[80px]">
-                          {agent.currentTask}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                <div className="border-t px-2.5 py-2" style={{ borderColor: theme.global.border + '4d' }}>
+                  {tierAgents.map((agent) => {
+                    const sc = getStatusColor(theme, agent.status)
+                    return (
+                      <button
+                        key={agent.id}
+                        onClick={() => onSelectAgent(agent)}
+                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left transition-colors hover:opacity-80"
+                        style={{
+                          backgroundColor: selectedAgent?.id === agent.id ? theme.global.border + '66' : 'transparent',
+                        }}
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: sc.dot }} />
+                        <span className="truncate text-[10px]" style={{ color: theme.global.textPrimary }}>{agent.displayName}</span>
+                        {agent.status === 'working' && agent.currentTask && (
+                          <span className="ml-auto truncate text-[8px] max-w-[80px]" style={{ color: sc.text + 'b3' }}>
+                            {agent.currentTask}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -336,16 +323,19 @@ export default function CompactOffice({
 
       {/* Selected agent quick info */}
       {selectedAgent && (
-        <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-3 py-2">
+        <div
+          className="mt-3 rounded-lg border px-3 py-2"
+          style={{ borderColor: theme.global.accent + '4d', backgroundColor: theme.global.accent + '0d' }}
+        >
           <div className="flex items-center gap-2">
             <MiniAvatar agent={selectedAgent} size={28} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[10px] font-medium text-slate-200">{selectedAgent.displayName}</p>
-              <p className="truncate text-[9px] text-slate-400">{selectedAgent.name}</p>
+              <p className="truncate text-[10px] font-medium" style={{ color: theme.global.textPrimary }}>{selectedAgent.displayName}</p>
+              <p className="truncate text-[9px]" style={{ color: theme.global.textSecondary }}>{selectedAgent.name}</p>
             </div>
           </div>
           {selectedAgent.currentTask && (
-            <p className="mt-1.5 text-[9px] text-slate-400">
+            <p className="mt-1.5 text-[9px]" style={{ color: theme.global.textSecondary }}>
               📋 {selectedAgent.currentTask}
             </p>
           )}

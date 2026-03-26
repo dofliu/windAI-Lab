@@ -100,6 +100,22 @@ class WebSocketManager:
         }
         await self.broadcast(message)
 
+    async def broadcast_analysis_result(self, result_data: dict[str, Any]) -> None:
+        """廣播分析結果（圖表資料）至前端戰情中心。
+
+        result_data 應包含：
+        - chart_type: str — 圖表類型（如 "power_curve", "health_score", "experiment"）
+        - title: str — 圖表標題
+        - data: list[dict] — 圖表資料點
+        - metadata: dict — 額外資訊（如模型名稱、R² 等）
+        """
+        message = {
+            "type": "analysis_result",
+            "timestamp": datetime.now().isoformat(),
+            "payload": result_data,
+        }
+        await self.broadcast(message)
+
     async def broadcast_file_event(self, event_data: dict[str, Any]) -> None:
         """廣播檔案監控事件（偵測到新檔案 / 處理完成 / 錯誤）。
 
