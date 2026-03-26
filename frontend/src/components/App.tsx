@@ -235,6 +235,7 @@ export default function App() {
           <MissionView
             agents={agents}
             workLogs={workLogs}
+            analysisResults={ws.analysisResults ?? []}
             onAgentClick={setSelectedAgent}
           />
         ) : (

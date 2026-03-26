@@ -12,16 +12,28 @@ import { useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
+  ScatterChart, Scatter, CartesianGrid,
+  LineChart, Line, Legend,
 } from 'recharts'
 import { useTheme, getStatusColor, getTierColor } from '../themes'
 import type { Agent, WorkLog } from '../types/agent'
 import AvatarSVG from './AvatarSVG'
+
+/** 後端推送的分析結果 */
+interface AnalysisResultPayload {
+  chart_type: string
+  title: string
+  data: Array<Record<string, number | string>>
+  metadata?: Record<string, number | string>
+}
 
 interface MissionViewProps {
   /** 所有代理（會自動過濾出任務中的） */
   agents: Agent[]
   /** 工作日誌 */
   workLogs: WorkLog[]
+  /** 後端推送的分析結果 */
+  analysisResults?: AnalysisResultPayload[]
   /** 任務名稱 */
   missionTitle?: string
   /** 點選代理回呼 */
@@ -31,6 +43,7 @@ interface MissionViewProps {
 export default function MissionView({
   agents,
   workLogs,
+  analysisResults = [],
   missionTitle,
   onAgentClick,
 }: MissionViewProps) {
@@ -84,6 +97,36 @@ export default function MissionView({
         color: getStatusColor(theme, status).dot,
       }))
   }, [agents, theme])
+
+  // 從工作日誌中提取數值指標
+  const extractedMetrics = useMemo(() => {
+    const metrics: Array<{ name: string; value: number; agent: string; timestamp: number }> = []
+    const patterns = [
+      { regex: /R[²2]\s*[=:]\s*([\d.]+)/i, name: 'R²' },
+      { regex: /F1\s*[=:]\s*([\d.]+)/i, name: 'F1' },
+      { regex: /MAE\s*[=:]\s*([\d.]+)/i, name: 'MAE' },
+      { regex: /RMSE\s*[=:]\s*([\d.]+)/i, name: 'RMSE' },
+      { regex: /健康分數\s*([\d.]+)/i, name: '健康分數' },
+      { regex: /容量因數[：:]\s*([\d.]+)/i, name: '容量因數' },
+      { regex: /可用率[：:]\s*([\d.]+)/i, name: '可用率' },
+      { regex: /偏差[：:]\s*(-?[\d.]+)/i, name: '功率偏差%' },
+      { regex: /異常點\s*([\d]+)\s*個/i, name: '異常點' },
+    ]
+    workLogs.forEach((log) => {
+      patterns.forEach(({ regex, name }) => {
+        const match = log.message.match(regex)
+        if (match) {
+          metrics.push({
+            name,
+            value: parseFloat(match[1]),
+            agent: log.agentName,
+            timestamp: log.timestamp.getTime(),
+          })
+        }
+      })
+    })
+    return metrics
+  }, [workLogs])
 
   // 任務標題
   const title = missionTitle || '任務進行中'
@@ -206,27 +249,12 @@ export default function MissionView({
           {activeAgents.length > 0 && (
             <div className="grid grid-cols-2 gap-4 mb-6">
               {/* 代理進度長條圖 */}
-              <div
-                className="rounded-xl border p-4"
-                style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
-              >
-                <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
-                  代理進度
-                </h3>
+              <ChartPanel title="代理進度" theme={theme}>
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={agentProgressData} layout="vertical">
                     <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: theme.global.textMuted }} />
                     <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 10, fill: theme.global.textSecondary }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: theme.global.panelBg,
-                        border: `1px solid ${theme.global.border}`,
-                        borderRadius: 8,
-                        fontSize: 11,
-                        color: theme.global.textPrimary,
-                      }}
-                      formatter={(value) => [`${value}%`, '進度']}
-                    />
+                    <Tooltip {...tooltipStyle(theme)} formatter={(value) => [`${value}%`, '進度']} />
                     <Bar dataKey="progress" radius={[0, 4, 4, 0]}>
                       {agentProgressData.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
@@ -234,43 +262,20 @@ export default function MissionView({
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+              </ChartPanel>
 
               {/* 狀態分佈圓餅圖 */}
-              <div
-                className="rounded-xl border p-4"
-                style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
-              >
-                <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
-                  代理狀態分佈
-                </h3>
-                <ResponsiveContainer width="100%" height={180}>
+              <ChartPanel title="代理狀態分佈" theme={theme}>
+                <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
-                    <Pie
-                      data={statusDistData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={70}
-                      dataKey="value"
-                      stroke="none"
-                    >
+                    <Pie data={statusDistData} cx="50%" cy="50%" innerRadius={35} outerRadius={65} dataKey="value" stroke="none">
                       {statusDistData.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: theme.global.panelBg,
-                        border: `1px solid ${theme.global.border}`,
-                        borderRadius: 8,
-                        fontSize: 11,
-                        color: theme.global.textPrimary,
-                      }}
-                    />
+                    <Tooltip {...tooltipStyle(theme)} />
                   </PieChart>
                 </ResponsiveContainer>
-                {/* 圓餅圖圖例 */}
                 <div className="flex justify-center gap-3 mt-1">
                   {statusDistData.map((d) => (
                     <span key={d.name} className="flex items-center gap-1 text-[10px]" style={{ color: theme.global.textSecondary }}>
@@ -279,6 +284,37 @@ export default function MissionView({
                     </span>
                   ))}
                 </div>
+              </ChartPanel>
+            </div>
+          )}
+
+          {/* 後端推送的分析圖表 */}
+          {analysisResults.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {analysisResults.map((result, i) => (
+                <AnalysisChart key={i} result={result} theme={theme} />
+              ))}
+            </div>
+          )}
+
+          {/* 從日誌提取的即時指標 */}
+          {extractedMetrics.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
+                分析指標
+              </h3>
+              <div className="grid grid-cols-4 gap-3">
+                {extractedMetrics.slice(-8).map((m, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border px-3 py-2"
+                    style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
+                  >
+                    <div className="text-[10px]" style={{ color: theme.global.textMuted }}>{m.agent}</div>
+                    <div className="text-xs font-medium mt-0.5" style={{ color: theme.global.textSecondary }}>{m.name}</div>
+                    <div className="text-lg font-bold" style={{ color: theme.global.accent }}>{m.value}</div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -471,5 +507,126 @@ function ResultCard({ log, theme }: ResultCardProps) {
         {log.message}
       </div>
     </div>
+  )
+}
+
+/* ── 圖表通用元件 ── */
+
+function tooltipStyle(theme: import('../themes').WindAITheme) {
+  return {
+    contentStyle: {
+      backgroundColor: theme.global.panelBg,
+      border: `1px solid ${theme.global.border}`,
+      borderRadius: 8,
+      fontSize: 11,
+      color: theme.global.textPrimary,
+    },
+  }
+}
+
+function ChartPanel({ title, theme, children }: {
+  title: string
+  theme: import('../themes').WindAITheme
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className="rounded-xl border p-4"
+      style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
+    >
+      <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
+        {title}
+      </h3>
+      {children}
+    </div>
+  )
+}
+
+/** 根據 chart_type 渲染對應的圖表 */
+function AnalysisChart({ result, theme }: {
+  result: AnalysisResultPayload
+  theme: import('../themes').WindAITheme
+}) {
+  const { chart_type, title, data, metadata } = result
+
+  if (chart_type === 'scatter' || chart_type === 'power_curve') {
+    return (
+      <ChartPanel title={title} theme={theme}>
+        <ResponsiveContainer width="100%" height={200}>
+          <ScatterChart>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.global.border} />
+            <XAxis dataKey="x" name={metadata?.x_label as string || 'X'} tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+            <YAxis dataKey="y" name={metadata?.y_label as string || 'Y'} tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+            <Tooltip {...tooltipStyle(theme)} />
+            <Scatter data={data} fill={theme.global.accent} />
+          </ScatterChart>
+        </ResponsiveContainer>
+        {metadata && (
+          <div className="flex gap-3 mt-2 text-[10px]" style={{ color: theme.global.textMuted }}>
+            {Object.entries(metadata).filter(([k]) => !k.endsWith('_label')).map(([k, v]) => (
+              <span key={k}>{k}: <b style={{ color: theme.global.accent }}>{typeof v === 'number' ? v.toFixed(4) : v}</b></span>
+            ))}
+          </div>
+        )}
+      </ChartPanel>
+    )
+  }
+
+  if (chart_type === 'line' || chart_type === 'trend') {
+    const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'x' && k !== 'name') : []
+    const colors = [theme.global.accent, theme.statuses.working.dot, theme.statuses.waiting.dot, theme.statuses.error.dot]
+    return (
+      <ChartPanel title={title} theme={theme}>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.global.border} />
+            <XAxis dataKey="x" tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+            <YAxis tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+            <Tooltip {...tooltipStyle(theme)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            {keys.map((key, i) => (
+              <Line key={key} type="monotone" dataKey={key} stroke={colors[i % colors.length]} dot={false} strokeWidth={2} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartPanel>
+    )
+  }
+
+  if (chart_type === 'bar' || chart_type === 'histogram') {
+    const keys = data.length > 0 ? Object.keys(data[0]).filter(k => k !== 'name' && k !== 'x') : []
+    return (
+      <ChartPanel title={title} theme={theme}>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.global.border} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+            <YAxis tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+            <Tooltip {...tooltipStyle(theme)} />
+            {keys.map((key, i) => (
+              <Bar key={key} dataKey={key} fill={i === 0 ? theme.global.accent : theme.statuses.working.dot} radius={[4, 4, 0, 0]} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartPanel>
+    )
+  }
+
+  // 預設：顯示 metadata 為數據卡片
+  return (
+    <ChartPanel title={title} theme={theme}>
+      {metadata && (
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(metadata).map(([k, v]) => (
+            <div key={k} className="text-center py-2">
+              <div className="text-[10px]" style={{ color: theme.global.textMuted }}>{k}</div>
+              <div className="text-lg font-bold" style={{ color: theme.global.accent }}>
+                {typeof v === 'number' ? v.toFixed(4) : v}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ChartPanel>
   )
 }

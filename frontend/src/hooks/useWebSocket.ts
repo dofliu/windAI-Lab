@@ -17,6 +17,7 @@ export function useWebSocket() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
   const [hasLiveUpdates, setHasLiveUpdates] = useState(false)
   const [fileEvents, setFileEvents] = useState<any[]>([])
+  const [analysisResults, setAnalysisResults] = useState<any[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
@@ -107,6 +108,14 @@ export function useWebSocket() {
             break
           }
 
+          case 'analysis_result': {
+            setAnalysisResults(prev => {
+              const next = [...prev, msg.payload]
+              return next.length > 30 ? next.slice(-30) : next
+            })
+            break
+          }
+
           case 'file_detected':
           case 'file_processed':
           case 'file_error': {
@@ -181,5 +190,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults }
 }
