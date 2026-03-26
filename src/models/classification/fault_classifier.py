@@ -18,6 +18,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 
+from src.core.constants import TurbineProfile
+
 # ── 故障標籤定義 ──────────────────────────────────────────────
 
 
@@ -47,9 +49,6 @@ class FaultLabel:
         YAW_MISALIGNMENT: "偏航偏移",
         OVERHEATING: "過熱",
     }
-
-
-from src.core.constants import TurbineProfile
 
 
 def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:
@@ -95,9 +94,7 @@ class TrainResult:
 # ── 故障標籤產生器 ────────────────────────────────────────────
 
 
-def generate_fault_labels(
-    df: pd.DataFrame, profile: TurbineProfile | None = None
-) -> pd.DataFrame:
+def generate_fault_labels(df: pd.DataFrame, profile: TurbineProfile | None = None) -> pd.DataFrame:
     """根據領域規則從 SCADA 特徵生成故障標籤。
 
     使用基於物理的規則自動標註故障標籤，作為分類器的訓練目標。

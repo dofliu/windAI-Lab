@@ -10,7 +10,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from src.core.constants import DEFAULT_CUT_IN_SPEED_MS, DEFAULT_CUT_OUT_SPEED_MS, DEFAULT_RATED_POWER_KW
+from src.core.constants import (
+    DEFAULT_CUT_IN_SPEED_MS,
+    DEFAULT_CUT_OUT_SPEED_MS,
+    DEFAULT_RATED_POWER_KW,
+)
 
 # 風機運行參數預設值（從全域常數取得，不再各自硬編碼）
 _DEFAULT_CUT_IN = DEFAULT_CUT_IN_SPEED_MS

@@ -219,8 +219,7 @@ class BatchLoadSkill(BaseSkill):
             data=summary_data,
             dataframe=merged,
             summary=(
-                f"聚合合併完成：{loaded}/{total} 檔案, "
-                f"{freq_str} 降頻 → {len(merged)} 筆資料"
+                f"聚合合併完成：{loaded}/{total} 檔案, " f"{freq_str} 降頻 → {len(merged)} 筆資料"
             ),
             errors=errors,
         )
@@ -293,9 +292,13 @@ def _scan_files(folder: Path) -> list[dict[str, Any]]:
 
     files: list[dict[str, Any]] = []
     for item in sorted(folder.rglob("*")):
-        if item.is_file() and item.suffix.lower() in SUPPORTED_EXTENSIONS:
-            if not item.name.startswith(".") and not item.name.startswith("~"):
-                files.append({"path": str(item), "name": item.name})
+        if (
+            item.is_file()
+            and item.suffix.lower() in SUPPORTED_EXTENSIONS
+            and not item.name.startswith(".")
+            and not item.name.startswith("~")
+        ):
+            files.append({"path": str(item), "name": item.name})
     return files
 
 
@@ -333,9 +336,7 @@ def _ensure_datetime_index(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _resample_aggregate(
-    df: pd.DataFrame, freq: str, methods: list[str]
-) -> pd.DataFrame | None:
+def _resample_aggregate(df: pd.DataFrame, freq: str, methods: list[str]) -> pd.DataFrame | None:
     """降頻聚合 DataFrame。"""
     if not isinstance(df.index, pd.DatetimeIndex):
         return None
@@ -348,14 +349,13 @@ def _resample_aggregate(
     df_numeric = df[numeric_cols]
 
     # 建立聚合字典
-    agg_dict: dict[str, list[str]] = {col: methods for col in numeric_cols}
+    agg_dict: dict[str, list[str]] = dict.fromkeys(numeric_cols, methods)
     resampled = df_numeric.resample(freq).agg(agg_dict)
 
     # 將多層欄位名稱攤平：(col, method) → col_method
     if isinstance(resampled.columns, pd.MultiIndex):
         resampled.columns = [
-            f"{col}_{method}" if method != "mean" else col
-            for col, method in resampled.columns
+            f"{col}_{method}" if method != "mean" else col for col, method in resampled.columns
         ]
 
     # 移除全空的列

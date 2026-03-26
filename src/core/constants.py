@@ -89,6 +89,7 @@ class TurbineProfile:
             cut_out_speed_ms=d.get("cut_out_speed_ms", DEFAULT_CUT_OUT_SPEED_MS),
         )
 
+
 # ── SCADA 資料 ──
 SCADA_SAMPLING_INTERVAL_MIN: int = 10
 SCADA_REQUIRED_COLUMNS: list[str] = [

@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -189,12 +188,14 @@ def _scan_folder(folder: Path) -> dict[str, Any]:
         size = item.stat().st_size
         total_size += size
         format_counts[ext] = format_counts.get(ext, 0) + 1
-        files.append({
-            "path": str(item),
-            "name": item.name,
-            "size_bytes": size,
-            "extension": ext,
-        })
+        files.append(
+            {
+                "path": str(item),
+                "name": item.name,
+                "size_bytes": size,
+                "extension": ext,
+            }
+        )
 
     return {
         "folder": str(folder),
@@ -253,12 +254,14 @@ def _sample_files(files: list[dict[str, Any]], max_samples: int = 5) -> dict[str
         if ts_max is not None:
             time_max = max(time_max, ts_max) if time_max else ts_max
 
-        sample_details.append({
-            "file": file_info["name"],
-            "rows_sampled": len(df),
-            "columns": len(cols),
-            "sampling_seconds": interval,
-        })
+        sample_details.append(
+            {
+                "file": file_info["name"],
+                "rows_sampled": len(df),
+                "columns": len(cols),
+                "sampling_seconds": interval,
+            }
+        )
 
     # 欄位一致性檢查
     schema_consistent = True
@@ -321,9 +324,7 @@ def _recommend_strategy(
     # ── 2. 根據資料特性決定基礎策略 ──
     if n_files <= _MAX_DIRECT_CONCAT_FILES and total_mb <= _MAX_DIRECT_CONCAT_MB:
         data_strategy = "direct_concat"
-    elif is_high_freq and n_files > _MAX_DIRECT_CONCAT_FILES:
-        data_strategy = "aggregate_then_merge"
-    elif is_high_freq:
+    elif is_high_freq and n_files > _MAX_DIRECT_CONCAT_FILES or is_high_freq:
         data_strategy = "aggregate_then_merge"
     else:
         data_strategy = "direct_concat"
