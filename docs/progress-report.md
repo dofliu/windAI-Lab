@@ -1,6 +1,6 @@
 # WindAI Lab — 專案進度報告
 
-> 最後更新：2026-03-26（Phase 8 — 技能管線實戰驗證 + 系統切換 + 架構文件）
+> 最後更新：2026-03-26（Phase 9 — 資料泛化 + 多檔案載入 + 自動實驗 + 警報處理）
 
 ---
 
@@ -10,11 +10,11 @@
 |------|--------|------|--------|
 | **核心代理** | 12 (core) | 12 | 100% |
 | **可聘用代理** | 10 (hirable) | 10+ | 100% |
-| **技能模組** | 6 | 10+ | 60% |
+| **技能模組** | 10 | 12+ | 83% |
 | **ML 模型** | 3 | 6+ | 50% |
 | **REST API 端點** | 30+ | 35+ | 86% |
 | **前端元件** | 21 | 25+ | 84% |
-| **測試覆蓋** | 13 檔案 / 3,400+ 行 | — | 良好 |
+| **測試覆蓋** | 17 檔案 / 368 測試 | — | 良好 |
 | **Docker 部署** | ✅ | ✅ | 100% |
 | **WebSocket 即時通訊** | ✅ | ✅ | 100% |
 | **RAG 知識庫** | ✅ | ✅ | 100% |
@@ -23,8 +23,12 @@
 | **智慧資料載入** | ✅ | ✅ | 100% |
 | **技能拆分架構** | ✅ | ✅ | 100% |
 | **聘用/解聘制度** | ✅ | ✅ | 100% |
+| **TurbineProfile 動態參數** | ✅ | ✅ | 100% |
+| **多檔案批次載入** | ✅ | ✅ | 100% |
+| **自動實驗循環** | ✅ | ✅ | 100% |
+| **警報事件處理** | ✅ | ✅ | 100% |
 
-**整體評估：約 80% 完成度**（架構重構完成，技能管線已驗證，進入資料泛化階段）
+**整體評估：約 85% 完成度**（資料泛化完成，新增 4 個技能，進入 RAG + 前端強化階段）
 
 ---
 
@@ -292,16 +296,68 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
    - `power-curve-expert`: ingestion → cleaning → features → NBM → **R²=0.9964, MAE=15.3** ✅
    - `predictive-modeler`: ingestion → cleaning → features → RUL → 退化趨勢分析 ✅
 
-**已知問題（規劃中修復）**：
-- 所有 ML 模型硬編碼 Senvion MM92 參數（rated_power=2050 等）
-- 滾動視窗固定 144 筆（= 24h @ 10min），不適應其他取樣頻率
-- 不支援警報事件清單、故障標籤資料、無風速/功率的資料
+**已知問題（Phase 9 已修復）**：
+- ~~所有 ML 模型硬編碼 Senvion MM92 參數~~ → Phase 9 引入 TurbineProfile
+- ~~滾動視窗固定 144 筆~~ → Phase 8 已改為自適應
+- ~~不支援警報事件清單~~ → Phase 9 新增 AlarmProcessorSkill
 
 **產出**：
 - [x] 舊→新系統切換完成
 - [x] 3 條技能管線端到端驗證通過
 - [x] `docs/architecture-design.md` 完整架構設計文件
 - [x] `docs/TODO-roadmap.md` + `docs/progress-report.md` 更新
+
+### Phase 9 — 資料泛化 + 多檔案載入 + 自動實驗 + 警報處理（2026-03-26）
+
+**目標**：解除風場硬編碼、支援多檔案批次載入、自動化 ML 實驗、處理警報事件清單。
+
+**開發過程**：
+
+1. **解除 Kelmarsh 硬編碼**（27 檔案，+1530 / -168 行）：
+   - 新增 `TurbineProfile` dataclass 於 `constants.py`，統一風機參數傳遞
+   - 重構 `wind_features.py`、`anomaly_analysis.py`、`fault_classifier.py`、`power_curve_nbm.py`
+   - 消除 `detect_power_curve_anomalies()` 中硬寫的 `12.5` m/s 額定風速
+   - 移除 `real_workflows.py` 的 `TURBINE_MAP` 與 Kelmarsh 風場描述
+   - 所有代理與 API 的預設 turbine_id 從 `"Kelmarsh_1"` 改為 `"WT-01"`
+
+2. **多檔案智慧載入**（2 個新技能）：
+   - `DataInspectorSkill`（資料檢視員）：掃描資料夾 + 讀取分析需求（指令或文件）→ 推薦載入策略
+   - `BatchLoadSkill`（批次載入器）：依策略執行 direct_concat / aggregate_then_merge / per_file_processing
+   - 設計理念：需求驅動資料處理，先評估再決定策略，策略跟下游分析目的有關
+
+3. **自動實驗技能**：
+   - `AutoExperimentSkill`：自動規劃網格搜尋 → 逐輪訓練+評估 → 記錄到 JSONL → 排行榜
+   - 支援 `power_curve_nbm`、`fault_classifier`、`model_comparison` 三種模式
+   - 與 ExperimentTracker 的 JSONL 格式相容
+
+4. **警報事件清單處理**：
+   - `AlarmProcessorSkill`：將離散警報事件轉為時間序列特徵
+   - 自動偵測欄位格式（時間戳、警報碼、嚴重度、元件、持續時間）
+   - 產出：每期間警報次數/持續時間、嚴重度統計、MTBF、one-hot 編碼
+   - 輸出可直接與 SCADA 資料合併
+
+**端到端整合驗證**（合成 3000 筆資料）：
+```
+合成 SCADA → TurbineProfiler（2071 kW, 5.5 m/s）
+  → 特徵工程（8 → 21 欄位）
+  → DataInspector（3 檔案, 策略: aggregate_then_merge）
+  → BatchLoad（3/3 合併成功）
+  → AutoExperiment（4 輪, 最佳 R²=0.9978）
+  → 排行榜 + JSONL 記錄 ✅
+```
+
+**產出**：
+- [x] `TurbineProfile` dataclass + `from_profiler_dict()` 工廠方法
+- [x] `DataInspectorSkill` + `BatchLoadSkill`（多檔案載入）
+- [x] `AutoExperimentSkill`（自動實驗循環）
+- [x] `AlarmProcessorSkill`（警報事件處理）
+- [x] 新增 62 個測試，全套 368 passed
+- [x] PR #17 合併
+
+**下一步規劃**：
+- RAG 知識庫（BGE-3 本地嵌入模型 + ChromaDB，串接風機手冊）
+- 戰情中心介面（MissionView — 任務進行時自動切換，右側即時圖表面板）
+- 主題系統（Theme Pack — 頭像/圖標/配色/底圖獨立可替換）
 
 ---
 
@@ -431,10 +487,10 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 
 | 指標 | 數值 |
 |------|------|
-| Python 原始碼檔案 | 85+ |
+| Python 原始碼檔案 | 90+ |
 | 前端元件 (TSX/TS) | 23 |
-| 測試檔案 / 行數 | 13 / 3,400+ |
-| 技能模組 | 6 (scada_ingestion, scada_cleaning, fault_classification, nbm_training, rul_prediction, domain_feature_extraction) |
+| 測試檔案 / 測試數 | 17 / 368 |
+| 技能模組 | 10 (scada_ingestion, scada_cleaning, turbine_profiler, domain_feature_extraction, fault_classification, nbm_training, rul_prediction, data_inspector, batch_load, auto_experiment, alarm_processor) |
 | YAML 代理定義 | 22 (12 core + 10 hirable) |
 | ML 模型 | 3 (NBM, FaultClassifier, RUL) |
 | REST API 端點 | 30+ |
@@ -442,7 +498,7 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 | 型別覆蓋率 | 100% (type hints) |
 | Linter | ruff (strict) |
 | Formatter | black (99 chars) |
-| 預估總程式碼行數 | ~15,000+ 行 |
+| 預估總程式碼行數 | ~18,000+ 行 |
 
 ---
 
@@ -465,3 +521,7 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 | ADR-13 | 12 核心 + 按需聘用 | 42→12 核心精簡，其餘按需聘用，減少啟動負擔 |
 | ADR-14 | SkillComposingAgent 通用代理 | 大多數代理不需獨立 class，由 YAML task_routing 驅動 |
 | ADR-15 | 新舊系統並行 | 漸進式遷移，不一次性破壞現有功能 |
+| ADR-16 | TurbineProfile dataclass | 統一風機參數傳遞，消除各模組各自硬編碼 |
+| ADR-17 | DataInspector + BatchLoad 分離 | 先檢視再載入，策略由分析目的驅動 |
+| ADR-18 | AutoExperiment 網格搜尋 | 自動化實驗循環，JSONL 記錄與 ExperimentTracker 相容 |
+| ADR-19 | AlarmProcessor 事件→時間序列 | 離散警報轉為固定頻率 DataFrame，可與 SCADA 合併 |
