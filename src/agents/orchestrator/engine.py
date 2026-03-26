@@ -103,7 +103,7 @@ class OrchestrationEngine:
         若代理未實作則退回至模擬進度動畫。
         """
         from src.agents.base import TaskContext
-        from src.agents.registry import agent_instances
+        from src.agents.dynamic_registry import dynamic_registry
 
         agent_model = get_agent(agent_id)
         if not agent_model:
@@ -113,7 +113,7 @@ class OrchestrationEngine:
         other_agents = [aid for aid in step.agent_ids if aid != agent_id]
 
         # ── 真實代理路徑 ──
-        real_agent = agent_instances.get(agent_id)
+        real_agent = dynamic_registry.get_instance(agent_id)
         if real_agent is not None:
             ctx = TaskContext(
                 parameters={"step_name": step.name},
@@ -266,9 +266,9 @@ class OrchestrationEngine:
             任務結果 dict。
         """
         from src.agents.base import TaskContext
-        from src.agents.registry import agent_instances
+        from src.agents.dynamic_registry import dynamic_registry
 
-        agent = agent_instances.get(agent_id)
+        agent = dynamic_registry.get_instance(agent_id)
         if agent is None:
             logger.warning(f"代理 {agent_id} 未註冊實例，無法執行真實任務")
             return {"error": f"Agent {agent_id} not registered"}

@@ -95,6 +95,14 @@ def clean_scada_data(
     original_rows = len(df)
     df_clean = df.copy()
 
+    # ── 步驟 0：強制轉換所有可能的數值欄位（處理 "NaN" 字串等問題）──
+    for col in df_clean.columns:
+        if df_clean[col].dtype == object:
+            converted = pd.to_numeric(df_clean[col], errors="coerce")
+            # 如果超過 50% 的值能轉成數值，就視為數值欄位
+            if converted.notna().sum() > len(converted) * 0.5:
+                df_clean[col] = converted
+
     # ── 步驟 1：移除重複時間戳記 ──
     duplicates_before = df_clean.index.duplicated().sum()
     df_clean = df_clean[~df_clean.index.duplicated(keep="first")]

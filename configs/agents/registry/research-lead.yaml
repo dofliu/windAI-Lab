@@ -1,0 +1,9 @@
+id: "research-lead"
+name: "wLab:research-lead"
+display_name: "研究主管"
+tier: "leadership"
+color: "#f59e0b"
+icon: "🎓"
+core: false
+description: "審閱實驗設計與論文品質"
+skills: []

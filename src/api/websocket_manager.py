@@ -100,6 +100,16 @@ class WebSocketManager:
         }
         await self.broadcast(message)
 
+    async def broadcast_file_event(self, event_data: dict[str, Any]) -> None:
+        """廣播檔案監控事件（偵測到新檔案 / 處理完成 / 錯誤）。
+
+        event_data 的 type 欄位：
+        - "file_detected": 偵測到新檔案
+        - "file_processed": 檔案已自動載入並分析完成
+        - "file_error": 檔案處理失敗
+        """
+        await self.broadcast(event_data)
+
 
 # 全域單例實例
 manager = WebSocketManager()

@@ -1,18 +1,39 @@
 import { useState, useEffect } from 'react'
 import { Agent, WorkLog } from '../types/agent'
 import AgentDetail from './AgentDetail'
+import AgentManagement from './AgentManagement'
+import FileWatcherStatus from './FileWatcherStatus'
 import KnowledgeBasePanel from './KnowledgeBasePanel'
 import MLDashboard from './MLDashboard'
 import ScadaDashboard from './ScadaDashboard'
 import WorkflowDAG from './WorkflowDAG'
 import WorkLogPanel from './WorkLogPanel'
 
-type DashTab = 'detail' | 'scada' | 'ml' | 'kb' | 'dag' | 'logs'
+type DashTab = 'detail' | 'scada' | 'ml' | 'kb' | 'dag' | 'hr' | 'logs'
+
+interface FileEventPayload {
+  filename: string
+  path: string
+  turbine_id: string | null
+  size_display: string
+  total_records: number
+  detected_fields: Record<string, string> | null
+  analysis_summary: {
+    numeric_columns: number
+    target_column: string | null
+    top_features: string[]
+    anomaly_columns: number
+  } | null
+  error_message: string | null
+}
 
 interface DashboardViewProps {
   workLogs: WorkLog[]
   selectedAgent?: Agent | null
   allAgents?: Agent[]
+  fileEvents?: FileEventPayload[]
+  onHireAgent?: (agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => void
+  onFireAgent?: (agentId: string) => void
 }
 
 const TABS: { id: DashTab; label: string; icon: string; color: string }[] = [
@@ -21,6 +42,7 @@ const TABS: { id: DashTab; label: string; icon: string; color: string }[] = [
   { id: 'ml',     label: 'ML Pipeline', icon: '🧠', color: 'emerald' },
   { id: 'kb',     label: '知識庫',      icon: '📚', color: 'violet' },
   { id: 'dag',    label: '流程圖',      icon: '🔀', color: 'orange' },
+  { id: 'hr',     label: '人事管理',    icon: '👥', color: 'amber' },
   { id: 'logs',   label: '工作日誌',    icon: '📝', color: 'slate' },
 ]
 
@@ -30,10 +52,11 @@ const ACTIVE_COLORS: Record<string, string> = {
   emerald: 'border-emerald-500 text-emerald-400 bg-emerald-500/10',
   violet:  'border-violet-500 text-violet-400 bg-violet-500/10',
   orange:  'border-orange-500 text-orange-400 bg-orange-500/10',
+  amber:   'border-amber-500 text-amber-400 bg-amber-500/10',
   slate:   'border-slate-500 text-slate-300 bg-slate-500/10',
 }
 
-export default function DashboardView({ workLogs, selectedAgent, allAgents = [] }: DashboardViewProps) {
+export default function DashboardView({ workLogs, selectedAgent, allAgents = [], fileEvents = [], onHireAgent, onFireAgent }: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState<DashTab>('scada')
 
   // Auto-switch to detail tab when an agent is selected
@@ -43,6 +66,11 @@ export default function DashboardView({ workLogs, selectedAgent, allAgents = [] 
 
   return (
     <div className="flex h-full flex-col">
+      {/* File Watcher Status */}
+      <div className="shrink-0 px-4 pt-2">
+        <FileWatcherStatus fileEvents={fileEvents} />
+      </div>
+
       {/* Tab bar */}
       <div className="flex shrink-0 items-center gap-1 border-b border-slate-700/50 bg-slate-800/60 px-4 py-1.5">
         {TABS.map((tab) => {
@@ -88,6 +116,8 @@ export default function DashboardView({ workLogs, selectedAgent, allAgents = [] 
           <KnowledgeBasePanel />
         ) : activeTab === 'dag' ? (
           <WorkflowDAG agents={allAgents} title="代理協作流程" />
+        ) : activeTab === 'hr' ? (
+          <AgentManagement allAgents={allAgents} onHire={onHireAgent} onFire={onFireAgent} />
         ) : (
           <WorkLogPanel logs={workLogs} />
         )}

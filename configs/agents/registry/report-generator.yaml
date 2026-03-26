@@ -1,0 +1,14 @@
+id: "report-generator"
+name: "wRes:report-generator"
+display_name: "報告產生器"
+tier: "research"
+color: "#06b6d4"
+icon: "📄"
+core: false
+description: "自動產出分析報告"
+skills:
+  - "scada_ingestion"
+  - "domain_feature_extraction"
+task_routing:
+  - match: ["report", "報告", "產出"]
+    pipeline: ["scada_ingestion", "domain_feature_extraction"]

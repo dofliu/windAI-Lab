@@ -1,0 +1,12 @@
+id: "frontend-dev"
+name: "wEng:frontend-dev"
+display_name: "前端開發師"
+tier: "engineering"
+color: "#f97316"
+icon: "🎨"
+core: false
+description: "React 前端開發"
+skills: []
+task_routing:
+  - match: ["frontend", "前端", "UI"]
+    pipeline: []

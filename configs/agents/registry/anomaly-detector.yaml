@@ -1,0 +1,12 @@
+id: "anomaly-detector"
+name: "wAI:anomaly-detector"
+display_name: "異常偵測師"
+tier: "ai-ml"
+color: "#8b5cf6"
+icon: "🔍"
+core: true
+description: "使用統計方法與機器學習偵測風機運行異常"
+skills: ["scada_ingestion", "scada_cleaning"]
+task_routing:
+  - match: ["anomaly", "異常", "偵測"]
+    pipeline: ["scada_ingestion", "scada_cleaning"]

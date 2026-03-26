@@ -43,6 +43,7 @@ COLUMN_PATTERNS: dict[str, list[str]] = {
         "amb_windspeed", "amb_windspeed_avg",  # EDP
         "wind_speed_mean",  # Penmanshiel
         "mean_wind", "avg_wind", "ws",
+        "windspeed(m/s)",  # 含單位格式
     ],
     "power": [
         "active_power", "active power",  # 最優先：明確的有功功率
@@ -57,10 +58,12 @@ COLUMN_PATTERNS: dict[str, list[str]] = {
         "rotor_speed", "rotor speed", "rotorspeed",
         "rs_mean", "rs_avg", "omega",
         "gen_rpm", "rotor_rpm", "generator_speed",
+        "genspeed",  # H05|GenSpeed 格式
     ],
     "blade_pitch": [
         "blade_pitch", "pitch_angle", "blade pitch",
         "pitch_mean", "pitch_avg", "pitch",
+        "bladeangle", "blade1angle", "blade2angle", "blade3angle",
     ],
     "nacelle_direction": [
         "nacelle_direction", "nacelle_dir", "yaw_angle",
@@ -126,29 +129,42 @@ def _match_column(
         "reactive",  # 排除無功功率
     ]
 
-    # 第一輪：完全匹配（欄位名 == 關鍵字）
+    def _normalize(s: str) -> str:
+        """正規化欄位名稱：去除前綴（如 H05|）、單位（如 (kW)）、統一分隔符。"""
+        # 去除設備前綴（如 "H05|Power(kW)" → "Power(kW)"）
+        if "|" in s:
+            s = s.split("|", 1)[-1]
+        # 去除括號內的單位（如 "Power(kW)" → "Power"）
+        s = re.sub(r"\([^)]*\)", "", s)
+        return s.lower().replace(" ", "_").strip("_")
+
+    # 建立正規化後的欄位映射
+    norm_cols = {col: _normalize(col) for col in columns}
+
+    # 第一輪：完全匹配（正規化後的欄位名 == 關鍵字）
     for pat in patterns:
-        for col in columns:
-            if col.lower().replace(" ", "_").strip() == pat.lower().replace(" ", "_"):
+        pat_n = pat.lower().replace(" ", "_")
+        for col, nc in norm_cols.items():
+            if nc == pat_n:
                 return col
 
     # 第二輪：包含匹配（排除統計量欄位），優先 _mean/_avg
     for pat in patterns:
-        for col in columns:
-            cl = col.lower()
-            if pat.lower() in cl.replace(" ", "_") or pat.lower().replace("_", " ") in cl:
-                if any(s in cl for s in ["_mean", "_avg", "mean_", "avg_"]):
+        pat_n = pat.lower()
+        for col, nc in norm_cols.items():
+            if pat_n in nc or pat_n.replace("_", "") in nc:
+                if any(s in nc for s in ["_mean", "_avg", "mean_", "avg_"]):
                     return col
 
     # 第三輪：包含匹配（排除統計量）
     for pat in patterns:
-        for col in columns:
-            cl = col.lower()
-            if pat.lower() in cl.replace(" ", "_") or pat.lower().replace("_", " ") in cl:
-                if not any(ex in cl for ex in exclude):
+        pat_n = pat.lower()
+        for col, nc in norm_cols.items():
+            if pat_n in nc or pat_n.replace("_", "") in nc:
+                if not any(ex in nc for ex in exclude):
                     return col
 
-    # 第四輪：任何包含匹配
+    # 第四輪：原始欄位名包含匹配（fallback）
     for pat in patterns:
         for col in columns:
             if pat.lower() in col.lower():

@@ -14,6 +14,7 @@ interface Mission {
   progressLabels: Record<string, string[]>
 }
 
+/** 任務流程定義 — 只使用 12 個核心代理 */
 const MISSIONS: Mission[] = [
   {
     name: '風機故障診斷',
@@ -32,77 +33,43 @@ const MISSIONS: Mission[] = [
     },
   },
   {
-    name: '風能預測論文撰寫',
-    agentIds: ['paper-writer', 'literature-reviewer', 'research-lead'],
+    name: '功率曲線分析',
+    agentIds: ['power-curve-expert', 'scada-processor', 'feature-engineer'],
     tasks: {
-      'paper-writer': '撰寫方法論章節',
-      'literature-reviewer': '整理相關文獻比較表',
-      'research-lead': '審閱實驗設計方案',
-    },
-    progressLabels: {
-      'paper-writer': ['擬定大綱', '撰寫初稿', '修訂措辭', '排版校對'],
-      'literature-reviewer': ['文獻搜索', '篩選分類', '比較整理', '引用彙整'],
-      'research-lead': ['閱讀草稿', '方法審查', '結果驗證', '綜合評語'],
-    },
-  },
-  {
-    name: 'ML 模型訓練實驗',
-    agentIds: ['model-trainer', 'experiment-tracker', 'hyperparameter-tuner', 'feature-engineer'],
-    tasks: {
-      'model-trainer': '訓練 XGBoost 功率預測模型',
-      'experiment-tracker': '記錄實驗參數至 MLflow',
-      'hyperparameter-tuner': '執行 Optuna 超參數搜索',
+      'power-curve-expert': '訓練 NBM 功率曲線模型',
+      'scada-processor': '載入清洗後的 SCADA 資料',
       'feature-engineer': '計算風速-功率特徵',
     },
     progressLabels: {
-      'model-trainer': ['載入資料', '模型訓練', '交叉驗證', '儲存模型'],
-      'experiment-tracker': ['初始化 run', '記錄參數', '記錄指標', '產出報告'],
-      'hyperparameter-tuner': ['定義空間', '搜索中...', '最佳組合', '回報結果'],
+      'power-curve-expert': ['資料篩選', 'NBM 訓練', '偏差分析', '報告產出'],
+      'scada-processor': ['讀取檔案', '格式轉換', '資料對齊', '輸出完成'],
       'feature-engineer': ['原始特徵', '衍生計算', '重要度排序', '輸出完成'],
     },
   },
   {
-    name: 'RAG 知識庫建置',
-    agentIds: ['rag-architect', 'rag-curator', 'backend-dev'],
+    name: '異常偵測分析',
+    agentIds: ['anomaly-detector', 'scada-processor', 'maintenance-planner'],
+    tasks: {
+      'anomaly-detector': '執行多策略異常偵測',
+      'scada-processor': '準備分析用資料集',
+      'maintenance-planner': '根據結果排定維護計畫',
+    },
+    progressLabels: {
+      'anomaly-detector': ['Z-score', 'IQR 偵測', 'IF 模型', '結果彙整'],
+      'scada-processor': ['載入資料', '資料清洗', '特徵準備', '輸出完成'],
+      'maintenance-planner': ['風險評估', '排程規劃', '資源分配', '計畫產出'],
+    },
+  },
+  {
+    name: 'RAG 知識庫更新',
+    agentIds: ['rag-architect', 'paper-writer'],
     tasks: {
       'rag-architect': '優化向量檢索管線',
-      'rag-curator': '索引新批次論文文獻',
-      'backend-dev': '實作 RAG API 端點',
+      'paper-writer': '整理新增文獻摘要',
     },
     progressLabels: {
       'rag-architect': ['分析查詢', '優化索引', '測試召回', '效能調校'],
-      'rag-curator': ['解析文件', '切割分段', '向量嵌入', '索引建置'],
-      'backend-dev': ['API 設計', '端點實作', '錯誤處理', '整合測試'],
-    },
-  },
-  {
-    name: '風場資料品質分析',
-    agentIds: ['wind-resource-analyst', 'wake-analyst', 'power-curve-expert', 'data-validator'],
-    tasks: {
-      'wind-resource-analyst': '分析風場資源分佈',
-      'wake-analyst': '模擬尾流效應影響',
-      'power-curve-expert': '建立功率曲線模型',
-      'data-validator': '驗證感測器資料範圍',
-    },
-    progressLabels: {
-      'wind-resource-analyst': ['風速統計', 'Weibull 擬合', '風花圖', '發電預估'],
-      'wake-analyst': ['風場建模', '尾流模擬', '效應計算', '結果匯出'],
-      'power-curve-expert': ['資料篩選', 'NBM 訓練', '偏差分析', '報告產出'],
-      'data-validator': ['範圍檢查', '一致性驗證', '品質標記', '結果彙整'],
-    },
-  },
-  {
-    name: '前端儀表板開發',
-    agentIds: ['frontend-dev', 'api-designer', 'devops-engineer'],
-    tasks: {
-      'frontend-dev': '實作即時監控圖表元件',
-      'api-designer': '設計 WebSocket 訊息格式',
-      'devops-engineer': '設定 CI/CD 自動部署流程',
-    },
-    progressLabels: {
-      'frontend-dev': ['元件設計', '實作邏輯', '樣式調整', '效能優化'],
-      'api-designer': ['格式定義', '文件撰寫', '範例測試', '版本確認'],
-      'devops-engineer': ['腳本撰寫', '流程設定', '部署測試', '監控確認'],
+      'paper-writer': ['文獻整理', '摘要撰寫', '格式校對', '索引更新'],
     },
   },
 ]
@@ -569,7 +536,8 @@ export function useAgentSimulation() {
       }, delay)
     }
 
-    function runMission() {
+    // @ts-ignore: 保留任務邏輯供後端觸發使用
+    function _runMission() {
       if (cancelled) return
       missionActiveRef.current = true
       const mission = randomItem(MISSIONS)
@@ -686,8 +654,8 @@ export function useAgentSimulation() {
                 missionActiveRef.current = false
                 lastMissionEndRef.current = Date.now()
 
-                // ═══ Schedule next mission ═══
-                sched(runMission, 6000 + Math.random() * 10000)
+                // ═══ Schedule next mission (disabled in simulation mode) ═══
+                // sched(_runMission, 6000 + Math.random() * 10000)
               }, 4000)
             }, 500)
           }, 80)
@@ -695,11 +663,13 @@ export function useAgentSimulation() {
       }, 7500)
     }
 
-    // Start first mission after 2s
-    sched(runMission, 2000)
-    // Start idle chatter
+    // 模擬模式：不自動啟動任務，只保留心情狀態
+    // 真正的任務由後端 orchestration engine 或 FileWatcher 觸發
+    // sched(runMission, 2000)
+
+    // Start idle chatter (心情氣泡)
     schedIdleChat()
-    // Start auto tea
+    // Start auto tea/game (休息活動)
     sched(schedAutoTea, 8000)
 
     return () => {

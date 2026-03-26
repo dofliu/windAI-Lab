@@ -37,21 +37,74 @@ logger = get_logger("api.main")
 # 工作日誌記憶體儲存（後續可替換為資料庫）
 _work_logs: list[WorkLogEntry] = []
 
+# 檔案監控服務全域實例
+_file_watcher: Any = None
+
+
+async def _auto_dispatch_workflow(turbine_id: str, event: Any) -> None:
+    """檔案偵測後自動派任代理工作流程。
+
+    根據偵測到的欄位自動選擇合適的工作流程：
+    - 有 wind_speed + power → 資料清洗 + 功率曲線分析
+    - 有 generator_temp / vibration → 故障診斷
+    - 其他 → 基本資料載入 + 特徵探索
+    """
+    from src.agents.orchestrator.engine import engine as orch_engine
+    from src.agents.orchestrator.workflows import (
+        create_data_clean_workflow,
+        create_data_load_workflow,
+    )
+
+    detected = event.detected_fields or {}
+    has_wind_power = "wind_speed" in detected and "power" in detected
+
+    try:
+        if has_wind_power:
+            # 有風速+功率 → 執行完整資料清洗流程
+            workflow = create_data_clean_workflow(turbine_id)
+            logger.info(f"自動派任資料清洗工作流程：{turbine_id}")
+        else:
+            # 只做基本資料載入+特徵探索
+            workflow = create_data_load_workflow(turbine_id)
+            logger.info(f"自動派任資料載入工作流程：{turbine_id}")
+
+        await orch_engine.run_workflow_background(workflow)
+    except Exception as e:
+        logger.error(f"自動派任工作流程失敗：{e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """應用程式生命週期管理：啟動與關閉時的初始化與清理。"""
-    from src.agents.registry import agent_instances, bootstrap_agents
+    from src.agents.dynamic_registry import dynamic_registry
+    from src.api.agent_registry import enable_dynamic_registry
 
     logger.info("WindAI Lab API 啟動中...")
-    logger.info(f"已註冊 {len(get_all_agents())} 個代理（狀態）")
 
-    # 初始化代理實例與 MessageBus
-    bootstrap_agents()
-    logger.info(f"已初始化 {agent_instances.count} 個代理實例（邏輯）")
+    # ═══ 新架構：YAML + 技能 + 聘用制 ═══
+    spec_count = dynamic_registry.load_specs()
+    core_count = dynamic_registry.bootstrap_core()
+    enable_dynamic_registry()  # 切換主資料來源
+    logger.info(
+        f"代理系統已啟動：{spec_count} 定義，{core_count} 核心代理，"
+        f"{spec_count - core_count} 可聘用"
+    )
+
+    # 啟動檔案監控服務
+    from src.services.file_watcher import FileWatcherService
+
+    global _file_watcher  # noqa: PLW0603
+    _file_watcher = FileWatcherService()
+    _file_watcher.set_broadcast(ws_manager.broadcast_file_event)
+    _file_watcher.set_workflow_dispatcher(_auto_dispatch_workflow)
+    await _file_watcher.start()
+    logger.info("FileWatcher 已啟動")
 
     yield
 
+    # 關閉檔案監控
+    if _file_watcher:
+        await _file_watcher.stop()
     logger.info("WindAI Lab API 正在關閉...")
 
 
@@ -112,13 +165,55 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             if data.get("type") == "execute_command":
                 command_name = data.get("command", "")
                 parameters = data.get("parameters", {})
-                if command_name == "diagnose-real":
+
+                # ═══ 新系統：透過 SkillComposingAgent 技能管線執行 ═══
+                if command_name in ("diagnose-real", "diagnose-skill"):
                     import asyncio as _aio
 
-                    from src.agents.orchestrator.real_workflows import run_real_diagnose
+                    from src.agents.dynamic_registry import dynamic_registry
+                    from src.agents.base import TaskContext
 
                     tid = parameters.get("turbine_id", "Kelmarsh_1")
-                    _aio.create_task(run_real_diagnose(tid))
+                    agent = dynamic_registry.get_instance("fault-diagnostician")
+                    if agent:
+                        ctx = TaskContext(parameters={"turbine_id": tid})
+                        _aio.create_task(agent.run_task(f"diagnose {tid}", ctx))
+                        await ws_manager.broadcast({
+                            "type": "work_log_entry",
+                            "timestamp": datetime.now().isoformat(),
+                            "payload": {
+                                "id": str(uuid.uuid4()),
+                                "agent_id": "system",
+                                "agent_name": "WindAI Lab",
+                                "message": f"已派任故障診斷師分析 {tid}（技能管線）",
+                                "type": "info",
+                            },
+                        })
+
+                elif command_name == "train-nbm":
+                    import asyncio as _aio
+
+                    from src.agents.dynamic_registry import dynamic_registry
+                    from src.agents.base import TaskContext
+
+                    tid = parameters.get("turbine_id", "Kelmarsh_1")
+                    agent = dynamic_registry.get_instance("power-curve-expert")
+                    if agent:
+                        ctx = TaskContext(parameters={"turbine_id": tid})
+                        _aio.create_task(agent.run_task(f"NBM {tid}", ctx))
+
+                elif command_name == "predict-rul":
+                    import asyncio as _aio
+
+                    from src.agents.dynamic_registry import dynamic_registry
+                    from src.agents.base import TaskContext
+
+                    tid = parameters.get("turbine_id", "Kelmarsh_1")
+                    agent = dynamic_registry.get_instance("predictive-modeler")
+                    if agent:
+                        ctx = TaskContext(parameters={"turbine_id": tid})
+                        _aio.create_task(agent.run_task(f"predict RUL {tid}", ctx))
+
                 elif command_name in AVAILABLE_WORKFLOWS:
                     workflow_factory = AVAILABLE_WORKFLOWS[command_name]
                     if command_name == "diagnose":
@@ -179,7 +274,7 @@ async def invoke_agent(agent_id: str, request: InvokeRequest) -> InvokeResponse:
     """
     import asyncio as _aio
 
-    from src.agents.registry import agent_instances
+    from src.agents.dynamic_registry import dynamic_registry
 
     agent = get_agent(agent_id)
     if agent is None:
@@ -187,8 +282,9 @@ async def invoke_agent(agent_id: str, request: InvokeRequest) -> InvokeResponse:
 
     task_id = str(uuid.uuid4())
 
-    # 若有真實代理實例，使用 engine 的真實執行路徑
-    if agent_instances.has(agent_id):
+    # 若有真實代理實例（新/舊系統皆可），使用 engine 的真實執行路徑
+    has_instance = dynamic_registry.get_instance(agent_id) is not None
+    if has_instance:
         _aio.create_task(
             orchestration_engine.execute_agent_task(
                 agent_id=agent_id,
@@ -231,6 +327,73 @@ async def invoke_agent(agent_id: str, request: InvokeRequest) -> InvokeResponse:
         status="accepted",
         message=f"任務已派發給 {agent.display_name}",
     )
+
+
+# ── 聘用 / 解聘 API ──────────────────────────────────────────────
+
+
+@app.post("/api/agents/hire", tags=["代理管理"])
+async def hire_agent(agent_id: str) -> dict[str, Any]:
+    """聘用代理：從可用清單中啟用一個代理。"""
+    from src.agents.dynamic_registry import dynamic_registry
+
+    try:
+        model = await dynamic_registry.hire(agent_id)
+        return {
+            "status": "hired",
+            "agent": model.model_dump(mode="json"),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/agents/fire", tags=["代理管理"])
+async def fire_agent(agent_id: str) -> dict[str, Any]:
+    """解聘代理：將代理設為離線狀態（可重新聘用）。"""
+    from src.agents.dynamic_registry import dynamic_registry
+
+    try:
+        await dynamic_registry.fire(agent_id)
+        return {"status": "fired", "agent_id": agent_id}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/agents/available", tags=["代理管理"])
+async def available_agents() -> dict[str, Any]:
+    """列出可聘用但尚未啟用的代理。"""
+    from src.agents.dynamic_registry import dynamic_registry
+
+    available = dynamic_registry.get_available()
+    return {"total": len(available), "agents": available}
+
+
+@app.get("/api/skills", tags=["技能管理"])
+async def list_skills() -> dict[str, Any]:
+    """列出所有已註冊的技能模組。"""
+    from src.skills.registry import skill_registry
+
+    return {
+        "total": skill_registry.count,
+        "skills": skill_registry.to_dict_list(),
+    }
+
+
+@app.post("/api/agents/{agent_id}/skills", tags=["代理管理"])
+async def update_agent_skills(agent_id: str, skill_ids: list[str]) -> dict[str, Any]:
+    """為代理新增技能。"""
+    from src.agents.dynamic_registry import dynamic_registry
+
+    try:
+        dynamic_registry.upgrade_skills(agent_id, skill_ids)
+        spec = dynamic_registry._specs.get(agent_id)
+        return {
+            "status": "updated",
+            "agent_id": agent_id,
+            "skills": spec.skills if spec else [],
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/logs", response_model=list[WorkLogEntry], tags=["工作日誌"])
@@ -302,13 +465,13 @@ async def list_commands() -> dict:
     """列出所有可用的 slash 指令。"""
     return {
         "commands": [
-            {"name": "diagnose", "description": "風機故障診斷（模擬）", "parameters": ["turbine_id"]},
-            {"name": "diagnose-real", "description": "風機故障診斷（Kelmarsh 真實資料）", "parameters": ["turbine_id"]},
+            {"name": "diagnose-real", "description": "🔧 故障診斷（技能管線：載入→清洗→特徵→分類）", "parameters": ["turbine_id"]},
+            {"name": "train-nbm", "description": "📊 NBM 功率曲線訓練（技能管線）", "parameters": ["turbine_id"]},
+            {"name": "predict-rul", "description": "📈 RUL 壽命預測（技能管線）", "parameters": ["turbine_id"]},
+            {"name": "diagnose", "description": "故障診斷（模擬動畫）", "parameters": ["turbine_id"]},
+            {"name": "data:load", "description": "智慧載入 SCADA 資料", "parameters": ["turbine_id"]},
+            {"name": "data:clean", "description": "自動資料清洗", "parameters": ["turbine_id"]},
             {"name": "lit-search", "description": "系統性文獻搜索", "parameters": ["topic"]},
-            {"name": "data:load", "description": "智慧載入 SCADA 資料（自動偵測格式與欄位）", "parameters": ["turbine_id"]},
-            {"name": "data:clean", "description": "自動資料清洗（去重、插值、異常過濾）", "parameters": ["turbine_id"]},
-            {"name": "ai:train", "description": "端到端 ML 模型訓練（NBM + 故障分類 + RUL）", "parameters": ["turbine_id"]},
-            {"name": "ai:evaluate", "description": "模型效能評估（殘差分析、混淆矩陣）", "parameters": ["turbine_id"]},
         ]
     }
 
@@ -583,6 +746,82 @@ async def discover_sources() -> dict[str, Any]:
     except Exception as e:
         logger.exception("資料來源掃描失敗")
         return {"status": "error", "detail": str(e), "sources": []}
+
+
+# ── 檔案監控 API ─────────────────────────────────────────────────
+
+
+@app.post("/api/file-watcher/start", tags=["檔案監控"])
+async def start_file_watcher(
+    scan_interval: int = 30,
+    auto_analyze: bool = True,
+) -> dict[str, Any]:
+    """啟動檔案監控服務。"""
+    global _file_watcher  # noqa: PLW0603
+    if _file_watcher is None:
+        from src.services.file_watcher import FileWatcherService
+
+        _file_watcher = FileWatcherService(
+            scan_interval=scan_interval, auto_analyze=auto_analyze
+        )
+        _file_watcher.set_broadcast(ws_manager.broadcast_file_event)
+
+    if not _file_watcher.is_running:
+        _file_watcher.scan_interval = scan_interval
+        _file_watcher.auto_analyze = auto_analyze
+        await _file_watcher.start()
+
+    return {"status": "started", **_file_watcher.status}
+
+
+@app.post("/api/file-watcher/stop", tags=["檔案監控"])
+async def stop_file_watcher() -> dict[str, Any]:
+    """停止檔案監控服務。"""
+    if _file_watcher and _file_watcher.is_running:
+        await _file_watcher.stop()
+        return {"status": "stopped"}
+    return {"status": "not_running"}
+
+
+@app.get("/api/file-watcher/status", tags=["檔案監控"])
+async def file_watcher_status() -> dict[str, Any]:
+    """取得檔案監控服務狀態。"""
+    if _file_watcher:
+        return _file_watcher.status
+    return {"running": False, "scan_interval": 0, "known_files": 0, "processed_count": 0}
+
+
+@app.post("/api/file-watcher/scan", tags=["檔案監控"])
+async def force_scan_files(path: str | None = None) -> dict[str, Any]:
+    """強制掃描並處理檔案。可指定路徑或掃描所有未處理檔案。"""
+    if _file_watcher:
+        results = await _file_watcher.force_scan(path)
+        return {"status": "completed", "processed": len(results), "results": results}
+    return {"status": "error", "detail": "FileWatcher 未啟動"}
+
+
+@app.get("/api/file-watcher/history", tags=["檔案監控"])
+async def file_watcher_history() -> dict[str, Any]:
+    """取得已自動處理的檔案歷史記錄。"""
+    if _file_watcher:
+        events = _file_watcher.history
+        return {
+            "total": len(events),
+            "events": [
+                {
+                    "filename": e.filename,
+                    "path": e.path,
+                    "turbine_id": e.turbine_id,
+                    "event_type": e.event_type,
+                    "total_records": e.total_records,
+                    "detected_fields": e.detected_fields,
+                    "analysis_summary": e.analysis_summary,
+                    "error_message": e.error_message,
+                }
+                for e in events[-20:]  # 最近 20 筆
+            ],
+        }
+    return {"total": 0, "events": []}
 
 
 # ── 特徵分析 API ─────────────────────────────────────────────────

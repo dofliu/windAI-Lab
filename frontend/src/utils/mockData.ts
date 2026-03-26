@@ -1,30 +1,20 @@
 import { Agent, WorkLog, OfficeRoom } from '../types/agent'
 
+/**
+ * 核心代理清單 — 對應 configs/agents/registry/ 中 core: true 的 12 個代理。
+ * 模擬模式使用此清單作為初始狀態。
+ * 後端連線後由 WebSocket initial_state 覆蓋。
+ */
 export const initialAgents: Agent[] = [
-  // ── Tier 1: Leadership (wLab:) ──
+  // ── Tier 1: Leadership (wLab:) — 2 core ──
   {
     id: 'project-director',
     name: 'wLab:project-director',
     displayName: '專案總監',
     tier: 'leadership',
-    status: 'working',
-    currentTask: '審核本週研究進度報告',
-    progress: 65,
-    collaboratingWith: ['research-lead'],
+    status: 'idle',
     color: '#f59e0b',
     icon: '👔',
-  },
-  {
-    id: 'research-lead',
-    name: 'wLab:research-lead',
-    displayName: '研究主管',
-    tier: 'leadership',
-    status: 'working',
-    currentTask: '規劃下階段風能預測實驗',
-    progress: 40,
-    collaboratingWith: ['project-director', 'predictive-modeler'],
-    color: '#f59e0b',
-    icon: '🎯',
   },
   {
     id: 'project-manager',
@@ -35,25 +25,15 @@ export const initialAgents: Agent[] = [
     color: '#f59e0b',
     icon: '📋',
   },
-  {
-    id: 'tech-lead',
-    name: 'wLab:tech-lead',
-    displayName: '技術主管',
-    tier: 'leadership',
-    status: 'idle',
-    color: '#f59e0b',
-    icon: '⚙️',
-  },
-
-  // ── Tier 2: Data Engineering (wData:) ──
+  // ── Tier 2: Data (wData:) — 2 core ──
   {
     id: 'scada-processor',
     name: 'wData:scada-processor',
-    displayName: 'SCADA 資料處理師',
+    displayName: 'SCADA 資料工程師',
     tier: 'data',
     status: 'idle',
     color: '#10b981',
-    icon: '📊',
+    icon: '📡',
   },
   {
     id: 'quality-checker',
@@ -64,85 +44,7 @@ export const initialAgents: Agent[] = [
     color: '#10b981',
     icon: '✅',
   },
-  {
-    id: 'etl-engineer',
-    name: 'wData:etl-engineer',
-    displayName: 'ETL 工程師',
-    tier: 'data',
-    status: 'idle',
-    color: '#10b981',
-    icon: '🔄',
-  },
-  {
-    id: 'data-validator',
-    name: 'wData:data-validator',
-    displayName: '資料驗證師',
-    tier: 'data',
-    status: 'idle',
-    color: '#10b981',
-    icon: '🛡️',
-  },
-  {
-    id: 'stream-processor',
-    name: 'wData:stream-processor',
-    displayName: '串流處理師',
-    tier: 'data',
-    status: 'idle',
-    color: '#10b981',
-    icon: '🌊',
-  },
-  {
-    id: 'storage-manager',
-    name: 'wData:storage-manager',
-    displayName: '儲存管理師',
-    tier: 'data',
-    status: 'idle',
-    color: '#10b981',
-    icon: '💾',
-  },
-  {
-    id: 'metadata-curator',
-    name: 'wData:metadata-curator',
-    displayName: '元資料管理師',
-    tier: 'data',
-    status: 'idle',
-    color: '#10b981',
-    icon: '🏷️',
-  },
-  {
-    id: 'pipeline-monitor',
-    name: 'wData:pipeline-monitor',
-    displayName: '管線監控師',
-    tier: 'data',
-    status: 'idle',
-    color: '#10b981',
-    icon: '📡',
-  },
-
-  // ── Tier 3: AI/ML (wAI:) ──
-  {
-    id: 'predictive-modeler',
-    name: 'wAI:predictive-modeler',
-    displayName: '預測模型師',
-    tier: 'ai-ml',
-    status: 'working',
-    currentTask: '訓練風速時序預測模型 (LSTM)',
-    progress: 78,
-    collaboratingWith: ['rag-architect'],
-    color: '#8b5cf6',
-    icon: '🤖',
-  },
-  {
-    id: 'rag-architect',
-    name: 'wAI:rag-architect',
-    displayName: 'RAG 架構師',
-    tier: 'ai-ml',
-    status: 'waiting',
-    currentTask: '等待文獻向量資料庫索引完成',
-    progress: 92,
-    color: '#8b5cf6',
-    icon: '🔍',
-  },
+  // ── Tier 3: AI/ML (wAI:) — 5 core ──
   {
     id: 'fault-diagnostician',
     name: 'wAI:fault-diagnostician',
@@ -153,58 +55,13 @@ export const initialAgents: Agent[] = [
     icon: '🔧',
   },
   {
-    id: 'model-trainer',
-    name: 'wAI:model-trainer',
-    displayName: '模型訓練師',
-    tier: 'ai-ml',
-    status: 'idle',
-    color: '#8b5cf6',
-    icon: '🏋️',
-  },
-  {
-    id: 'experiment-tracker',
-    name: 'wAI:experiment-tracker',
-    displayName: '實驗追蹤師',
+    id: 'predictive-modeler',
+    name: 'wAI:predictive-modeler',
+    displayName: '預測模型師',
     tier: 'ai-ml',
     status: 'idle',
     color: '#8b5cf6',
     icon: '📈',
-  },
-  {
-    id: 'hyperparameter-tuner',
-    name: 'wAI:hyperparameter-tuner',
-    displayName: '超參數調整師',
-    tier: 'ai-ml',
-    status: 'idle',
-    color: '#8b5cf6',
-    icon: '🎛️',
-  },
-  {
-    id: 'feature-engineer',
-    name: 'wAI:feature-engineer',
-    displayName: '特徵工程師',
-    tier: 'ai-ml',
-    status: 'idle',
-    color: '#8b5cf6',
-    icon: '🧬',
-  },
-  {
-    id: 'model-evaluator',
-    name: 'wAI:model-evaluator',
-    displayName: '模型評估師',
-    tier: 'ai-ml',
-    status: 'idle',
-    color: '#8b5cf6',
-    icon: '📐',
-  },
-  {
-    id: 'inference-deployer',
-    name: 'wAI:inference-deployer',
-    displayName: '推論部署師',
-    tier: 'ai-ml',
-    status: 'idle',
-    color: '#8b5cf6',
-    icon: '🚀',
   },
   {
     id: 'anomaly-detector',
@@ -213,28 +70,27 @@ export const initialAgents: Agent[] = [
     tier: 'ai-ml',
     status: 'idle',
     color: '#8b5cf6',
-    icon: '🚨',
-  },
-
-  // ── Tier 4: Domain Knowledge (wDomain:) ──
-  {
-    id: 'iec-specialist',
-    name: 'wDomain:iec-specialist',
-    displayName: 'IEC 標準專家',
-    tier: 'domain',
-    status: 'idle',
-    color: '#ec4899',
-    icon: '📜',
+    icon: '🔍',
   },
   {
-    id: 'wake-analyst',
-    name: 'wDomain:wake-analyst',
-    displayName: '尾流分析師',
-    tier: 'domain',
+    id: 'feature-engineer',
+    name: 'wAI:feature-engineer',
+    displayName: '特徵工程師',
+    tier: 'ai-ml',
     status: 'idle',
-    color: '#ec4899',
-    icon: '🌀',
+    color: '#8b5cf6',
+    icon: '⚙️',
   },
+  {
+    id: 'rag-architect',
+    name: 'wAI:rag-architect',
+    displayName: 'RAG 架構師',
+    tier: 'ai-ml',
+    status: 'idle',
+    color: '#8b5cf6',
+    icon: '🧠',
+  },
+  // ── Tier 4: Domain (wDomain:) — 2 core ──
   {
     id: 'power-curve-expert',
     name: 'wDomain:power-curve-expert',
@@ -242,7 +98,7 @@ export const initialAgents: Agent[] = [
     tier: 'domain',
     status: 'idle',
     color: '#ec4899',
-    icon: '📉',
+    icon: '📊',
   },
   {
     id: 'maintenance-planner',
@@ -253,163 +109,34 @@ export const initialAgents: Agent[] = [
     color: '#ec4899',
     icon: '🔩',
   },
-  {
-    id: 'wind-resource-analyst',
-    name: 'wDomain:wind-resource-analyst',
-    displayName: '風力資源分析師',
-    tier: 'domain',
-    status: 'idle',
-    color: '#ec4899',
-    icon: '🌬️',
-  },
-  {
-    id: 'regulatory-advisor',
-    name: 'wDomain:regulatory-advisor',
-    displayName: '法規顧問',
-    tier: 'domain',
-    status: 'idle',
-    color: '#ec4899',
-    icon: '⚖️',
-  },
-
-  // ── Tier 5: Software Engineering (wEng:) ──
-  {
-    id: 'backend-dev',
-    name: 'wEng:backend-dev',
-    displayName: '後端開發師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🖥️',
-  },
-  {
-    id: 'frontend-dev',
-    name: 'wEng:frontend-dev',
-    displayName: '前端開發師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🎨',
-  },
-  {
-    id: 'devops-engineer',
-    name: 'wEng:devops-engineer',
-    displayName: 'DevOps 工程師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🔧',
-  },
-  {
-    id: 'api-designer',
-    name: 'wEng:api-designer',
-    displayName: 'API 設計師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🔌',
-  },
-  {
-    id: 'database-admin',
-    name: 'wEng:database-admin',
-    displayName: '資料庫管理師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🗄️',
-  },
-  {
-    id: 'test-engineer',
-    name: 'wEng:test-engineer',
-    displayName: '測試工程師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🧪',
-  },
-  {
-    id: 'security-analyst',
-    name: 'wEng:security-analyst',
-    displayName: '安全分析師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '🔒',
-  },
-  {
-    id: 'infra-manager',
-    name: 'wEng:infra-manager',
-    displayName: '基礎設施管理師',
-    tier: 'engineering',
-    status: 'idle',
-    color: '#f97316',
-    icon: '☁️',
-  },
-
-  // ── Tier 6: Research & Docs (wRes:) ──
+  // ── Tier 6: Research (wRes:) — 1 core ──
   {
     id: 'paper-writer',
     name: 'wRes:paper-writer',
     displayName: '論文撰寫員',
     tier: 'research',
-    status: 'working',
-    currentTask: '撰寫風力發電預測論文第三章',
-    progress: 55,
-    collaboratingWith: ['literature-reviewer'],
-    color: '#06b6d4',
-    icon: '📝',
-  },
-  {
-    id: 'literature-reviewer',
-    name: 'wRes:literature-reviewer',
-    displayName: '文獻審閱員',
-    tier: 'research',
-    status: 'completed',
-    currentTask: '已完成 12 篇風能 ML 文獻摘要',
-    color: '#06b6d4',
-    icon: '📚',
-  },
-  {
-    id: 'teaching-assistant',
-    name: 'wRes:teaching-assistant',
-    displayName: '教學助理',
-    tier: 'research',
     status: 'idle',
     color: '#06b6d4',
-    icon: '🎓',
-  },
-  {
-    id: 'rag-curator',
-    name: 'wRes:rag-curator',
-    displayName: 'RAG 知識庫管理員',
-    tier: 'research',
-    status: 'idle',
-    color: '#06b6d4',
-    icon: '📦',
-  },
-  {
-    id: 'report-generator',
-    name: 'wRes:report-generator',
-    displayName: '報告產生器',
-    tier: 'research',
-    status: 'idle',
-    color: '#06b6d4',
-    icon: '📄',
-  },
-  {
-    id: 'data-storyteller',
-    name: 'wRes:data-storyteller',
-    displayName: '資料說書人',
-    tier: 'research',
-    status: 'idle',
-    color: '#06b6d4',
-    icon: '📢',
+    icon: '✏️',
   },
 ]
 
+// ── Tier 顏色定義 ──
+
+export const tierColors: Record<string, { bg: string; border: string; text: string; badge: string; accent: string }> = {
+  leadership:  { bg: 'bg-amber-950/30',   border: 'border-amber-700/40',   text: 'text-amber-400',   badge: 'bg-amber-500/20 text-amber-300',   accent: '#f59e0b' },
+  data:        { bg: 'bg-emerald-950/30',  border: 'border-emerald-700/40', text: 'text-emerald-400', badge: 'bg-emerald-500/20 text-emerald-300', accent: '#10b981' },
+  'ai-ml':     { bg: 'bg-violet-950/30',   border: 'border-violet-700/40',  text: 'text-violet-400',  badge: 'bg-violet-500/20 text-violet-300',  accent: '#8b5cf6' },
+  domain:      { bg: 'bg-rose-950/30',     border: 'border-rose-700/40',    text: 'text-rose-400',    badge: 'bg-rose-500/20 text-rose-300',      accent: '#ec4899' },
+  engineering: { bg: 'bg-orange-950/30',   border: 'border-orange-700/40',  text: 'text-orange-400',  badge: 'bg-orange-500/20 text-orange-300',  accent: '#f97316' },
+  research:    { bg: 'bg-cyan-950/30',     border: 'border-cyan-700/40',    text: 'text-cyan-400',    badge: 'bg-cyan-500/20 text-cyan-300',      accent: '#06b6d4' },
+}
+
+// ── 辦公室房間定義 ──
+
 export const initialRooms: OfficeRoom[] = [
   {
-    id: 'room-leadership',
+    id: 'leadership',
     name: '指揮中心',
     tier: 'leadership',
     agents: initialAgents.filter((a) => a.tier === 'leadership'),
@@ -417,7 +144,7 @@ export const initialRooms: OfficeRoom[] = [
     position: { row: 0, col: 0 },
   },
   {
-    id: 'room-data',
+    id: 'data',
     name: '資料工程室',
     tier: 'data',
     agents: initialAgents.filter((a) => a.tier === 'data'),
@@ -425,7 +152,7 @@ export const initialRooms: OfficeRoom[] = [
     position: { row: 0, col: 1 },
   },
   {
-    id: 'room-ai-ml',
+    id: 'ai-ml',
     name: '模型實驗室',
     tier: 'ai-ml',
     agents: initialAgents.filter((a) => a.tier === 'ai-ml'),
@@ -433,7 +160,7 @@ export const initialRooms: OfficeRoom[] = [
     position: { row: 0, col: 2 },
   },
   {
-    id: 'room-domain',
+    id: 'domain',
     name: '領域知識庫',
     tier: 'domain',
     agents: initialAgents.filter((a) => a.tier === 'domain'),
@@ -441,7 +168,7 @@ export const initialRooms: OfficeRoom[] = [
     position: { row: 1, col: 0 },
   },
   {
-    id: 'room-engineering',
+    id: 'engineering',
     name: '軟體工程室',
     tier: 'engineering',
     agents: initialAgents.filter((a) => a.tier === 'engineering'),
@@ -449,7 +176,7 @@ export const initialRooms: OfficeRoom[] = [
     position: { row: 1, col: 1 },
   },
   {
-    id: 'room-research',
+    id: 'research',
     name: '研究室',
     tier: 'research',
     agents: initialAgents.filter((a) => a.tier === 'research'),
@@ -458,168 +185,56 @@ export const initialRooms: OfficeRoom[] = [
   },
 ]
 
+// ── 模擬用初始日誌 ──
+
 export const initialWorkLogs: WorkLog[] = [
   {
-    id: 'log-1',
-    timestamp: new Date(Date.now() - 300000),
-    agentId: 'predictive-modeler',
-    agentName: '預測模型師',
-    message: '開始訓練 LSTM 風速預測模型，使用過去 3 年數據',
-    type: 'info',
-  },
-  {
-    id: 'log-2',
-    timestamp: new Date(Date.now() - 240000),
-    agentId: 'literature-reviewer',
-    agentName: '文獻審閱員',
-    message: '完成 12 篇風能機器學習相關論文的摘要整理',
-    type: 'success',
-  },
-  {
-    id: 'log-3',
-    timestamp: new Date(Date.now() - 180000),
-    agentId: 'rag-architect',
-    agentName: 'RAG 架構師',
-    message: '向量資料庫索引進度 92%，等待剩餘文件處理',
-    type: 'warning',
-  },
-  {
-    id: 'log-4',
-    timestamp: new Date(Date.now() - 120000),
-    agentId: 'paper-writer',
-    agentName: '論文撰寫員',
-    message: '正在撰寫風力發電預測論文第三章：方法論',
-    type: 'info',
-  },
-  {
-    id: 'log-5',
-    timestamp: new Date(Date.now() - 60000),
-    agentId: 'project-director',
-    agentName: '專案總監',
-    message: '已收到本週進度報告，正在審核各團隊成果',
-    type: 'info',
-  },
-  {
-    id: 'log-6',
-    timestamp: new Date(Date.now() - 30000),
-    agentId: 'research-lead',
-    agentName: '研究主管',
-    message: '與預測模型師討論下階段實驗設計方案',
+    id: 'log-0',
+    timestamp: new Date(),
+    agentId: 'system',
+    agentName: 'WindAI Lab',
+    message: '系統已啟動，12 位核心代理就緒',
     type: 'info',
   },
 ]
 
-export const tierColors: Record<string, { bg: string; border: string; accent: string }> = {
-  leadership: {
-    bg: 'bg-amber-950/30',
-    border: 'border-amber-700/40',
-    accent: 'text-amber-400',
-  },
-  'ai-ml': {
-    bg: 'bg-violet-950/30',
-    border: 'border-violet-700/40',
-    accent: 'text-violet-400',
-  },
-  research: {
-    bg: 'bg-cyan-950/30',
-    border: 'border-cyan-700/40',
-    accent: 'text-cyan-400',
-  },
-  data: {
-    bg: 'bg-emerald-950/30',
-    border: 'border-emerald-700/40',
-    accent: 'text-emerald-400',
-  },
-  domain: {
-    bg: 'bg-rose-950/30',
-    border: 'border-rose-700/40',
-    accent: 'text-rose-400',
-  },
-  engineering: {
-    bg: 'bg-orange-950/30',
-    border: 'border-orange-700/40',
-    accent: 'text-orange-400',
-  },
-}
+// ── 模擬用隨機任務 ──
 
 export const simulationTasks: Record<string, string[]> = {
   'project-director': [
     '審核本週研究進度報告',
-    '分配新研究任務給各團隊',
-    '與外部合作單位視訊會議',
-    '彙整季度研究成果摘要',
-  ],
-  'research-lead': [
-    '規劃下階段風能預測實驗',
-    '審閱論文初稿並提供修改建議',
-    '設計新的 benchmark 測試方案',
-    '統整各研究員的數據分析結果',
-  ],
-  'predictive-modeler': [
-    '訓練風速時序預測模型 (LSTM)',
-    '調整 Transformer 模型超參數',
-    '比較不同模型的 MAE 與 RMSE',
-    '處理感測器異常數據清洗',
-  ],
-  'rag-architect': [
-    '建構風能文獻向量資料庫',
-    '優化檢索增強生成管線',
-    '測試新的 embedding 模型效果',
-    '整合多語言論文檢索功能',
-  ],
-  'fault-diagnostician': [
-    '分析風機葉片振動異常訊號',
-    '建立故障預測分類模型',
-    '處理 SCADA 系統數據匯入',
-    '生成設備健康狀態報告',
-  ],
-  'paper-writer': [
-    '撰寫風力發電預測論文第三章',
-    '修改論文引言與相關工作段落',
-    '整理實驗結果圖表',
-    '校對論文格式符合期刊要求',
-  ],
-  'literature-reviewer': [
-    '搜尋最新風能 AI 相關論文',
-    '整理論文摘要與重點比較表',
-    '分析研究趨勢與技術缺口',
-    '更新文獻資料庫分類標籤',
-  ],
-  'teaching-assistant': [
-    '準備深度學習課程教材',
-    '批改學生程式作業',
-    '整理常見問題 FAQ 文件',
-    '製作風能基礎知識簡報',
+    '協調跨團隊任務分配',
+    '召開專案進度會議',
   ],
   'scada-processor': [
     '匯入新批次 SCADA 原始資料',
     '執行 10 分鐘均值重採樣',
-    '解析感測器通道對應表',
     '轉換時區至 UTC 標準',
+  ],
+  'fault-diagnostician': [
+    '分析風機葉片振動異常訊號',
+    '建立故障預測分類模型',
+    '生成設備健康狀態報告',
+  ],
+  'predictive-modeler': [
+    '訓練風速時序預測模型',
+    '比較不同模型的 MAE 與 RMSE',
+    '執行 RUL 退化趨勢分析',
+  ],
+  'power-curve-expert': [
+    '訓練 NBM 功率曲線模型',
+    '分析功率偏差趨勢',
+    '產出功率曲線偏差報告',
   ],
   'quality-checker': [
     '執行資料品質報告生成',
-    '標記可疑資料點 (quality flag)',
     '驗證感測器量測範圍',
     '統計各欄位缺失率',
   ],
-  'model-trainer': [
-    '啟動 XGBoost 功率預測訓練',
-    '執行交叉驗證 (5-fold CV)',
-    '儲存模型 checkpoint',
-    '記錄訓練超參數至 MLflow',
-  ],
-  'backend-dev': [
-    '實作新 REST API 端點',
-    '優化 WebSocket 訊息格式',
-    '修正資料庫查詢效能',
-    '撰寫 API 整合測試',
-  ],
-  'frontend-dev': [
-    '實作儀表板資料視覺化',
-    '優化虛擬辦公室 RWD 佈局',
-    '新增任務看板元件',
-    '修正 WebSocket 重連邏輯',
+  'paper-writer': [
+    '撰寫方法論章節初稿',
+    '整理實驗結果圖表',
+    '校對論文格式',
   ],
 }
 
@@ -627,61 +242,25 @@ export const simulationLogMessages: Record<string, string[]> = {
   'project-director': [
     '已收到本週進度報告，正在審核各團隊成果',
     '已完成任務分配，通知相關成員',
-    '外部合作會議結束，記錄重點事項',
-    '季度報告彙整完成，準備提交',
-  ],
-  'research-lead': [
-    '實驗設計初稿已完成，待團隊討論',
-    '論文修改建議已回覆給撰寫員',
-    'Benchmark 測試方案 v2 已定案',
-    '各研究員數據已彙整至共享資料夾',
-  ],
-  'predictive-modeler': [
-    'LSTM 模型 Epoch 50/100，當前 loss: 0.0032',
-    '超參數搜尋完成，最佳學習率: 0.001',
-    '模型評估完成：MAE=2.31, RMSE=3.15',
-    '異常數據已清洗，共移除 127 筆記錄',
-  ],
-  'rag-architect': [
-    '向量資料庫已新增 350 篇論文索引',
-    'RAG 管線回應延遲優化至 1.2 秒',
-    '新 embedding 模型測試：召回率提升 8%',
-    '多語言檢索模組整合完成',
-  ],
-  'fault-diagnostician': [
-    '偵測到 #7 號風機葉片異常振動頻率',
-    '故障分類模型準確率達 94.7%',
-    'SCADA 數據匯入完成，共 2.3M 筆記錄',
-    '設備健康報告已生成並通知維護團隊',
-  ],
-  'paper-writer': [
-    '第三章方法論段落初稿完成 (2,500 字)',
-    '引言段落已根據審閱意見修改',
-    '已產生 8 張實驗結果圖表',
-    '論文格式檢查通過，符合期刊規範',
-  ],
-  'literature-reviewer': [
-    '本週新增 15 篇相關論文至資料庫',
-    '論文比較表已更新，涵蓋 2024-2025 年研究',
-    '研究趨勢分析報告已完成',
-    '文獻分類標籤已重新整理為 12 個類別',
-  ],
-  'teaching-assistant': [
-    'CNN 章節教材投影片已完成 (45 頁)',
-    '已批改 32 份學生作業，平均分 82.5',
-    'FAQ 文件已更新，新增 8 個常見問題',
-    '風能基礎簡報製作完成，共 30 頁',
   ],
   'scada-processor': [
-    '已匯入 Kelmarsh 風場 Q1 2016 SCADA 資料',
-    '10 分鐘均值重採樣完成，共 13,104 筆',
-    '欄位對應表已更新，涵蓋 42 個感測器通道',
-    '時區轉換完成：GMT+0 → UTC',
+    '已匯入 Kelmarsh 風場 SCADA 資料',
+    '10 分鐘均值重採樣完成',
+  ],
+  'fault-diagnostician': [
+    '故障分類模型準確率達 94.7%',
+    'SCADA 數據匯入完成',
+  ],
+  'predictive-modeler': [
+    '模型評估完成：MAE=2.31, RMSE=3.15',
+    'RUL 退化趨勢分析完成',
   ],
   'quality-checker': [
     '資料品質報告已生成：整體完整度 97.2%',
-    '已標記 234 筆可疑資料 (flag=1)',
-    '風速感測器量測範圍正常：0-35 m/s',
-    '功率欄位缺失率：1.3%',
+    '已標記可疑資料點',
+  ],
+  'paper-writer': [
+    '方法論段落初稿完成',
+    '論文格式檢查通過',
   ],
 }

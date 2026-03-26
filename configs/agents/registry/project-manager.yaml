@@ -1,0 +1,10 @@
+id: "project-manager"
+name: "wLab:project-manager"
+display_name: "專案經理"
+tier: "leadership"
+color: "#f59e0b"
+icon: "📋"
+core: true
+custom_class: "src.agents.leadership.project_manager.ProjectManager"
+description: "管理任務排程、資源分配、進度報告"
+skills: []

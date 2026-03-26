@@ -21,6 +21,9 @@ export default function App() {
      those agents' status overlays on top of the simulation.
      ════════════════════════════════════════════════════════════════ */
 
+  /* ── Hire / Fire state (must be before agents useMemo) ── */
+  const [extraAgents, setExtraAgents] = useState<Agent[]>([])
+
   const backendActiveIds = useMemo(() => {
     if (!hasBackend) return new Set<string>()
     return new Set(
@@ -29,13 +32,21 @@ export default function App() {
   }, [hasBackend, ws.agents])
 
   const agents = useMemo(() => {
-    if (!hasBackend) return sim.agents
-    const wsMap = new Map(ws.agents.map((a) => [a.id, a]))
-    return sim.agents.map((a) => {
-      if (backendActiveIds.has(a.id)) return wsMap.get(a.id) ?? a
-      return a
-    })
-  }, [hasBackend, sim.agents, ws.agents, backendActiveIds])
+    let base: Agent[]
+    if (!hasBackend) {
+      base = sim.agents
+    } else {
+      const wsMap = new Map(ws.agents.map((a) => [a.id, a]))
+      base = sim.agents.map((a) => {
+        if (backendActiveIds.has(a.id)) return wsMap.get(a.id) ?? a
+        return a
+      })
+    }
+    // 合併動態聘用的代理
+    const baseIds = new Set(base.map(a => a.id))
+    const extra = extraAgents.filter(a => !baseIds.has(a.id))
+    return [...base, ...extra]
+  }, [hasBackend, sim.agents, ws.agents, backendActiveIds, extraAgents])
 
   // Rooms (for OfficeWorld pixel mode)
   const rooms = useMemo(
@@ -107,6 +118,24 @@ export default function App() {
     : null
 
   const workingCount = agents.filter((a) => a.status === 'working').length
+
+  /* ── Hire / Fire handlers (simulation mode) ── */
+  const handleHire = useCallback((agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => {
+    const newAgent: Agent = {
+      id: agent.id,
+      name: agent.name,
+      displayName: agent.display_name,
+      tier: agent.tier as Agent['tier'],
+      status: 'idle',
+      color: agent.color,
+      icon: agent.icon,
+    }
+    setExtraAgents(prev => [...prev, newAgent])
+  }, [])
+
+  const handleFire = useCallback((agentId: string) => {
+    setExtraAgents(prev => prev.filter(a => a.id !== agentId))
+  }, [])
 
   /* ── Command routing ── */
   const SIM_COMMANDS = new Set(['bosscall', 'teatime'])
@@ -243,6 +272,9 @@ export default function App() {
               workLogs={workLogs}
               selectedAgent={currentSelected}
               allAgents={agents}
+              fileEvents={ws.fileEvents ?? []}
+              onHireAgent={handleHire}
+              onFireAgent={handleFire}
             />
           </div>
 

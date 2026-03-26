@@ -1,0 +1,12 @@
+id: "literature-reviewer"
+name: "wRes:literature-reviewer"
+display_name: "文獻審閱員"
+tier: "research"
+color: "#06b6d4"
+icon: "📚"
+core: false
+description: "系統性文獻搜尋與比較分析"
+skills: []
+task_routing:
+  - match: ["literature", "文獻", "搜尋", "review"]
+    pipeline: []

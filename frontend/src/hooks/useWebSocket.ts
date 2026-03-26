@@ -16,6 +16,7 @@ export function useWebSocket() {
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([])
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
   const [hasLiveUpdates, setHasLiveUpdates] = useState(false)
+  const [fileEvents, setFileEvents] = useState<any[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
@@ -105,6 +106,42 @@ export function useWebSocket() {
             })
             break
           }
+
+          case 'file_detected':
+          case 'file_processed':
+          case 'file_error': {
+            setFileEvents(prev => {
+              const next = [...prev, msg.payload]
+              return next.length > 50 ? next.slice(-50) : next
+            })
+            break
+          }
+
+          case 'agent_hired': {
+            const newAgent = mapAgent(msg.payload)
+            setAgents(prev => {
+              // Replace if exists (offline→idle), or add new
+              const exists = prev.some(a => a.id === newAgent.id)
+              const next = exists
+                ? prev.map(a => a.id === newAgent.id ? newAgent : a)
+                : [...prev, newAgent]
+              updateRoomsFromAgents(next)
+              return next
+            })
+            break
+          }
+
+          case 'agent_fired': {
+            const firedId = msg.payload.agent_id
+            setAgents(prev => {
+              const next = prev.map(a =>
+                a.id === firedId ? { ...a, status: 'idle' as const, currentTask: undefined } : a
+              ).filter(a => a.id !== firedId)
+              updateRoomsFromAgents(next)
+              return next
+            })
+            break
+          }
         }
       } catch (e) {
         console.error('WebSocket 訊息解析失敗:', e)
@@ -144,5 +181,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents }
 }
