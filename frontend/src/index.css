@@ -3,9 +3,35 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── WindAI Theme CSS Variables（由 ThemeProvider 動態注入） ── */
+  :root {
+    --wai-page-bg: #0f172a;
+    --wai-panel-bg: #1e293b;
+    --wai-header-bg: #1e293b;
+    --wai-text-primary: #f1f5f9;
+    --wai-text-secondary: #94a3b8;
+    --wai-text-muted: #475569;
+    --wai-border: #334155;
+    --wai-accent: #3b82f6;
+    --wai-accent-hover: #2563eb;
+
+    --wai-tier-leadership: #d97706;
+    --wai-tier-data: #059669;
+    --wai-tier-ai-ml: #7c3aed;
+    --wai-tier-domain: #db2777;
+    --wai-tier-engineering: #ea580c;
+    --wai-tier-research: #0891b2;
+
+    --wai-status-idle-dot: #94a3b8;
+    --wai-status-working-dot: #34d399;
+    --wai-status-waiting-dot: #fbbf24;
+    --wai-status-completed-dot: #60a5fa;
+    --wai-status-error-dot: #ef4444;
+  }
+
   * {
     scrollbar-width: thin;
-    scrollbar-color: #475569 #1e293b;
+    scrollbar-color: var(--wai-text-muted) var(--wai-panel-bg);
   }
 
   *::-webkit-scrollbar {
@@ -14,11 +40,11 @@
   }
 
   *::-webkit-scrollbar-track {
-    background: #1e293b;
+    background: var(--wai-panel-bg);
   }
 
   *::-webkit-scrollbar-thumb {
-    background-color: #475569;
+    background-color: var(--wai-text-muted);
     border-radius: 3px;
   }
 
@@ -26,6 +52,8 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC',
       'Microsoft JhengHei', sans-serif;
     overflow: hidden;
+    background-color: var(--wai-page-bg);
+    color: var(--wai-text-primary);
   }
 }
 

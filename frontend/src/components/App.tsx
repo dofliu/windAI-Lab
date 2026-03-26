@@ -2,15 +2,18 @@ import { useState, useMemo, useCallback, useRef } from 'react'
 import { Agent, SpeechBubble } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
+import { useTheme } from '../themes'
 import { initialRooms } from '../utils/mockData'
 import CompactOffice from './CompactOffice'
 import DashboardView from './DashboardView'
+import MissionView from './MissionView'
 import OfficeWorld from './OfficeWorld'
 import CommandBar from './CommandBar'
 
 export default function App() {
   const ws = useWebSocket()
   const sim = useAgentSimulation()
+  const { theme } = useTheme()
 
   const isConnected = ws.connectionStatus === 'connected'
   const hasBackend = isConnected && ws.hasLiveUpdates
@@ -119,6 +122,14 @@ export default function App() {
 
   const workingCount = agents.filter((a) => a.status === 'working').length
 
+  // ── 戰情中心模式：有代理在工作中且來自後端（非模擬閒聊）──
+  const isMissionMode = useMemo(() => {
+    if (!hasBackend) return false
+    return agents.some(
+      (a) => backendActiveIds.has(a.id) && (a.status === 'working' || a.status === 'waiting'),
+    )
+  }, [hasBackend, agents, backendActiveIds])
+
   /* ── Hire / Fire handlers (simulation mode) ── */
   const handleHire = useCallback((agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => {
     const newAgent: Agent = {
@@ -158,31 +169,56 @@ export default function App() {
       }[ws.connectionStatus]
 
   return (
-    <div className="flex h-screen flex-col bg-slate-900 text-slate-100">
+    <div
+      className="flex h-screen flex-col"
+      style={{ backgroundColor: theme.global.pageBg, color: theme.global.textPrimary }}
+    >
       {/* ── Header ── */}
-      <header className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/80 px-4 py-2 backdrop-blur-sm">
+      <header
+        className="flex items-center justify-between border-b px-4 py-2 backdrop-blur-sm"
+        style={{ borderColor: theme.global.border, backgroundColor: theme.global.headerBg + 'cc' }}
+      >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600/20">
-              <span className="text-sm">🏢</span>
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ backgroundColor: theme.global.accent + '33' }}
+            >
+              <span className="text-sm">{isMissionMode ? '\u{1F3DB}' : '\u{1F3E2}'}</span>
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-tight">WindAI Lab</h1>
-              <p className="text-[9px] text-slate-500">虛擬研究辦公室</p>
+              <p className="text-[9px]" style={{ color: theme.global.textMuted }}>
+                {isMissionMode ? '戰情中心' : '虛擬研究辦公室'}
+              </p>
             </div>
           </div>
-          <span className="rounded-full bg-slate-700/60 px-2 py-0.5 text-[9px] text-slate-400">
+          <span
+            className="rounded-full px-2 py-0.5 text-[9px]"
+            style={{ backgroundColor: theme.global.border, color: theme.global.textSecondary }}
+          >
             {agents.length} 位研究員
           </span>
+          {isMissionMode && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[9px] animate-pulse-slow"
+              style={{ backgroundColor: theme.statuses.working.bg, color: theme.statuses.working.dot }}
+            >
+              任務進行中
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+          <div className="flex items-center gap-2 text-[10px]" style={{ color: theme.global.textSecondary }}>
             <span className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: theme.statuses.working.dot + 'cc' }}
+              />
               {workingCount} 工作中
             </span>
-            <span className="text-slate-600">|</span>
+            <span style={{ color: theme.global.textMuted }}>|</span>
             <span>{agents.length - workingCount} 待命</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -192,98 +228,129 @@ export default function App() {
         </div>
       </header>
 
-      {/* ── Main Content: Resizable Sidebar + Dashboard ── */}
+      {/* ── Main Content ── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Resizable Office Panel */}
-        <aside
-          className="shrink-0 border-r border-slate-700/50 bg-slate-800/50 overflow-hidden"
-          style={{ width: sidebarCollapsed ? 48 : sidebarWidth }}
-        >
-          {/* Toggle button */}
-          <div className="flex items-center justify-between border-b border-slate-700/40 px-2 py-1">
-            {!sidebarCollapsed && sidebarWidth >= PIXEL_MODE_THRESHOLD && (
-              <span className="text-[8px] text-slate-600">🎮 像素模式</span>
-            )}
-            {!sidebarCollapsed && sidebarWidth < PIXEL_MODE_THRESHOLD && (
-              <span className="text-[8px] text-slate-600">← 拖拉邊框調寬度</span>
-            )}
-            <button
-              onClick={() => {
-                if (sidebarCollapsed) {
-                  setSidebarCollapsed(false)
-                  setSidebarWidth(260)
-                } else {
-                  setSidebarCollapsed(true)
-                }
+        {isMissionMode ? (
+          /* ══ 戰情中心模式 ══ */
+          <MissionView
+            agents={agents}
+            workLogs={workLogs}
+            onAgentClick={setSelectedAgent}
+          />
+        ) : (
+          /* ══ 一般辦公室模式 ══ */
+          <>
+            {/* Left: Resizable Office Panel */}
+            <aside
+              className="shrink-0 border-r overflow-hidden"
+              style={{
+                width: sidebarCollapsed ? 48 : sidebarWidth,
+                borderColor: theme.global.border,
+                backgroundColor: theme.global.panelBg + '80',
               }}
-              className="ml-auto rounded p-1 text-slate-500 transition-colors hover:bg-slate-700/40 hover:text-slate-300"
-              title={sidebarCollapsed ? '展開研究室面板' : '收合研究室面板'}
             >
-              <svg
-                className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+              {/* Toggle button */}
+              <div
+                className="flex items-center justify-between border-b px-2 py-1"
+                style={{ borderColor: theme.global.border + '66' }}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Office content — switches between compact and pixel mode */}
-          <div className="h-[calc(100%-32px)] overflow-hidden">
-            {sidebarWidth >= PIXEL_MODE_THRESHOLD && !sidebarCollapsed ? (
-              /* Pixel animation OfficeWorld mode */
-              <div className="h-full overflow-y-auto overflow-x-hidden">
-                <OfficeWorld
-                  rooms={rooms}
-                  selectedAgent={currentSelected}
-                  onSelectAgent={setSelectedAgent}
-                  speechBubbles={speechBubbles}
-                />
+                {!sidebarCollapsed && sidebarWidth >= PIXEL_MODE_THRESHOLD && (
+                  <span className="text-[8px]" style={{ color: theme.global.textMuted }}>🎮 像素模式</span>
+                )}
+                {!sidebarCollapsed && sidebarWidth < PIXEL_MODE_THRESHOLD && (
+                  <span className="text-[8px]" style={{ color: theme.global.textMuted }}>← 拖拉邊框調寬度</span>
+                )}
+                <button
+                  onClick={() => {
+                    if (sidebarCollapsed) {
+                      setSidebarCollapsed(false)
+                      setSidebarWidth(260)
+                    } else {
+                      setSidebarCollapsed(true)
+                    }
+                  }}
+                  className="ml-auto rounded p-1 transition-colors hover:opacity-80"
+                  style={{ color: theme.global.textMuted }}
+                  title={sidebarCollapsed ? '展開研究室面板' : '收合研究室面板'}
+                >
+                  <svg
+                    className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
               </div>
-            ) : (
-              /* Compact avatar mode */
-              <CompactOffice
-                agents={agents}
-                selectedAgent={currentSelected}
-                onSelectAgent={setSelectedAgent}
-                collapsed={sidebarCollapsed}
+
+              {/* Office content — switches between compact and pixel mode */}
+              <div className="h-[calc(100%-32px)] overflow-hidden">
+                {sidebarWidth >= PIXEL_MODE_THRESHOLD && !sidebarCollapsed ? (
+                  <div className="h-full overflow-y-auto overflow-x-hidden">
+                    <OfficeWorld
+                      rooms={rooms}
+                      selectedAgent={currentSelected}
+                      onSelectAgent={setSelectedAgent}
+                      speechBubbles={speechBubbles}
+                    />
+                  </div>
+                ) : (
+                  <CompactOffice
+                    agents={agents}
+                    selectedAgent={currentSelected}
+                    onSelectAgent={setSelectedAgent}
+                    collapsed={sidebarCollapsed}
+                  />
+                )}
+              </div>
+            </aside>
+
+            {/* Drag handle */}
+            {!sidebarCollapsed && (
+              <div
+                onMouseDown={handleMouseDown}
+                className="w-1.5 shrink-0 cursor-col-resize transition-colors hover:opacity-70"
+                style={{ backgroundColor: theme.global.border + '4d' }}
+                title="拖拉調整寬度"
               />
             )}
-          </div>
-        </aside>
 
-        {/* Drag handle */}
-        {!sidebarCollapsed && (
-          <div
-            onMouseDown={handleMouseDown}
-            className="w-1.5 shrink-0 cursor-col-resize bg-slate-700/30 transition-colors hover:bg-indigo-500/40 active:bg-indigo-500/60"
-            title="拖拉調整寬度"
-          />
+            {/* Right: Dashboard + CommandBar */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex-1 overflow-hidden">
+                <DashboardView
+                  workLogs={workLogs}
+                  selectedAgent={currentSelected}
+                  allAgents={agents}
+                  fileEvents={ws.fileEvents ?? []}
+                  onHireAgent={handleHire}
+                  onFireAgent={handleFire}
+                />
+              </div>
+
+              {/* Command Bar */}
+              <div
+                className="border-t px-4 py-2"
+                style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg + '99' }}
+              >
+                <CommandBar onExecute={handleCommand} />
+              </div>
+            </div>
+          </>
         )}
-
-        {/* Right: Dashboard + AgentDetail + CommandBar */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Dashboard */}
-          <div className="flex-1 overflow-hidden">
-            <DashboardView
-              workLogs={workLogs}
-              selectedAgent={currentSelected}
-              allAgents={agents}
-              fileEvents={ws.fileEvents ?? []}
-              onHireAgent={handleHire}
-              onFireAgent={handleFire}
-            />
-          </div>
-
-          {/* Command Bar */}
-          <div className="border-t border-slate-700/50 bg-slate-800/60 px-4 py-2">
-            <CommandBar onExecute={handleCommand} />
-          </div>
-        </div>
       </div>
+
+      {/* Command Bar (always visible, even in mission mode) */}
+      {isMissionMode && (
+        <div
+          className="border-t px-4 py-2"
+          style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg + '99' }}
+        >
+          <CommandBar onExecute={handleCommand} />
+        </div>
+      )}
     </div>
   )
 }

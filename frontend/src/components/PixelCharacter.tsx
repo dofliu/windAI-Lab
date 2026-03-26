@@ -1,18 +1,10 @@
 import { memo } from 'react'
+import { useTheme, getTierColor, getStatusColor } from '../themes'
 
 /**
  * 像素風格人物角色 — chibi 比例、crispEdges 渲染
  * 走路時整個人物上下彈跳 + 微微搖擺
  */
-
-const TIER_SHIRT: Record<string, string> = {
-  leadership: '#d97706',
-  data: '#059669',
-  'ai-ml': '#7c3aed',
-  domain: '#db2777',
-  engineering: '#ea580c',
-  research: '#0891b2',
-}
 
 const HAIR = ['#1a1a2e', '#3d2b1f', '#8b6914', '#5b2c6f', '#2c3e50', '#784212', '#4a1942', '#1b4332']
 const SKIN = ['#f5c6a0', '#e8b896', '#d4a574', '#c49a6c', '#f0d5b8']
@@ -32,8 +24,9 @@ interface Props {
 }
 
 function PixelCharacter({ agentId, tier, status, isWalking, size = 32 }: Props) {
+  const { theme } = useTheme()
   const h = hash(agentId)
-  const shirt = TIER_SHIRT[tier] || '#6366f1'
+  const shirt = (theme.pixelShirtColors?.[tier]) || getTierColor(theme, tier).primary
   const hair = HAIR[h % HAIR.length]
   const skin = SKIN[h % SKIN.length]
   const pants = '#475569'
@@ -51,17 +44,17 @@ function PixelCharacter({ agentId, tier, status, isWalking, size = 32 }: Props) 
     >
       {/* ── Status dot above head ── */}
       {status === 'working' && (
-        <circle cx="8" cy="-2" r="1.8" fill="#34d399" style={{ shapeRendering: 'auto' }}>
+        <circle cx="8" cy="-2" r="1.8" fill={getStatusColor(theme, 'working').dot} style={{ shapeRendering: 'auto' }}>
           <animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite" />
         </circle>
       )}
       {status === 'waiting' && (
-        <circle cx="8" cy="-2" r="1.8" fill="#fbbf24" style={{ shapeRendering: 'auto' }}>
+        <circle cx="8" cy="-2" r="1.8" fill={getStatusColor(theme, 'waiting').dot} style={{ shapeRendering: 'auto' }}>
           <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite" />
         </circle>
       )}
       {status === 'error' && (
-        <circle cx="8" cy="-2" r="1.8" fill="#f87171" style={{ shapeRendering: 'auto' }} />
+        <circle cx="8" cy="-2" r="1.8" fill={getStatusColor(theme, 'error').dot} style={{ shapeRendering: 'auto' }} />
       )}
 
       {/* ── Hair ── */}
