@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -131,10 +131,10 @@ class FileWatcherService:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            import contextlib
+
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
         logger.info("FileWatcher 已停止")
 
@@ -213,12 +213,11 @@ class FileWatcherService:
                 key = self._file_key(file_path)
                 mtime = file_path.stat().st_mtime
 
-                # 新檔案或已修改的檔案
-                if key not in self._known_files or self._known_files[key] < mtime:
-                    # 確保檔案不是正在寫入中（等最後修改超過 5 秒）
-                    if time.time() - mtime > 5:
-                        self._known_files[key] = mtime
-                        new_files.append(file_path)
+                # 新檔案或已修改的檔案，且不是正在寫入中（最後修改超過 5 秒）
+                is_new = key not in self._known_files or self._known_files[key] < mtime
+                if is_new and time.time() - mtime > 5:
+                    self._known_files[key] = mtime
+                    new_files.append(file_path)
 
         if new_files:
             logger.info(f"偵測到 {len(new_files)} 個新檔案")
@@ -270,15 +269,12 @@ class FileWatcherService:
                     "numeric_columns": report.get("numeric_columns", 0),
                     "target_column": report.get("target_column"),
                     "top_features": [
-                        f["column"]
-                        for f in report.get("feature_importance", [])[:5]
+                        f["column"] for f in report.get("feature_importance", [])[:5]
                     ],
                     "anomaly_columns": report.get("anomalies", {}).get(
                         "total_columns_with_outliers", 0
                     ),
-                    "recommendations_count": len(
-                        report.get("recommendations", [])
-                    ),
+                    "recommendations_count": len(report.get("recommendations", [])),
                 }
 
             # Step 4: 廣播「處理完成」
@@ -344,10 +340,7 @@ class FileWatcherService:
             # 只進入一層子目錄
             elif item.is_dir() and not item.name.startswith("."):
                 for sub_item in item.iterdir():
-                    if (
-                        sub_item.is_file()
-                        and sub_item.suffix.lower() in SUPPORTED_EXTENSIONS
-                    ):
+                    if sub_item.is_file() and sub_item.suffix.lower() in SUPPORTED_EXTENSIONS:
                         yield sub_item
 
     @staticmethod
@@ -371,6 +364,6 @@ def _format_size(size_bytes: int) -> str:
 
 def _iso_now() -> str:
     """取得 ISO 8601 時間戳記。"""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

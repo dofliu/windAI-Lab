@@ -297,7 +297,7 @@ def create_ai_train_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
     return Workflow(
         id="ai-train",
         name=f"ML 模型訓練 — {turbine_id}",
-        description=f"端到端訓練三個 ML 模型：NBM 功率曲線、故障分類器、RUL 退化模型",
+        description="端到端訓練三個 ML 模型：NBM 功率曲線、故障分類器、RUL 退化模型",
         steps=[
             WorkflowStep(
                 name="資料準備",

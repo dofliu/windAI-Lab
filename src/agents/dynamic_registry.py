@@ -7,15 +7,16 @@
 from __future__ import annotations
 
 import importlib
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from src.agents.base import BaseAgent
+from src.agents.base import BaseAgent  # noqa: TCH001
 from src.agents.message_bus import bus
 from src.agents.skill_composing_agent import AgentSpec, SkillComposingAgent
-from src.api.models import AgentModel, AgentStatus, AgentTier
+from src.api.models import AgentModel, AgentStatus, AgentTier  # noqa: TCH001
 from src.api.websocket_manager import manager as ws_manager
 from src.skills.registry import SkillRegistry, skill_registry
 from src.utils.logger import get_logger
@@ -92,7 +93,9 @@ class DynamicAgentRegistry:
             except Exception as e:
                 logger.warning(f"載入 YAML 失敗：{yaml_file.name} — {e}")
 
-        logger.info(f"載入 {count} 個代理定義（{sum(1 for s in self._specs.values() if s.core)} 個核心）")
+        logger.info(
+            f"載入 {count} 個代理定義（{sum(1 for s in self._specs.values() if s.core)} 個核心）"
+        )
         return count
 
     def bootstrap_core(self) -> int:
@@ -158,11 +161,13 @@ class DynamicAgentRegistry:
         model = self._state[agent_id]
 
         # WebSocket 廣播
-        await ws_manager.broadcast({
-            "type": "agent_hired",
-            "timestamp": _iso_now(),
-            "payload": model.model_dump(mode="json"),
-        })
+        await ws_manager.broadcast(
+            {
+                "type": "agent_hired",
+                "timestamp": _iso_now(),
+                "payload": model.model_dump(mode="json"),
+            }
+        )
 
         logger.info(f"代理已聘用：{agent_id} ({spec.display_name})")
         return model
@@ -180,7 +185,7 @@ class DynamicAgentRegistry:
             raise ValueError(f"核心代理 '{agent_id}' 不可解聘")
 
         # 移除實例
-        agent = self._instances.pop(agent_id)
+        self._instances.pop(agent_id)
         bus.unregister(agent_id)
 
         # 更新狀態
@@ -189,11 +194,13 @@ class DynamicAgentRegistry:
         self._state[agent_id].progress = 0.0
 
         # WebSocket 廣播
-        await ws_manager.broadcast({
-            "type": "agent_fired",
-            "timestamp": _iso_now(),
-            "payload": {"agent_id": agent_id},
-        })
+        await ws_manager.broadcast(
+            {
+                "type": "agent_fired",
+                "timestamp": _iso_now(),
+                "payload": {"agent_id": agent_id},
+            }
+        )
 
         logger.info(f"代理已解聘：{agent_id}")
 
@@ -230,16 +237,18 @@ class DynamicAgentRegistry:
         result = []
         for agent_id, spec in self._specs.items():
             if agent_id not in self._instances:
-                result.append({
-                    "id": spec.id,
-                    "name": spec.name,
-                    "display_name": spec.display_name,
-                    "tier": spec.tier,
-                    "color": spec.color,
-                    "icon": spec.icon,
-                    "description": spec.description,
-                    "skills": spec.skills,
-                })
+                result.append(
+                    {
+                        "id": spec.id,
+                        "name": spec.name,
+                        "display_name": spec.display_name,
+                        "tier": spec.tier,
+                        "color": spec.color,
+                        "icon": spec.icon,
+                        "description": spec.description,
+                        "skills": spec.skills,
+                    }
+                )
         return result
 
     def get_instance(self, agent_id: str) -> BaseAgent | None:
@@ -296,16 +305,16 @@ class DynamicAgentRegistry:
                 return cls()
             except Exception as e:
                 logger.warning(
-                    f"無法載入自訂 class {spec.custom_class}，"
-                    f"改用 SkillComposingAgent：{e}"
+                    f"無法載入自訂 class {spec.custom_class}，" f"改用 SkillComposingAgent：{e}"
                 )
 
         return SkillComposingAgent(spec, self._skill_registry)
 
 
 def _iso_now() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+
+    return datetime.now(UTC).isoformat()
 
 
 # 全域單例

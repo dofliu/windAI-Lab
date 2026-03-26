@@ -400,6 +400,7 @@ _use_dynamic: bool = False
 def _get_dynamic():
     """延遲取得 dynamic_registry 以避免循環 import。"""
     from src.agents.dynamic_registry import dynamic_registry
+
     return dynamic_registry
 
 
@@ -436,8 +437,11 @@ def update_agent_status(
     """更新指定代理的狀態欄位，回傳更新後的代理模型。"""
     if _use_dynamic:
         model = _get_dynamic().update_agent_status(
-            agent_id, status=status, current_task=current_task,
-            progress=progress, collaborating_with=collaborating_with,
+            agent_id,
+            status=status,
+            current_task=current_task,
+            progress=progress,
+            collaborating_with=collaborating_with,
         )
         return deepcopy(model) if model else None
 

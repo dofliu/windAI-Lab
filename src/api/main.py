@@ -170,31 +170,33 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 if command_name in ("diagnose-real", "diagnose-skill"):
                     import asyncio as _aio
 
-                    from src.agents.dynamic_registry import dynamic_registry
                     from src.agents.base import TaskContext
+                    from src.agents.dynamic_registry import dynamic_registry
 
                     tid = parameters.get("turbine_id", "Kelmarsh_1")
                     agent = dynamic_registry.get_instance("fault-diagnostician")
                     if agent:
                         ctx = TaskContext(parameters={"turbine_id": tid})
                         _aio.create_task(agent.run_task(f"diagnose {tid}", ctx))
-                        await ws_manager.broadcast({
-                            "type": "work_log_entry",
-                            "timestamp": datetime.now().isoformat(),
-                            "payload": {
-                                "id": str(uuid.uuid4()),
-                                "agent_id": "system",
-                                "agent_name": "WindAI Lab",
-                                "message": f"已派任故障診斷師分析 {tid}（技能管線）",
-                                "type": "info",
-                            },
-                        })
+                        await ws_manager.broadcast(
+                            {
+                                "type": "work_log_entry",
+                                "timestamp": datetime.now().isoformat(),
+                                "payload": {
+                                    "id": str(uuid.uuid4()),
+                                    "agent_id": "system",
+                                    "agent_name": "WindAI Lab",
+                                    "message": f"已派任故障診斷師分析 {tid}（技能管線）",
+                                    "type": "info",
+                                },
+                            }
+                        )
 
                 elif command_name == "train-nbm":
                     import asyncio as _aio
 
-                    from src.agents.dynamic_registry import dynamic_registry
                     from src.agents.base import TaskContext
+                    from src.agents.dynamic_registry import dynamic_registry
 
                     tid = parameters.get("turbine_id", "Kelmarsh_1")
                     agent = dynamic_registry.get_instance("power-curve-expert")
@@ -205,8 +207,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 elif command_name == "predict-rul":
                     import asyncio as _aio
 
-                    from src.agents.dynamic_registry import dynamic_registry
                     from src.agents.base import TaskContext
+                    from src.agents.dynamic_registry import dynamic_registry
 
                     tid = parameters.get("turbine_id", "Kelmarsh_1")
                     agent = dynamic_registry.get_instance("predictive-modeler")
@@ -344,7 +346,7 @@ async def hire_agent(agent_id: str) -> dict[str, Any]:
             "agent": model.model_dump(mode="json"),
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/api/agents/fire", tags=["代理管理"])
@@ -356,7 +358,7 @@ async def fire_agent(agent_id: str) -> dict[str, Any]:
         await dynamic_registry.fire(agent_id)
         return {"status": "fired", "agent_id": agent_id}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.get("/api/agents/available", tags=["代理管理"])
@@ -393,7 +395,7 @@ async def update_agent_skills(agent_id: str, skill_ids: list[str]) -> dict[str, 
             "skills": spec.skills if spec else [],
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.get("/api/logs", response_model=list[WorkLogEntry], tags=["工作日誌"])
@@ -465,11 +467,31 @@ async def list_commands() -> dict:
     """列出所有可用的 slash 指令。"""
     return {
         "commands": [
-            {"name": "diagnose-real", "description": "🔧 故障診斷（技能管線：載入→清洗→特徵→分類）", "parameters": ["turbine_id"]},
-            {"name": "train-nbm", "description": "📊 NBM 功率曲線訓練（技能管線）", "parameters": ["turbine_id"]},
-            {"name": "predict-rul", "description": "📈 RUL 壽命預測（技能管線）", "parameters": ["turbine_id"]},
-            {"name": "diagnose", "description": "故障診斷（模擬動畫）", "parameters": ["turbine_id"]},
-            {"name": "data:load", "description": "智慧載入 SCADA 資料", "parameters": ["turbine_id"]},
+            {
+                "name": "diagnose-real",
+                "description": "🔧 故障診斷（技能管線：載入→清洗→特徵→分類）",
+                "parameters": ["turbine_id"],
+            },
+            {
+                "name": "train-nbm",
+                "description": "📊 NBM 功率曲線訓練（技能管線）",
+                "parameters": ["turbine_id"],
+            },
+            {
+                "name": "predict-rul",
+                "description": "📈 RUL 壽命預測（技能管線）",
+                "parameters": ["turbine_id"],
+            },
+            {
+                "name": "diagnose",
+                "description": "故障診斷（模擬動畫）",
+                "parameters": ["turbine_id"],
+            },
+            {
+                "name": "data:load",
+                "description": "智慧載入 SCADA 資料",
+                "parameters": ["turbine_id"],
+            },
             {"name": "data:clean", "description": "自動資料清洗", "parameters": ["turbine_id"]},
             {"name": "lit-search", "description": "系統性文獻搜索", "parameters": ["topic"]},
         ]
@@ -597,6 +619,7 @@ async def scada_overview(turbine_id: str = "Kelmarsh_1", limit: int = 2000) -> J
         except (FileNotFoundError, ValueError):
             # 在所有資料目錄中搜尋匹配的檔案
             from pathlib import Path as _Path
+
             data_root = _Path(__file__).resolve().parents[2] / "data"
             df = None
             for sub in ["raw", "external", "processed"]:
@@ -620,7 +643,7 @@ async def scada_overview(turbine_id: str = "Kelmarsh_1", limit: int = 2000) -> J
                 if df is not None:
                     break
             if df is None:
-                raise FileNotFoundError(f"找不到風機 '{turbine_id}' 的資料")
+                raise FileNotFoundError(f"找不到風機 '{turbine_id}' 的資料") from None
 
         # 取樣以控制前端資料量
         df_sample = df.sample(n=limit, random_state=42).sort_index() if len(df) > limit else df
@@ -702,14 +725,16 @@ async def list_turbines() -> dict[str, Any]:
         if not d.exists():
             continue
         for f in sorted(d.iterdir()):
-            if f.is_file() and f.suffix.lower() in (".csv", ".parquet", ".xlsx"):
-                if f.stem not in seen:
-                    turbines.append(f.stem)
-                    seen.add(f.stem)
+            if (
+                f.is_file()
+                and f.suffix.lower() in (".csv", ".parquet", ".xlsx")
+                and f.stem not in seen
+            ):
+                turbines.append(f.stem)
+                seen.add(f.stem)
 
     # 嘗試 Kelmarsh ZIP 自動發現
     try:
-        from src.data_pipeline.ingestion.kelmarsh_loader import load_all_turbines
         for tid in [f"Kelmarsh_{i}" for i in range(1, 7)]:
             if tid not in seen:
                 turbines.append(tid)
@@ -761,9 +786,7 @@ async def start_file_watcher(
     if _file_watcher is None:
         from src.services.file_watcher import FileWatcherService
 
-        _file_watcher = FileWatcherService(
-            scan_interval=scan_interval, auto_analyze=auto_analyze
-        )
+        _file_watcher = FileWatcherService(scan_interval=scan_interval, auto_analyze=auto_analyze)
         _file_watcher.set_broadcast(ws_manager.broadcast_file_event)
 
     if not _file_watcher.is_running:
@@ -848,6 +871,7 @@ async def feature_analysis(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
             df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
         except (FileNotFoundError, ValueError):
             from pathlib import Path as _Path
+
             data_root = _Path(__file__).resolve().parents[2] / "data"
             df = None
             for sub in ["raw", "external", "processed"]:
@@ -863,16 +887,18 @@ async def feature_analysis(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
                 if df is not None:
                     break
             if df is None:
-                raise FileNotFoundError(f"找不到風機 '{turbine_id}' 的資料")
+                raise FileNotFoundError(f"找不到風機 '{turbine_id}' 的資料") from None
 
         # 執行自動特徵分析
         report = await loop.run_in_executor(None, lambda: analyze_features(df))
 
-        return JSONResponse(content={
-            "status": "success",
-            "turbine_id": turbine_id,
-            **report,
-        })
+        return JSONResponse(
+            content={
+                "status": "success",
+                "turbine_id": turbine_id,
+                **report,
+            }
+        )
 
     except FileNotFoundError as e:
         return JSONResponse(status_code=404, content={"status": "error", "detail": str(e)})

@@ -52,9 +52,7 @@ class ScadaIngestionSkill(BaseSkill):
                         load_turbine_data,
                     )
 
-                    df = await loop.run_in_executor(
-                        None, lambda: load_turbine_data(turbine_id)
-                    )
+                    df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))
                 except (FileNotFoundError, ValueError):
                     from src.data_pipeline.ingestion.smart_loader import smart_load
 

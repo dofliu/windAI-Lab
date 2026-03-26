@@ -116,10 +116,7 @@ def _infer_turbine_profile(df: pd.DataFrame) -> dict:
     # 方法：找功率達到額定值 90% 時的平均風速
     if ws is not None and pw is not None:
         near_rated = pw > rated_power * 0.9
-        if near_rated.sum() > 10:
-            rated_wind = float(ws[near_rated].median())
-        else:
-            rated_wind = 12.5
+        rated_wind = float(ws[near_rated].median()) if near_rated.sum() > 10 else 12.5
         rated_wind = max(rated_wind, cut_in + 2)
         rated_wind = min(rated_wind, cut_out - 2)
     else:
@@ -163,9 +160,10 @@ def _infer_turbine_profile(df: pd.DataFrame) -> dict:
     # 統計可轉為數值的欄位數
     num_count = 0
     for col in df.columns:
-        if df[col].dtype in (np.float64, np.float32, np.int64, np.int32):
-            num_count += 1
-        elif pd.to_numeric(df[col], errors="coerce").notna().mean() > 0.5:
+        if (
+            df[col].dtype in (np.float64, np.float32, np.int64, np.int32)
+            or pd.to_numeric(df[col], errors="coerce").notna().mean() > 0.5
+        ):
             num_count += 1
     profile["numeric_columns"] = num_count
     profile["total_columns"] = len(df.columns)
@@ -173,9 +171,7 @@ def _infer_turbine_profile(df: pd.DataFrame) -> dict:
     return profile
 
 
-def _estimate_cut_in_speed(
-    ws: pd.Series, pw: pd.Series, rated_power: float
-) -> float:
+def _estimate_cut_in_speed(ws: pd.Series, pw: pd.Series, rated_power: float) -> float:
     """從功率曲線推斷切入風速。
 
     方法：將風速分成 0.5 m/s 的 bin，找到平均功率首次超過
@@ -216,7 +212,9 @@ def _estimate_rotor_diameter(
     """
     # 選擇正常運轉區間（功率 20%~80% 額定）
     mask = (
-        ws.notna() & rs.notna() & pw.notna()
+        ws.notna()
+        & rs.notna()
+        & pw.notna()
         & (pw > rated_power * 0.2)
         & (pw < rated_power * 0.8)
         & (rs > 1)  # 轉速 > 1 RPM

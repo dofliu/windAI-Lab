@@ -42,9 +42,8 @@ class DomainFeatureExtractionSkill(BaseSkill):
             )
 
             df_feat = await loop.run_in_executor(
-                None, lambda: compute_power_curve_features(
-                    df, rated_power=rated_power, **extra_params
-                )
+                None,
+                lambda: compute_power_curve_features(df, rated_power=rated_power, **extra_params),
             )
 
             new_cols = [c for c in df_feat.columns if c not in df.columns]

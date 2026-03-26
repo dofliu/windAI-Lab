@@ -11,7 +11,7 @@ from typing import Any
 
 from src.agents.base import BaseAgent, TaskContext, TaskResult, TaskStatus
 from src.skills.base import SkillInput, SkillStatus
-from src.skills.registry import SkillRegistry
+from src.skills.registry import SkillRegistry  # noqa: TCH001
 
 
 @dataclass
@@ -43,10 +43,12 @@ class AgentSpec:
         """從 YAML 解析結果建立 AgentSpec。"""
         routes = []
         for route_data in data.get("task_routing", []):
-            routes.append(TaskRoute(
-                match=route_data.get("match", []),
-                pipeline=route_data.get("pipeline", []),
-            ))
+            routes.append(
+                TaskRoute(
+                    match=route_data.get("match", []),
+                    pipeline=route_data.get("pipeline", []),
+                )
+            )
 
         return cls(
             id=data["id"],
@@ -134,9 +136,13 @@ class SkillComposingAgent(BaseAgent):
             # 進度基於管線位置
             base_progress = i / total_skills
 
-            async def _progress_cb(p: float, msg: str) -> None:
-                overall = base_progress + p / total_skills
-                await self.update_progress(overall, f"[{skill.display_name}] {msg}")
+            _bp, _sk = base_progress, skill  # bind loop vars for closure
+
+            async def _progress_cb(
+                p: float, msg: str, *, _bp: float = _bp, _sk: object = _sk
+            ) -> None:
+                overall = _bp + p / total_skills
+                await self.update_progress(overall, f"[{_sk.display_name}] {msg}")  # type: ignore[union-attr]
 
             # 組裝輸入：DataFrame 明確透過 dataframe 欄位傳遞
             inp = SkillInput(
@@ -172,8 +178,12 @@ class SkillComposingAgent(BaseAgent):
                     context.parameters.setdefault("rated_power", profile.get("rated_power_kw"))
                     context.parameters.setdefault("cut_in_speed", profile.get("cut_in_speed_ms"))
                     context.parameters.setdefault("cut_out_speed", profile.get("cut_out_speed_ms"))
-                    context.parameters.setdefault("rated_wind_speed", profile.get("rated_wind_speed_ms"))
-                    context.parameters.setdefault("sampling_interval", profile.get("sampling_interval_seconds"))
+                    context.parameters.setdefault(
+                        "rated_wind_speed", profile.get("rated_wind_speed_ms")
+                    )
+                    context.parameters.setdefault(
+                        "sampling_interval", profile.get("sampling_interval_seconds")
+                    )
 
             # 如果某個技能失敗，提前結束
             if output.status == SkillStatus.ERROR:

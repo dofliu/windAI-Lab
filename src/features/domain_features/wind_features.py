@@ -84,10 +84,7 @@ def _theoretical_power(
     partial_mask = (ws >= cut_in) & (ws < rated_wind)
     divisor = rated_wind - cut_in
     if divisor > 0:
-        power[partial_mask] = (
-            rated_power
-            * ((ws[partial_mask] - cut_in) / divisor) ** 3
-        )
+        power[partial_mask] = rated_power * ((ws[partial_mask] - cut_in) / divisor) ** 3
 
     # 額定風速 ~ 切出風速：額定功率
     full_mask = (ws >= rated_wind) & (ws <= cut_out)
@@ -228,7 +225,9 @@ def compute_temperature_features(df: pd.DataFrame) -> pd.DataFrame:
 
     if gen_front_col:
         gen_f = df[gen_front_col].astype(float)
-        df["gen_front_rolling_mean"] = gen_f.rolling(window=rolling_window, min_periods=max(rolling_window // 2, 1)).mean()
+        df["gen_front_rolling_mean"] = gen_f.rolling(
+            window=rolling_window, min_periods=max(rolling_window // 2, 1)
+        ).mean()
 
     return df
 

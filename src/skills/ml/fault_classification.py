@@ -48,8 +48,9 @@ class FaultClassificationSkill(BaseSkill):
                     "n_train": result.n_train,
                     "n_test": result.n_test,
                     "top_features": dict(
-                        sorted(result.feature_importances.items(),
-                               key=lambda x: x[1], reverse=True)[:5]
+                        sorted(
+                            result.feature_importances.items(), key=lambda x: x[1], reverse=True
+                        )[:5]
                     ),
                 },
                 summary=f"F1 Macro: {result.f1_macro:.4f}",

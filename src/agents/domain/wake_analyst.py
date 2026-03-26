@@ -64,7 +64,7 @@ class WakeAnalyst(BaseAgent):
         wind_direction = params.get("wind_direction", 270.0)  # 度
         ct = params.get("thrust_coefficient", 0.8)  # 推力係數
         rotor_diameter = params.get("rotor_diameter", 126.0)  # m
-        hub_height = params.get("hub_height", 90.0)  # m
+        _hub_height = params.get("hub_height", 90.0)  # m
         wake_decay = params.get("wake_decay_constant", 0.04)  # Jensen k 值
 
         # Kelmarsh 風場近似佈局（6 台風機）
@@ -80,7 +80,9 @@ class WakeAnalyst(BaseAgent):
             ],
         )
 
-        await self.update_progress(0.1, f"初始化 Jensen 模型（風速={wind_speed} m/s, 風向={wind_direction}°）")
+        await self.update_progress(
+            0.1, f"初始化 Jensen 模型（風速={wind_speed} m/s, 風向={wind_direction}°）"
+        )
 
         loop = asyncio.get_event_loop()
 
@@ -121,20 +123,20 @@ class WakeAnalyst(BaseAgent):
                         continue  # 不在尾流區
 
                     # Jensen 速度虧損
-                    deficit = (1 - math.sqrt(1 - ct)) * (
-                        rotor_r / wake_radius
-                    ) ** 2
+                    deficit = (1 - math.sqrt(1 - ct)) * (rotor_r / wake_radius) ** 2
 
                     # 部分遮蔽修正
                     overlap = max(0, min(1, (wake_radius - crosswind) / rotor_diameter))
                     deficit *= overlap
 
-                    total_deficit_sq += deficit ** 2
-                    deficit_sources.append({
-                        "upstream": t_up["id"],
-                        "distance_m": round(streamwise, 1),
-                        "deficit_pct": round(deficit * 100, 2),
-                    })
+                    total_deficit_sq += deficit**2
+                    deficit_sources.append(
+                        {
+                            "upstream": t_up["id"],
+                            "distance_m": round(streamwise, 1),
+                            "deficit_pct": round(deficit * 100, 2),
+                        }
+                    )
 
                 # 尾流疊加（RSS 方法）
                 combined_deficit = math.sqrt(total_deficit_sq)
@@ -149,11 +151,9 @@ class WakeAnalyst(BaseAgent):
             for tid, eff_v in effective_speeds.items():
                 ratio = (eff_v / wind_speed) ** 3
                 power_ratios[tid] = round(ratio * 100, 2)
-                total_loss += (1 - ratio)
+                total_loss += 1 - ratio
 
-            avg_efficiency = round(
-                (1 - total_loss / n) * 100, 2
-            )
+            avg_efficiency = round((1 - total_loss / n) * 100, 2)
 
             return {
                 "model": "Jensen (Park)",
@@ -173,7 +173,9 @@ class WakeAnalyst(BaseAgent):
             }
 
         result_data = await loop.run_in_executor(None, _compute)
-        await self.update_progress(1.0, f"尾流模擬完成：風場效率 {result_data['farm_efficiency_pct']}%")
+        await self.update_progress(
+            1.0, f"尾流模擬完成：風場效率 {result_data['farm_efficiency_pct']}%"
+        )
 
         return TaskResult(
             status=TaskStatus.SUCCESS,
@@ -201,9 +203,11 @@ class WakeAnalyst(BaseAgent):
             progress = 0.1 + 0.8 * (i + 1) / len(directions)
             await self.update_progress(progress, f"風向 {wd}° 模擬完成")
 
-        avg_eff = round(
-            np.mean(list(efficiency_by_direction.values())), 2
-        ) if efficiency_by_direction else 0.0
+        avg_eff = (
+            round(np.mean(list(efficiency_by_direction.values())), 2)
+            if efficiency_by_direction
+            else 0.0
+        )
 
         worst_dir = min(efficiency_by_direction, key=efficiency_by_direction.get) if efficiency_by_direction else "N/A"  # type: ignore[arg-type]
         best_dir = max(efficiency_by_direction, key=efficiency_by_direction.get) if efficiency_by_direction else "N/A"  # type: ignore[arg-type]

@@ -16,9 +16,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 
 class SkillStatus(StrEnum):

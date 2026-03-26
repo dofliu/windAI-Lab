@@ -21,7 +21,6 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 # ── 專案路徑 ──
@@ -38,56 +37,109 @@ _DATA_DIRS = [
 
 COLUMN_PATTERNS: dict[str, list[str]] = {
     "wind_speed": [
-        "wind_speed", "windspeed", "wind speed", "ws_mean", "ws_avg",
-        "va_avg", "va_mean",  # ENGIE La Haute Borne
-        "amb_windspeed", "amb_windspeed_avg",  # EDP
+        "wind_speed",
+        "windspeed",
+        "wind speed",
+        "ws_mean",
+        "ws_avg",
+        "va_avg",
+        "va_mean",  # ENGIE La Haute Borne
+        "amb_windspeed",
+        "amb_windspeed_avg",  # EDP
         "wind_speed_mean",  # Penmanshiel
-        "mean_wind", "avg_wind", "ws",
+        "mean_wind",
+        "avg_wind",
+        "ws",
         "windspeed(m/s)",  # 含單位格式
     ],
     "power": [
-        "active_power", "active power",  # 最優先：明確的有功功率
-        "power_mean", "power_output",
-        "p_avg", "p_mean",  # ENGIE
-        "grd_prod_pwr_avg", "grd_prod_pwr",  # EDP
+        "active_power",
+        "active power",  # 最優先：明確的有功功率
+        "power_mean",
+        "power_output",
+        "p_avg",
+        "p_mean",  # ENGIE
+        "grd_prod_pwr_avg",
+        "grd_prod_pwr",  # EDP
         "active_power_mean",  # Penmanshiel
-        "gen_power", "grid_power", "output_power",
-        "power_kw", "power(kw)", "power",
+        "gen_power",
+        "grid_power",
+        "output_power",
+        "power_kw",
+        "power(kw)",
+        "power",
     ],
     "rotor_speed": [
-        "rotor_speed", "rotor speed", "rotorspeed",
-        "rs_mean", "rs_avg", "omega",
-        "gen_rpm", "rotor_rpm", "generator_speed",
+        "rotor_speed",
+        "rotor speed",
+        "rotorspeed",
+        "rs_mean",
+        "rs_avg",
+        "omega",
+        "gen_rpm",
+        "rotor_rpm",
+        "generator_speed",
         "genspeed",  # H05|GenSpeed 格式
     ],
     "blade_pitch": [
-        "blade_pitch", "pitch_angle", "blade pitch",
-        "pitch_mean", "pitch_avg", "pitch",
-        "bladeangle", "blade1angle", "blade2angle", "blade3angle",
+        "blade_pitch",
+        "pitch_angle",
+        "blade pitch",
+        "pitch_mean",
+        "pitch_avg",
+        "pitch",
+        "bladeangle",
+        "blade1angle",
+        "blade2angle",
+        "blade3angle",
     ],
     "nacelle_direction": [
-        "nacelle_direction", "nacelle_dir", "yaw_angle",
-        "nacelle direction", "yaw", "nac_dir",
+        "nacelle_direction",
+        "nacelle_dir",
+        "yaw_angle",
+        "nacelle direction",
+        "yaw",
+        "nac_dir",
     ],
     "ambient_temp": [
-        "ambient_temp", "ambient_temperature", "temperature",
-        "amb_temp", "outdoor_temp", "ot_avg",
-        "environmental_temp", "ext_temp",
+        "ambient_temp",
+        "ambient_temperature",
+        "temperature",
+        "amb_temp",
+        "outdoor_temp",
+        "ot_avg",
+        "environmental_temp",
+        "ext_temp",
     ],
     "generator_temp": [
-        "generator_temp", "gen_temp", "generator_bearing",
-        "gen_bear_temp", "gen_de_temp", "gen_nde_temp",
+        "generator_temp",
+        "gen_temp",
+        "generator_bearing",
+        "gen_bear_temp",
+        "gen_de_temp",
+        "gen_nde_temp",
     ],
     "wind_direction": [
-        "wind_direction", "wind_dir", "wd_mean", "wd_avg",
-        "wind direction", "wdir",
+        "wind_direction",
+        "wind_dir",
+        "wd_mean",
+        "wd_avg",
+        "wind direction",
+        "wdir",
     ],
 }
 
 # 時間戳記關鍵字
 TIMESTAMP_KEYWORDS = [
-    "timestamp", "time", "date_time", "datetime", "date",
-    "pctimestamp", "time_stamp", "record_time", "ts",
+    "timestamp",
+    "time",
+    "date_time",
+    "datetime",
+    "date",
+    "pctimestamp",
+    "time_stamp",
+    "record_time",
+    "ts",
 ]
 
 # 常見時間格式（自動嘗試）
@@ -125,7 +177,10 @@ def _match_column(
         匹配到的欄位名稱。
     """
     exclude = exclude_suffixes or [
-        "std", "standard deviation", "minimum", "maximum",
+        "std",
+        "standard deviation",
+        "minimum",
+        "maximum",
         "reactive",  # 排除無功功率
     ]
 
@@ -152,17 +207,19 @@ def _match_column(
     for pat in patterns:
         pat_n = pat.lower()
         for col, nc in norm_cols.items():
-            if pat_n in nc or pat_n.replace("_", "") in nc:
-                if any(s in nc for s in ["_mean", "_avg", "mean_", "avg_"]):
-                    return col
+            if (pat_n in nc or pat_n.replace("_", "") in nc) and any(
+                s in nc for s in ["_mean", "_avg", "mean_", "avg_"]
+            ):
+                return col
 
     # 第三輪：包含匹配（排除統計量）
     for pat in patterns:
         pat_n = pat.lower()
         for col, nc in norm_cols.items():
-            if pat_n in nc or pat_n.replace("_", "") in nc:
-                if not any(ex in nc for ex in exclude):
-                    return col
+            if (pat_n in nc or pat_n.replace("_", "") in nc) and not any(
+                ex in nc for ex in exclude
+            ):
+                return col
 
     # 第四輪：原始欄位名包含匹配（fallback）
     for pat in patterns:
@@ -249,10 +306,21 @@ def _smart_read_csv(file_or_path: Any) -> pd.DataFrame:
             continue
         # 如果這行包含常見欄位關鍵字，它就是 header
         lower_line = stripped.lower()
-        is_header = any(kw in lower_line for kw in [
-            "date", "time", "wind", "power", "speed", "temp",
-            "rotor", "pitch", "nacelle", "timestamp",
-        ])
+        is_header = any(
+            kw in lower_line
+            for kw in [
+                "date",
+                "time",
+                "wind",
+                "power",
+                "speed",
+                "temp",
+                "rotor",
+                "pitch",
+                "nacelle",
+                "timestamp",
+            ]
+        )
         if is_header and stripped.count(",") >= 2:
             # 清理 header 行的 # 前綴
             lines[i] = stripped
@@ -309,7 +377,8 @@ def _read_zip(zip_path: Path) -> dict[str, pd.DataFrame]:
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         csv_files = [
-            n for n in zf.namelist()
+            n
+            for n in zf.namelist()
             if n.lower().endswith((".csv", ".parquet"))
             and not n.startswith("__MACOSX")
             and not Path(n).name.startswith(".")
@@ -320,6 +389,7 @@ def _read_zip(zip_path: Path) -> dict[str, pd.DataFrame]:
                 with zf.open(name) as f:
                     if name.lower().endswith(".parquet"):
                         import io
+
                         results[Path(name).stem] = pd.read_parquet(io.BytesIO(f.read()))
                     else:
                         # 智慧 CSV 解析：自動跳過 comment 行、偵測分隔符
@@ -404,9 +474,7 @@ def smart_load(
                 name, df = next(iter(matched.items()))
             else:
                 available = list(dfs.keys())
-                raise ValueError(
-                    f"ZIP 中找不到 '{turbine_id}'。可用的檔案：{available}"
-                )
+                raise ValueError(f"ZIP 中找不到 '{turbine_id}'。可用的檔案：{available}")
         else:
             name, df = next(iter(dfs.items()))
     else:
@@ -433,9 +501,7 @@ def smart_load(
     df.attrs["column_mapping"] = auto_mapping
     df.attrs["source_file"] = str(path)
     df.attrs["source_name"] = name
-    df.attrs["detected_fields"] = {
-        k: v for k, v in auto_mapping.items() if v is not None
-    }
+    df.attrs["detected_fields"] = {k: v for k, v in auto_mapping.items() if v is not None}
 
     return df
 
@@ -468,15 +534,17 @@ def discover_data_sources() -> list[dict[str, Any]]:
                 for name, df in dfs.items():
                     mapping = detect_columns(df)
                     has_minimum = mapping.get("wind_speed") and mapping.get("power")
-                    sources.append({
-                        "id": name,
-                        "file": str(zip_path.relative_to(_PROJECT_ROOT)),
-                        "format": "zip/csv",
-                        "records": len(df),
-                        "columns": list(df.columns),
-                        "detected_fields": {k: v for k, v in mapping.items() if v},
-                        "usable": bool(has_minimum),
-                    })
+                    sources.append(
+                        {
+                            "id": name,
+                            "file": str(zip_path.relative_to(_PROJECT_ROOT)),
+                            "format": "zip/csv",
+                            "records": len(df),
+                            "columns": list(df.columns),
+                            "detected_fields": {k: v for k, v in mapping.items() if v},
+                            "usable": bool(has_minimum),
+                        }
+                    )
             except Exception:
                 continue
 
@@ -487,15 +555,17 @@ def discover_data_sources() -> list[dict[str, Any]]:
                     df = _read_file(file_path)
                     mapping = detect_columns(df)
                     has_minimum = mapping.get("wind_speed") and mapping.get("power")
-                    sources.append({
-                        "id": file_path.stem,
-                        "file": str(file_path.relative_to(_PROJECT_ROOT)),
-                        "format": file_path.suffix.lstrip("."),
-                        "records": len(df),
-                        "columns": list(df.columns),
-                        "detected_fields": {k: v for k, v in mapping.items() if v},
-                        "usable": bool(has_minimum),
-                    })
+                    sources.append(
+                        {
+                            "id": file_path.stem,
+                            "file": str(file_path.relative_to(_PROJECT_ROOT)),
+                            "format": file_path.suffix.lstrip("."),
+                            "records": len(df),
+                            "columns": list(df.columns),
+                            "detected_fields": {k: v for k, v in mapping.items() if v},
+                            "usable": bool(has_minimum),
+                        }
+                    )
                 except Exception:
                     continue
 
@@ -533,7 +603,7 @@ def get_column_report(df: pd.DataFrame) -> str:
     lines.append(f"  📊 辨識率:   {detected}/{len(mapping)}")
 
     # 列出未識別的欄位
-    used = set(v for v in mapping.values() if v)
+    used = {v for v in mapping.values() if v}
     unused = [c for c in df.columns if c not in used]
     if unused:
         lines.append("")

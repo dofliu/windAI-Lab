@@ -45,10 +45,13 @@ class ScadaCleaningSkill(BaseSkill):
             from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
 
             df_clean, quality_report = await loop.run_in_executor(
-                None, lambda: clean_scada_data(
-                    df, rated_power=rated_power,
-                    cut_in_speed=cut_in, cut_out_speed=cut_out,
-                )
+                None,
+                lambda: clean_scada_data(
+                    df,
+                    rated_power=rated_power,
+                    cut_in_speed=cut_in,
+                    cut_out_speed=cut_out,
+                ),
             )
 
             if progress_cb:
