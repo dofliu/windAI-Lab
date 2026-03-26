@@ -28,6 +28,11 @@ class ScadaIngestionSkill(BaseSkill):
             file_path: str | None — 指定檔案路徑（可選）
         """
         turbine_id = inp.parameters.get("turbine_id", "WT-01")
+        # 去除使用者可能輸入的副檔名（如 "H05_20230101.csv" → "H05_20230101"）
+        for ext in (".csv", ".parquet", ".xlsx", ".zip"):
+            if turbine_id.lower().endswith(ext):
+                turbine_id = turbine_id[: -len(ext)]
+                break
         file_path = inp.parameters.get("file_path")
 
         if progress_cb:

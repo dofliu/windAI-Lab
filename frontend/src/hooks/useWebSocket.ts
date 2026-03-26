@@ -173,6 +173,8 @@ export function useWebSocket() {
 
   const sendCommand = useCallback((command: string, parameters: Record<string, string> = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      // 新任務開始時清除上次的分析結果
+      setAnalysisResults([])
       wsRef.current.send(JSON.stringify({
         type: 'execute_command',
         command,

@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTheme } from '../themes'
 
 interface CommandBarProps {
   onExecute: (command: string, parameters: Record<string, string>) => void
   disabled?: boolean
 }
+
+const TURBINE_COMMANDS = ['diagnose', 'diagnose-real', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
 
 const COMMANDS = [
   { name: 'data:load', label: '/data:load', description: '智慧載入 SCADA 資料', paramHint: '風機 ID', category: 'data' },
@@ -19,11 +21,39 @@ const COMMANDS = [
   { name: 'gametime', label: '/gametime', description: '遊戲間打電動', paramHint: '', category: 'fun' },
 ]
 
+const QUICK_ACTIONS = [
+  { name: 'data:load', label: '載入資料', icon: '📂', category: 'data' },
+  { name: 'data:clean', label: '清洗資料', icon: '🧹', category: 'data' },
+  { name: 'diagnose-real', label: '故障診斷', icon: '🔧', category: 'diagnose' },
+  { name: 'ai:train', label: 'ML 訓練', icon: '🧠', category: 'ai' },
+  { name: 'ai:evaluate', label: '模型評估', icon: '📊', category: 'ai' },
+]
+
+const FALLBACK_TURBINES = ['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6']
+
 export default function CommandBar({ onExecute, disabled = false }: CommandBarProps) {
   const { theme } = useTheme()
   const [input, setInput] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [turbines, setTurbines] = useState<string[]>(FALLBACK_TURBINES)
+  const [selectedTurbine, setSelectedTurbine] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // 從後端取得可用風機列表
+  useEffect(() => {
+    fetch('http://localhost:8000/api/scada/turbines')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.turbines && data.turbines.length > 0) {
+          setTurbines(data.turbines)
+          setSelectedTurbine(data.turbines[0])
+        }
+      })
+      .catch(() => {
+        // 後端未啟動時用 fallback
+        setSelectedTurbine(FALLBACK_TURBINES[0])
+      })
+  }, [])
 
   const categoryColors: Record<string, string> = {
     data: theme.tiers.data.primary,
@@ -44,8 +74,9 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
     const cmd = COMMANDS.find(c => c.name === cmdName)
     if (cmd) {
       const params: Record<string, string> = {}
-      if (['diagnose', 'diagnose-real', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate'].includes(cmdName) && paramValue) {
-        params.turbine_id = paramValue
+      if (TURBINE_COMMANDS.includes(cmdName)) {
+        // 優先使用手動輸入的參數，否則用下拉選單的值
+        params.turbine_id = paramValue || selectedTurbine
       } else if (cmdName === 'lit-search' && paramValue) {
         params.topic = paramValue
       } else if (cmdName === 'bosscall' && paramValue) {
@@ -55,6 +86,15 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
       setInput('')
       setShowSuggestions(false)
     }
+  }
+
+  const handleQuickAction = (cmdName: string) => {
+    if (disabled) return
+    const params: Record<string, string> = {}
+    if (TURBINE_COMMANDS.includes(cmdName)) {
+      params.turbine_id = selectedTurbine
+    }
+    onExecute(cmdName, params)
   }
 
   const handleSuggestionClick = (cmdName: string) => {
@@ -68,61 +108,112 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
     : COMMANDS
 
   return (
-    <div className="relative">
-      <form onSubmit={handleSubmit} className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value)
-              setShowSuggestions(e.target.value.startsWith('/'))
-            }}
-            onFocus={() => { if (input.startsWith('/')) setShowSuggestions(true) }}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-            placeholder="輸入指令（如 /diagnose WT-07）"
+    <div className="space-y-2">
+      {/* ── 快速操作列 ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* 風機選擇器 */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs" style={{ color: theme.global.textMuted }}>風機</span>
+          <select
+            value={selectedTurbine}
+            onChange={(e) => setSelectedTurbine(e.target.value)}
             disabled={disabled}
-            className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none transition-colors disabled:opacity-50"
+            className="rounded-md border px-2 py-1 text-xs outline-none transition-colors disabled:opacity-50"
             style={{
               borderColor: theme.global.border,
               backgroundColor: theme.global.panelBg,
               color: theme.global.textPrimary,
             }}
-          />
-
-          {showSuggestions && filteredCommands.length > 0 && (
-            <div
-              className="absolute bottom-full left-0 mb-1 w-full rounded-lg border py-1 shadow-xl"
-              style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg }}
-            >
-              {filteredCommands.map((cmd) => (
-                <button
-                  key={cmd.name}
-                  type="button"
-                  onMouseDown={() => handleSuggestionClick(cmd.name)}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:opacity-80"
-                >
-                  <span className="font-mono" style={{ color: categoryColors[cmd.category] ?? theme.global.accent }}>
-                    {cmd.label}
-                  </span>
-                  <span style={{ color: theme.global.textSecondary }}>{cmd.description}</span>
-                  <span className="ml-auto text-xs" style={{ color: theme.global.textMuted }}>{cmd.paramHint}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          >
+            {turbines.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </div>
 
-        <button
-          type="submit"
-          disabled={disabled || !input.trim()}
-          className="rounded-lg px-5 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ backgroundColor: theme.global.accent }}
-        >
-          執行
-        </button>
-      </form>
+        <div
+          className="mx-1 h-5 w-px"
+          style={{ backgroundColor: theme.global.border }}
+        />
+
+        {/* 快捷按鈕 */}
+        {QUICK_ACTIONS.map((action) => (
+          <button
+            key={action.name}
+            type="button"
+            onClick={() => handleQuickAction(action.name)}
+            disabled={disabled}
+            className="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition-all hover:brightness-125 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              borderColor: categoryColors[action.category] + '40',
+              backgroundColor: categoryColors[action.category] + '15',
+              color: categoryColors[action.category],
+            }}
+            title={`${action.label}（${selectedTurbine}）`}
+          >
+            <span>{action.icon}</span>
+            <span>{action.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 指令輸入列（保留進階手動輸入） ── */}
+      <div className="relative">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value)
+                setShowSuggestions(e.target.value.startsWith('/'))
+              }}
+              onFocus={() => { if (input.startsWith('/')) setShowSuggestions(true) }}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              placeholder={`輸入指令（如 /diagnose ${selectedTurbine}）或使用上方快捷鍵`}
+              disabled={disabled}
+              className="w-full rounded-lg border px-4 py-2 text-sm outline-none transition-colors disabled:opacity-50"
+              style={{
+                borderColor: theme.global.border,
+                backgroundColor: theme.global.panelBg,
+                color: theme.global.textPrimary,
+              }}
+            />
+
+            {showSuggestions && filteredCommands.length > 0 && (
+              <div
+                className="absolute bottom-full left-0 mb-1 w-full rounded-lg border py-1 shadow-xl z-50"
+                style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg }}
+              >
+                {filteredCommands.map((cmd) => (
+                  <button
+                    key={cmd.name}
+                    type="button"
+                    onMouseDown={() => handleSuggestionClick(cmd.name)}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:opacity-80"
+                  >
+                    <span className="font-mono" style={{ color: categoryColors[cmd.category] ?? theme.global.accent }}>
+                      {cmd.label}
+                    </span>
+                    <span style={{ color: theme.global.textSecondary }}>{cmd.description}</span>
+                    <span className="ml-auto text-xs" style={{ color: theme.global.textMuted }}>{cmd.paramHint}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={disabled || !input.trim()}
+            className="rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ backgroundColor: theme.global.accent }}
+          >
+            執行
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

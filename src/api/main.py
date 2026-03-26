@@ -607,6 +607,12 @@ async def scada_overview(turbine_id: str = "WT-01", limit: int = 2000) -> JSONRe
     """
     import asyncio
 
+    # 去除使用者可能輸入的副檔名
+    for ext in (".csv", ".parquet", ".xlsx", ".zip"):
+        if turbine_id.lower().endswith(ext):
+            turbine_id = turbine_id[: -len(ext)]
+            break
+
     try:
         from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
         from src.data_pipeline.ingestion.smart_loader import smart_load
@@ -858,6 +864,12 @@ async def feature_analysis(turbine_id: str = "WT-01") -> JSONResponse:
     不需要預先知道欄位名稱 — 資料分析師自動判斷。
     """
     import asyncio
+
+    # 去除使用者可能輸入的副檔名
+    for ext in (".csv", ".parquet", ".xlsx", ".zip"):
+        if turbine_id.lower().endswith(ext):
+            turbine_id = turbine_id[: -len(ext)]
+            break
 
     try:
         from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data

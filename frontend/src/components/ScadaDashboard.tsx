@@ -108,8 +108,22 @@ export default function ScadaDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [turbineId, setTurbineId] = useState('Kelmarsh_1')
   const [activeTab, setActiveTab] = useState<'scatter' | 'trend' | 'stats' | 'features'>('scatter')
+  const [turbines, setTurbines] = useState<string[]>(['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6'])
 
-  const turbines = ['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6']
+  // 從後端動態取得風機列表
+  useEffect(() => {
+    fetch('http://localhost:8000/api/scada/turbines')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.turbines && data.turbines.length > 0) {
+          setTurbines(data.turbines)
+          if (!data.turbines.includes(turbineId)) {
+            setTurbineId(data.turbines[0])
+          }
+        }
+      })
+      .catch(() => { /* 後端未啟動時保留 fallback */ })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = useCallback(async () => {
     setLoading(true)

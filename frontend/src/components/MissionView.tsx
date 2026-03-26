@@ -38,6 +38,10 @@ interface MissionViewProps {
   missionTitle?: string
   /** 點選代理回呼 */
   onAgentClick?: (agent: Agent) => void
+  /** 任務已完成（顯示結果查看模式） */
+  isCompleted?: boolean
+  /** 關閉戰情中心回到辦公室 */
+  onClose?: () => void
 }
 
 export default function MissionView({
@@ -46,6 +50,8 @@ export default function MissionView({
   analysisResults = [],
   missionTitle,
   onAgentClick,
+  isCompleted = false,
+  onClose,
 }: MissionViewProps) {
   const { theme } = useTheme()
 
@@ -129,7 +135,15 @@ export default function MissionView({
   }, [workLogs])
 
   // 任務標題
-  const title = missionTitle || '任務進行中'
+  const title = missionTitle || (isCompleted ? '任務已完成' : '任務進行中')
+
+  // 完成模式下也顯示曾參與的代理（從日誌中推導）
+  const displayAgents = useMemo(() => {
+    if (activeAgents.length > 0) return activeAgents
+    // 任務完成後所有代理回到 idle，從日誌推導曾參與的代理 ID
+    const logAgentIds = new Set(workLogs.map((l) => l.agentId).filter((id) => id !== 'system'))
+    return agents.filter((a) => logAgentIds.has(a.id))
+  }, [activeAgents, agents, workLogs])
 
   return (
     <div className="flex h-full gap-0" style={{ color: theme.global.textPrimary }}>
@@ -149,29 +163,56 @@ export default function MissionView({
           style={{ borderColor: theme.global.border }}
         >
           <div
-            className="w-3 h-3 rounded-full animate-pulse-slow"
-            style={{ backgroundColor: theme.statuses.working.dot }}
+            className={`w-3 h-3 rounded-full ${isCompleted ? '' : 'animate-pulse-slow'}`}
+            style={{ backgroundColor: isCompleted ? theme.statuses.completed.dot : theme.statuses.working.dot }}
           />
-          <div>
+          <div className="flex-1">
             <div className="text-sm font-bold">{title}</div>
             <div className="text-xs" style={{ color: theme.global.textSecondary }}>
-              {activeAgents.length} 位代理參與
+              {displayAgents.length} 位代理參與
             </div>
           </div>
+          {isCompleted && onClose && (
+            <button
+              onClick={onClose}
+              className="rounded-lg border px-3 py-1 text-xs font-medium transition-colors hover:brightness-125"
+              style={{
+                borderColor: theme.global.accent + '60',
+                backgroundColor: theme.global.accent + '20',
+                color: theme.global.accent,
+              }}
+            >
+              返回辦公室
+            </button>
+          )}
         </div>
+
+        {/* 完成提示橫幅 */}
+        {isCompleted && (
+          <div
+            className="px-4 py-2 text-xs font-medium border-b"
+            style={{
+              borderColor: theme.global.border,
+              backgroundColor: theme.statuses.completed.bg,
+              color: theme.statuses.completed.dot,
+            }}
+          >
+            任務已完成 — 以下為執行結果，點擊「返回辦公室」可關閉此畫面
+          </div>
+        )}
 
         {/* 整體進度條 */}
         <div className="px-4 py-2">
           <div className="flex justify-between text-xs mb-1" style={{ color: theme.global.textSecondary }}>
             <span>整體進度</span>
-            <span>{overallProgress}%</span>
+            <span>{isCompleted ? 100 : overallProgress}%</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: theme.global.border }}>
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
-                width: `${overallProgress}%`,
-                backgroundColor: theme.global.accent,
+                width: `${isCompleted ? 100 : overallProgress}%`,
+                backgroundColor: isCompleted ? theme.statuses.completed.dot : theme.global.accent,
               }}
             />
           </div>
@@ -179,7 +220,7 @@ export default function MissionView({
 
         {/* 參與代理清單 */}
         <div className="flex-1 overflow-y-auto px-2 py-1">
-          {activeAgents.map((agent) => (
+          {displayAgents.map((agent) => (
             <AgentMissionCard
               key={agent.id}
               agent={agent}
@@ -187,7 +228,7 @@ export default function MissionView({
               onClick={() => onAgentClick?.(agent)}
             />
           ))}
-          {activeAgents.length === 0 && (
+          {displayAgents.length === 0 && (
             <div
               className="text-center py-8 text-sm"
               style={{ color: theme.global.textMuted }}
@@ -226,31 +267,34 @@ export default function MissionView({
       {/* ── 右側：分析結果面板 ── */}
       <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: theme.global.pageBg }}>
         <div
-          className="px-6 py-3 border-b flex items-center justify-between"
+          className="px-4 py-2 border-b flex items-center justify-between"
           style={{ borderColor: theme.global.border }}
         >
-          <h2 className="text-sm font-bold" style={{ color: theme.global.textPrimary }}>
-            分析儀表板
-          </h2>
-          <span className="text-xs" style={{ color: theme.global.textMuted }}>
-            即時更新
-          </span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold" style={{ color: theme.global.textPrimary }}>
+              分析儀表板
+            </h2>
+            {analysisResults.length > 0 && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                style={{ backgroundColor: theme.global.accent + '20', color: theme.global.accent }}
+              >
+                {analysisResults.length} 項結果
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-[10px]" style={{ color: theme.global.textMuted }}>
+            <span>代理 {displayAgents.length}</span>
+            <span>日誌 {workLogs.length}</span>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* 數據卡片 */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <MetricCard label="參與代理" value={`${activeAgents.length}`} theme={theme} />
-            <MetricCard label="整體進度" value={`${overallProgress}%`} theme={theme} />
-            <MetricCard label="日誌筆數" value={`${workLogs.length}`} theme={theme} />
-          </div>
-
-          {/* 圖表區域 */}
-          {activeAgents.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {/* 代理進度長條圖 */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* 任務進行中：顯示代理進度 */}
+          {!isCompleted && displayAgents.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <ChartPanel title="代理進度" theme={theme}>
-                <ResponsiveContainer width="100%" height={180}>
+                <ResponsiveContainer width="100%" height={140}>
                   <BarChart data={agentProgressData} layout="vertical">
                     <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: theme.global.textMuted }} />
                     <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 10, fill: theme.global.textSecondary }} />
@@ -264,11 +308,10 @@ export default function MissionView({
                 </ResponsiveContainer>
               </ChartPanel>
 
-              {/* 狀態分佈圓餅圖 */}
               <ChartPanel title="代理狀態分佈" theme={theme}>
-                <ResponsiveContainer width="100%" height={160}>
+                <ResponsiveContainer width="100%" height={120}>
                   <PieChart>
-                    <Pie data={statusDistData} cx="50%" cy="50%" innerRadius={35} outerRadius={65} dataKey="value" stroke="none">
+                    <Pie data={statusDistData} cx="50%" cy="50%" innerRadius={30} outerRadius={50} dataKey="value" stroke="none">
                       {statusDistData.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
@@ -288,9 +331,9 @@ export default function MissionView({
             </div>
           )}
 
-          {/* 後端推送的分析圖表 */}
+          {/* 分析結果圖表（主要內容） */}
           {analysisResults.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
               {analysisResults.map((result, i) => (
                 <AnalysisChart key={i} result={result} theme={theme} />
               ))}
@@ -299,46 +342,34 @@ export default function MissionView({
 
           {/* 從日誌提取的即時指標 */}
           {extractedMetrics.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
+            <div className="mb-4">
+              <h3 className="text-[10px] font-semibold mb-2" style={{ color: theme.global.textSecondary }}>
                 分析指標
               </h3>
-              <div className="grid grid-cols-4 gap-3">
-                {extractedMetrics.slice(-8).map((m, i) => (
+              <div className="grid grid-cols-4 xl:grid-cols-6 gap-2">
+                {extractedMetrics.slice(-12).map((m, i) => (
                   <div
                     key={i}
-                    className="rounded-lg border px-3 py-2"
+                    className="rounded-lg border px-2 py-1.5"
                     style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
                   >
-                    <div className="text-[10px]" style={{ color: theme.global.textMuted }}>{m.agent}</div>
-                    <div className="text-xs font-medium mt-0.5" style={{ color: theme.global.textSecondary }}>{m.name}</div>
-                    <div className="text-lg font-bold" style={{ color: theme.global.accent }}>{m.value}</div>
+                    <div className="text-[9px]" style={{ color: theme.global.textMuted }}>{m.agent}</div>
+                    <div className="text-[10px] font-medium" style={{ color: theme.global.textSecondary }}>{m.name}</div>
+                    <div className="text-sm font-bold" style={{ color: theme.global.accent }}>{m.value}</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* 結果/報告清單 */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold" style={{ color: theme.global.textSecondary }}>
-              即時結果
-            </h3>
-            {recentLogs
-              .filter((l) => l.type === 'success' || l.type === 'warning')
-              .slice(0, 8)
-              .map((log) => (
-                <ResultCard key={log.id} log={log} theme={theme} />
-              ))}
-          </div>
-
-          {activeAgents.length === 0 && (
+          {/* 等待任務開始 */}
+          {analysisResults.length === 0 && !isCompleted && displayAgents.length === 0 && (
             <div
-              className="flex flex-col items-center justify-center h-64 rounded-xl border border-dashed"
+              className="flex flex-col items-center justify-center h-48 rounded-xl border border-dashed"
               style={{ borderColor: theme.global.border, color: theme.global.textMuted }}
             >
-              <div className="text-4xl mb-3 opacity-30">&#128202;</div>
-              <div className="text-sm">任務啟動後將在此顯示分析結果</div>
+              <div className="text-3xl mb-2 opacity-30">&#128202;</div>
+              <div className="text-xs">任務啟動後將在此顯示分析結果</div>
             </div>
           )}
         </div>
@@ -450,62 +481,6 @@ function LogEntry({ log, theme }: LogEntryProps) {
       <span className="truncate" style={{ color: theme.global.textSecondary }}>
         {log.message}
       </span>
-    </div>
-  )
-}
-
-interface MetricCardProps {
-  label: string
-  value: string
-  theme: import('../themes').WindAITheme
-}
-
-function MetricCard({ label, value, theme }: MetricCardProps) {
-  return (
-    <div
-      className="rounded-xl px-4 py-3 border"
-      style={{
-        backgroundColor: theme.global.panelBg,
-        borderColor: theme.global.border,
-      }}
-    >
-      <div className="text-xs mb-1" style={{ color: theme.global.textSecondary }}>
-        {label}
-      </div>
-      <div className="text-xl font-bold" style={{ color: theme.global.accent }}>
-        {value}
-      </div>
-    </div>
-  )
-}
-
-interface ResultCardProps {
-  log: WorkLog
-  theme: import('../themes').WindAITheme
-}
-
-function ResultCard({ log, theme }: ResultCardProps) {
-  return (
-    <div
-      className="rounded-xl px-4 py-3 border"
-      style={{
-        backgroundColor: theme.global.panelBg,
-        borderColor: theme.global.border,
-      }}
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <div
-          className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: theme.statuses.working.dot }}
-        />
-        <span className="text-sm font-medium">{log.agentName}</span>
-        <span className="text-xs ml-auto" style={{ color: theme.global.textMuted }}>
-          {new Date(log.timestamp).toLocaleTimeString('zh-TW', { hour12: false })}
-        </span>
-      </div>
-      <div className="text-sm" style={{ color: theme.global.textSecondary }}>
-        {log.message}
-      </div>
     </div>
   )
 }

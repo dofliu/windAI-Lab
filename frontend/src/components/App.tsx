@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Agent, SpeechBubble } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
@@ -122,13 +122,34 @@ export default function App() {
 
   const workingCount = agents.filter((a) => a.status === 'working').length
 
-  // ── 戰情中心模式：有代理在工作中且來自後端（非模擬閒聊）──
-  const isMissionMode = useMemo(() => {
+  // ── 戰情中心模式：任務進行中或剛完成（保留結果畫面） ──
+  const isActivelyWorking = useMemo(() => {
     if (!hasBackend) return false
     return agents.some(
       (a) => backendActiveIds.has(a.id) && (a.status === 'working' || a.status === 'waiting'),
     )
   }, [hasBackend, agents, backendActiveIds])
+
+  // 任務完成後保持戰情中心畫面，讓使用者能查看結果
+  const [missionSticky, setMissionSticky] = useState(false)
+  const wasWorking = useRef(false)
+
+  useEffect(() => {
+    if (isActivelyWorking) {
+      wasWorking.current = true
+      setMissionSticky(true)
+    } else if (wasWorking.current) {
+      // 任務剛完成 → 保持在戰情中心
+      wasWorking.current = false
+      // missionSticky 維持 true，等使用者手動關閉
+    }
+  }, [isActivelyWorking])
+
+  const isMissionMode = isActivelyWorking || missionSticky
+
+  const handleCloseMission = useCallback(() => {
+    setMissionSticky(false)
+  }, [])
 
   /* ── Hire / Fire handlers (simulation mode) ── */
   const handleHire = useCallback((agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => {
@@ -152,6 +173,10 @@ export default function App() {
   const SIM_COMMANDS = new Set(['bosscall', 'teatime'])
 
   const handleCommand = (command: string, parameters: Record<string, string>) => {
+    // 新指令時重置戰情中心 sticky（讓舊結果清除）
+    if (!SIM_COMMANDS.has(command)) {
+      setMissionSticky(false)
+    }
     sim.sendCommand(command, parameters)
     if (isConnected && !SIM_COMMANDS.has(command)) {
       ws.sendCommand(command, parameters)
@@ -237,6 +262,8 @@ export default function App() {
             workLogs={workLogs}
             analysisResults={ws.analysisResults ?? []}
             onAgentClick={setSelectedAgent}
+            isCompleted={!isActivelyWorking && missionSticky}
+            onClose={handleCloseMission}
           />
         ) : (
           /* ══ 一般辦公室模式 ══ */
