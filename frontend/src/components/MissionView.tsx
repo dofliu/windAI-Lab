@@ -9,6 +9,10 @@
  */
 
 import { useMemo } from 'react'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts'
 import { useTheme, getStatusColor, getTierColor } from '../themes'
 import type { Agent, WorkLog } from '../types/agent'
 import AvatarSVG from './AvatarSVG'
@@ -47,6 +51,39 @@ export default function MissionView({
 
   // 最近的工作日誌（最多 50 筆）
   const recentLogs = useMemo(() => workLogs.slice(-50).reverse(), [workLogs])
+
+  // 代理進度長條圖資料
+  const agentProgressData = useMemo(
+    () =>
+      activeAgents.map((a) => ({
+        name: a.displayName.length > 6 ? a.displayName.slice(0, 6) + '…' : a.displayName,
+        progress: a.progress ?? 0,
+        color: getStatusColor(theme, a.status).dot,
+      })),
+    [activeAgents, theme],
+  )
+
+  // 狀態分佈圓餅圖資料
+  const statusDistData = useMemo(() => {
+    const counts: Record<string, number> = {}
+    agents.forEach((a) => {
+      counts[a.status] = (counts[a.status] ?? 0) + 1
+    })
+    const labels: Record<string, string> = {
+      idle: '待命',
+      working: '工作中',
+      waiting: '等待',
+      completed: '完成',
+      error: '錯誤',
+    }
+    return Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([status, value]) => ({
+        name: labels[status] ?? status,
+        value,
+        color: getStatusColor(theme, status).dot,
+      }))
+  }, [agents, theme])
 
   // 任務標題
   const title = missionTitle || '任務進行中'
@@ -150,7 +187,7 @@ export default function MissionView({
           style={{ borderColor: theme.global.border }}
         >
           <h2 className="text-sm font-bold" style={{ color: theme.global.textPrimary }}>
-            分析結果
+            分析儀表板
           </h2>
           <span className="text-xs" style={{ color: theme.global.textMuted }}>
             即時更新
@@ -165,11 +202,95 @@ export default function MissionView({
             <MetricCard label="日誌筆數" value={`${workLogs.length}`} theme={theme} />
           </div>
 
-          {/* 結果區域 — 待接入實際圖表 */}
-          <div className="space-y-4">
+          {/* 圖表區域 */}
+          {activeAgents.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* 代理進度長條圖 */}
+              <div
+                className="rounded-xl border p-4"
+                style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
+              >
+                <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
+                  代理進度
+                </h3>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={agentProgressData} layout="vertical">
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: theme.global.textMuted }} />
+                    <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 10, fill: theme.global.textSecondary }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: theme.global.panelBg,
+                        border: `1px solid ${theme.global.border}`,
+                        borderRadius: 8,
+                        fontSize: 11,
+                        color: theme.global.textPrimary,
+                      }}
+                      formatter={(value) => [`${value}%`, '進度']}
+                    />
+                    <Bar dataKey="progress" radius={[0, 4, 4, 0]}>
+                      {agentProgressData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 狀態分佈圓餅圖 */}
+              <div
+                className="rounded-xl border p-4"
+                style={{ backgroundColor: theme.global.panelBg, borderColor: theme.global.border }}
+              >
+                <h3 className="text-xs font-semibold mb-3" style={{ color: theme.global.textSecondary }}>
+                  代理狀態分佈
+                </h3>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={statusDistData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {statusDistData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: theme.global.panelBg,
+                        border: `1px solid ${theme.global.border}`,
+                        borderRadius: 8,
+                        fontSize: 11,
+                        color: theme.global.textPrimary,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* 圓餅圖圖例 */}
+                <div className="flex justify-center gap-3 mt-1">
+                  {statusDistData.map((d) => (
+                    <span key={d.name} className="flex items-center gap-1 text-[10px]" style={{ color: theme.global.textSecondary }}>
+                      <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: d.color }} />
+                      {d.name} {d.value}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 結果/報告清單 */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold" style={{ color: theme.global.textSecondary }}>
+              即時結果
+            </h3>
             {recentLogs
-              .filter((l) => l.type === 'success')
-              .slice(0, 5)
+              .filter((l) => l.type === 'success' || l.type === 'warning')
+              .slice(0, 8)
               .map((log) => (
                 <ResultCard key={log.id} log={log} theme={theme} />
               ))}
