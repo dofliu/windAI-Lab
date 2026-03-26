@@ -49,10 +49,7 @@ class FaultLabel:
     }
 
 
-# Senvion MM92 參數
-_RATED_POWER = 2050
-_CUT_IN = 3.0
-_RATED_WIND = 12.5
+from src.core.constants import TurbineProfile
 
 
 def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:
@@ -98,7 +95,9 @@ class TrainResult:
 # ── 故障標籤產生器 ────────────────────────────────────────────
 
 
-def generate_fault_labels(df: pd.DataFrame) -> pd.DataFrame:
+def generate_fault_labels(
+    df: pd.DataFrame, profile: TurbineProfile | None = None
+) -> pd.DataFrame:
     """根據領域規則從 SCADA 特徵生成故障標籤。
 
     使用基於物理的規則自動標註故障標籤，作為分類器的訓練目標。
@@ -107,12 +106,15 @@ def generate_fault_labels(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         經特徵工程處理後的 SCADA 資料。
+    profile : TurbineProfile or None
+        風機參數。
 
     Returns
     -------
     pd.DataFrame
         包含各故障標籤的 0/1 DataFrame，索引與輸入相同。
     """
+    p = profile or TurbineProfile()
     labels = pd.DataFrame(index=df.index)
 
     ws_col = _find_col(df, ["wind speed", "windspeed", "ws"])
@@ -149,12 +151,12 @@ def generate_fault_labels(df: pd.DataFrame) -> pd.DataFrame:
         if ambient_col:
             ambient = df[ambient_col].astype(float)
             # 溫度 < 2°C, 風速在運行範圍, 但功率顯著低於預期
-            theoretical = _RATED_POWER * np.clip(
-                ((ws - _CUT_IN) / (_RATED_WIND - _CUT_IN)) ** 3, 0, 1
-            )
+            divisor = p.rated_wind_speed_ms - p.cut_in_speed_ms
+            ratio = np.clip(((ws - p.cut_in_speed_ms) / divisor) ** 3, 0, 1) if divisor > 0 else 0
+            theoretical = p.rated_power_kw * ratio
             low_power = pwr < theoretical * 0.5
             cold = ambient < 2.0
-            wind_ok = (ws >= _CUT_IN + 1) & (ws <= 20)
+            wind_ok = (ws >= p.cut_in_speed_ms + 1) & (ws <= 20)
             labels[FaultLabel.BLADE_ICING] = (cold & wind_ok & low_power).astype(int)
         else:
             labels[FaultLabel.BLADE_ICING] = 0
@@ -254,7 +256,11 @@ class FaultClassifier:
         return features[feature_cols]
 
     def train(
-        self, df: pd.DataFrame, labels: pd.DataFrame | None = None, test_size: float = 0.2
+        self,
+        df: pd.DataFrame,
+        labels: pd.DataFrame | None = None,
+        test_size: float = 0.2,
+        profile: TurbineProfile | None = None,
     ) -> TrainResult:
         """訓練多標籤故障分類器。
 
@@ -266,6 +272,8 @@ class FaultClassifier:
             故障標籤。若為 None，會自動使用規則產生。
         test_size : float
             測試集比例。
+        profile : TurbineProfile or None
+            風機參數。
 
         Returns
         -------
@@ -273,7 +281,7 @@ class FaultClassifier:
             訓練結果。
         """
         if labels is None:
-            labels = generate_fault_labels(df)
+            labels = generate_fault_labels(df, profile=profile)
 
         features = self._prepare_features(df)
 

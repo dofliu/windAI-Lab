@@ -17,7 +17,7 @@ import pytest
 def _make_scada_df(n: int = 5000, seed: int = 42) -> pd.DataFrame:
     """產生合成 SCADA 資料。
 
-    模擬 Kelmarsh 風場 Senvion MM92 風機的 10 分鐘 SCADA 資料，
+    模擬通用風機的 10 分鐘 SCADA 資料（額定功率 2050 kW），
     包含風速、功率、溫度、轉子轉速等欄位。
     """
     rng = np.random.default_rng(seed)

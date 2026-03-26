@@ -41,7 +41,7 @@ class QualityChecker(BaseAgent):
 
     async def _validate_from_source(self, params: dict[str, Any]) -> TaskResult:
         """載入並驗證資料來源。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.2, f"載入 {turbine_id} 資料進行品質檢核")
 
         try:

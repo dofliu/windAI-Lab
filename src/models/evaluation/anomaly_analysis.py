@@ -4,7 +4,7 @@
 溫度異常偵測（溫度-功率正常行為模型）、功率曲線偏差分析
 （分箱比較法）、綜合健康分數計算，以及完整故障診斷報告生成。
 
-適用風機：Senvion MM92 (2050 kW, 92m 轉子直徑)
+所有分析函式透過 ``TurbineProfile`` 接收風機參數，不再綁定特定風機型號。
 """
 
 from __future__ import annotations
@@ -14,8 +14,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-_DEFAULT_RATED_POWER = 2050
-_DEFAULT_CUT_IN = 3.0
+from src.core.constants import TurbineProfile
 
 
 def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:
@@ -169,7 +168,9 @@ def detect_temperature_anomalies(
 
 def detect_power_curve_anomalies(
     df: pd.DataFrame,
-    rated_power: float = _DEFAULT_RATED_POWER,
+    profile: TurbineProfile | None = None,
+    *,
+    rated_power: float | None = None,
 ) -> dict:
     """偵測功率曲線異常（分箱比較法）。
 
@@ -192,32 +193,38 @@ def detect_power_curve_anomalies(
         - efficiency_loss_pct: 估算效率損失百分比
         - bin_analysis: 各風速區間的詳細分析列表
     """
+    if profile is None and rated_power is not None:
+        p = TurbineProfile(rated_power_kw=rated_power)
+    else:
+        p = profile or TurbineProfile()
+    rp = p.rated_power_kw
+    cut_in = p.cut_in_speed_ms
+    rated_wind = p.rated_wind_speed_ms
+    cut_out = p.cut_out_speed_ms
+
     ws_col = _find_col(df, ["wind speed", "windspeed", "ws"])
     power_col = _find_col(df, ["power", "active power"])
 
+    empty_result: dict = {
+        "mean_deviation_pct": 0.0,
+        "worst_wind_speed_bin": "N/A",
+        "efficiency_loss_pct": 0.0,
+        "bin_analysis": [],
+    }
+
     if not ws_col or not power_col:
-        return {
-            "mean_deviation_pct": 0.0,
-            "worst_wind_speed_bin": "N/A",
-            "efficiency_loss_pct": 0.0,
-            "bin_analysis": [],
-        }
+        return empty_result
 
     ws = df[ws_col].astype(float)
     pwr = df[power_col].astype(float)
 
     # 只分析正常運行區間
-    mask = (ws >= _DEFAULT_CUT_IN) & (ws <= 25) & (pwr > 0)
+    mask = (ws >= cut_in) & (ws <= cut_out) & (pwr > 0)
     ws_valid = ws[mask]
     pwr_valid = pwr[mask]
 
     if len(ws_valid) == 0:
-        return {
-            "mean_deviation_pct": 0.0,
-            "worst_wind_speed_bin": "N/A",
-            "efficiency_loss_pct": 0.0,
-            "bin_analysis": [],
-        }
+        return empty_result
 
     # 分箱分析（0.5 m/s 區間）
     bins = np.arange(0, 30.5, 0.5)
@@ -227,12 +234,16 @@ def detect_power_curve_anomalies(
     grouped = grouped[grouped["count"] >= 5]
 
     if len(grouped) == 0:
-        return {
-            "mean_deviation_pct": 0.0,
-            "worst_wind_speed_bin": "N/A",
-            "efficiency_loss_pct": 0.0,
-            "bin_analysis": [],
-        }
+        return empty_result
+
+    def _cubic_theoretical(ws_val: float) -> float:
+        """三次方理論功率。"""
+        if ws_val < cut_in:
+            return 0.0
+        if ws_val < rated_wind:
+            divisor = rated_wind - cut_in
+            return rp * ((ws_val - cut_in) / divisor) ** 3 if divisor > 0 else 0.0
+        return rp
 
     # 建立理想功率曲線（使用三次方模型）
     bin_analysis: list[dict] = []
@@ -243,16 +254,7 @@ def detect_power_curve_anomalies(
     for bin_interval, row in grouped.iterrows():
         bin_mid = (bin_interval.left + bin_interval.right) / 2
         actual_mean = row["mean"]
-
-        # 理論功率（簡化三次方）
-        if bin_mid < _DEFAULT_CUT_IN:
-            theoretical = 0
-        elif bin_mid < 12.5:
-            theoretical = (
-                rated_power * ((bin_mid - _DEFAULT_CUT_IN) / (12.5 - _DEFAULT_CUT_IN)) ** 3
-            )
-        else:
-            theoretical = rated_power
+        theoretical = _cubic_theoretical(bin_mid)
 
         dev_pct = ((actual_mean - theoretical) / theoretical) * 100 if theoretical > 10 else 0.0
 
@@ -276,19 +278,11 @@ def detect_power_curve_anomalies(
 
     # 估算效率損失：加權平均偏差
     total_actual = pwr_valid.sum()
-    # 理論總發電量
     theoretical_total = 0.0
     for _, row_data in bin_stats.iterrows():
         ws_val = ws_valid.get(row_data.name, np.nan) if hasattr(row_data, "name") else np.nan
         if pd.notna(ws_val):
-            if ws_val < _DEFAULT_CUT_IN:
-                theoretical_total += 0
-            elif ws_val < 12.5:
-                theoretical_total += (
-                    rated_power * ((ws_val - _DEFAULT_CUT_IN) / (12.5 - _DEFAULT_CUT_IN)) ** 3
-                )
-            else:
-                theoretical_total += rated_power
+            theoretical_total += _cubic_theoretical(float(ws_val))
 
     if theoretical_total > 0:
         efficiency_loss = ((theoretical_total - total_actual) / theoretical_total) * 100
@@ -303,7 +297,7 @@ def detect_power_curve_anomalies(
     }
 
 
-def compute_health_score(df: pd.DataFrame) -> dict:
+def compute_health_score(df: pd.DataFrame, profile: TurbineProfile | None = None) -> dict:
     """計算風機綜合健康分數。
 
     根據多個指標加權計算健康分數（0~100）：
@@ -345,7 +339,7 @@ def compute_health_score(df: pd.DataFrame) -> dict:
             scores["power_curve_score"] = 50.0
     else:
         # 嘗試直接計算
-        pc_result = detect_power_curve_anomalies(df)
+        pc_result = detect_power_curve_anomalies(df, profile=profile)
         abs_dev = abs(pc_result["mean_deviation_pct"])
         scores["power_curve_score"] = max(0, 100 - abs_dev * 2)
 
@@ -405,7 +399,9 @@ def compute_health_score(df: pd.DataFrame) -> dict:
     return scores
 
 
-def generate_diagnosis_report(df: pd.DataFrame, turbine_id: str) -> dict:
+def generate_diagnosis_report(
+    df: pd.DataFrame, turbine_id: str, profile: TurbineProfile | None = None
+) -> dict:
     """產生完整的故障診斷報告。
 
     彙整溫度異常偵測、功率曲線分析、健康分數計算等結果，
@@ -452,7 +448,7 @@ def generate_diagnosis_report(df: pd.DataFrame, turbine_id: str) -> dict:
         report["analysis_period"] = {"start": "N/A", "end": "N/A"}
 
     # ── 健康分數 ──
-    health_result = compute_health_score(df)
+    health_result = compute_health_score(df, profile=profile)
     report["health_score"] = health_result["health_score"]
     report["health_details"] = health_result
 
@@ -463,7 +459,7 @@ def generate_diagnosis_report(df: pd.DataFrame, turbine_id: str) -> dict:
     report["temperature_components_checked"] = temp_result["components_checked"]
 
     # ── 功率曲線分析 ──
-    pc_result = detect_power_curve_anomalies(df)
+    pc_result = detect_power_curve_anomalies(df, profile=profile)
     report["power_curve_analysis"] = {
         "mean_deviation_pct": pc_result["mean_deviation_pct"],
         "worst_wind_speed_bin": pc_result["worst_wind_speed_bin"],
@@ -484,11 +480,12 @@ def generate_diagnosis_report(df: pd.DataFrame, turbine_id: str) -> dict:
         operating_count = state_counts.get("partial", 0) + state_counts.get("full", 0)
         ops["availability"] = round(operating_count / total * 100, 1) if total > 0 else 0.0
 
+    p = profile or TurbineProfile()
     if "capacity_factor" in df.columns:
         ops["capacity_factor"] = round(df["capacity_factor"].mean() * 100, 1)
     elif power_col:
         pwr = df[power_col].astype(float)
-        ops["capacity_factor"] = round(pwr.mean() / _DEFAULT_RATED_POWER * 100, 1)
+        ops["capacity_factor"] = round(pwr.mean() / p.rated_power_kw * 100, 1)
     else:
         ops["capacity_factor"] = 0.0
 

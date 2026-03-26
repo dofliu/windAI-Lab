@@ -191,7 +191,7 @@ def create_lit_search_workflow(topic: str = "wind turbine fault diagnosis LLM") 
     )
 
 
-def create_data_load_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+def create_data_load_workflow(turbine_id: str = "WT-01") -> Workflow:
     """建立 /data:load 資料載入工作流程。"""
     return Workflow(
         id="data-load",
@@ -247,7 +247,7 @@ def create_data_load_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
     )
 
 
-def create_data_clean_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+def create_data_clean_workflow(turbine_id: str = "WT-01") -> Workflow:
     """建立 /data:clean 資料清洗工作流程。"""
     return Workflow(
         id="data-clean",
@@ -292,7 +292,7 @@ def create_data_clean_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
     )
 
 
-def create_ai_train_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+def create_ai_train_workflow(turbine_id: str = "WT-01") -> Workflow:
     """建立 /ai:train 模型訓練工作流程。"""
     return Workflow(
         id="ai-train",
@@ -350,7 +350,7 @@ def create_ai_train_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
     )
 
 
-def create_ai_evaluate_workflow(turbine_id: str = "Kelmarsh_1") -> Workflow:
+def create_ai_evaluate_workflow(turbine_id: str = "WT-01") -> Workflow:
     """建立 /ai:evaluate 模型評估工作流程。"""
     return Workflow(
         id="ai-evaluate",

@@ -45,7 +45,7 @@ class ScadaProcessor(BaseAgent):
 
     async def _load_scada(self, params: dict[str, Any]) -> TaskResult:
         """載入 SCADA 資料。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         year = params.get("year", 2016)
 
         await self.update_progress(0.1, f"連線至 {turbine_id} 資料來源")
@@ -86,7 +86,7 @@ class ScadaProcessor(BaseAgent):
             from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
             from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
 
-            turbine_id = params.get("turbine_id", "Kelmarsh_1")
+            turbine_id = params.get("turbine_id", "WT-01")
 
             loop = asyncio.get_event_loop()
             df = await loop.run_in_executor(None, lambda: load_turbine_data(turbine_id))

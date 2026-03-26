@@ -18,9 +18,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
-# Senvion MM92 參數
-_DEFAULT_RATED_POWER = 2050
-_DEFAULT_CUT_IN = 3.0
+from src.core.constants import TurbineProfile
 
 
 def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:
@@ -153,7 +151,9 @@ class PowerCurveNBM:
 
         return features[feature_cols], feature_cols
 
-    def _filter_normal_operation(self, df: pd.DataFrame, power_col: str) -> pd.DataFrame:
+    def _filter_normal_operation(
+        self, df: pd.DataFrame, power_col: str, profile: TurbineProfile | None = None
+    ) -> pd.DataFrame:
         """過濾正常運行資料（排除停機、異常功率）。
 
         Parameters
@@ -162,25 +162,30 @@ class PowerCurveNBM:
             原始 SCADA 資料。
         power_col : str
             功率欄位名稱。
+        profile : TurbineProfile or None
+            風機參數。
 
         Returns
         -------
         pd.DataFrame
             僅包含正常運行期間的資料。
         """
+        p = profile or TurbineProfile()
         ws_col = _find_col(df, ["wind speed", "windspeed", "ws"])
         if not ws_col:
             return df
 
         mask = (
-            (df[ws_col].astype(float) >= _DEFAULT_CUT_IN)
-            & (df[ws_col].astype(float) <= 25.0)
+            (df[ws_col].astype(float) >= p.cut_in_speed_ms)
+            & (df[ws_col].astype(float) <= p.cut_out_speed_ms)
             & (df[power_col].astype(float) > 0)
-            & (df[power_col].astype(float) <= _DEFAULT_RATED_POWER * 1.05)
+            & (df[power_col].astype(float) <= p.rated_power_kw * 1.05)
         )
         return df[mask]
 
-    def train(self, df: pd.DataFrame, test_size: float = 0.2) -> NBMResult:
+    def train(
+        self, df: pd.DataFrame, test_size: float = 0.2, profile: TurbineProfile | None = None
+    ) -> NBMResult:
         """訓練 Normal Behavior Model。
 
         使用正常運行資料訓練 GBR 模型，並在測試集上評估性能。
@@ -191,6 +196,8 @@ class PowerCurveNBM:
             經清洗的 SCADA 資料。
         test_size : float
             測試集比例，預設 0.2。
+        profile : TurbineProfile or None
+            風機參數。
 
         Returns
         -------
@@ -207,7 +214,7 @@ class PowerCurveNBM:
             raise ValueError("找不到功率欄位，無法訓練 NBM")
 
         # 過濾正常運行資料
-        df_normal = self._filter_normal_operation(df, power_col)
+        df_normal = self._filter_normal_operation(df, power_col, profile=profile)
         if len(df_normal) < 100:
             raise ValueError(f"正常運行資料不足：{len(df_normal)} 筆（需要至少 100 筆）")
 

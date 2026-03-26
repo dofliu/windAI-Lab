@@ -3,7 +3,8 @@
 根據風機運行領域知識，從 SCADA 資料中萃取功率曲線特徵、
 溫度差異特徵、以及運行狀態特徵，供下游異常偵測與健康評估使用。
 
-適用風機：Senvion MM92 (2050 kW, 92m 轉子直徑)
+所有函式透過 ``TurbineProfile`` 或等價的關鍵字引數接收風機參數，
+不再綁定特定風機型號。
 """
 
 from __future__ import annotations
@@ -11,12 +12,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# Senvion MM92 預設參數
-_DEFAULT_RATED_POWER = 2050  # 額定功率 (kW)
-_DEFAULT_ROTOR_DIAMETER = 92  # 轉子直徑 (m)
-_DEFAULT_CUT_IN = 3.0  # 切入風速 (m/s)
-_DEFAULT_RATED_WIND = 12.5  # 額定風速 (m/s)
-_DEFAULT_CUT_OUT = 25.0  # 切出風速 (m/s)
+from src.core.constants import TurbineProfile
 
 
 def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> str | None:
@@ -54,7 +50,11 @@ def _find_col(df: pd.DataFrame, keywords: list[str], suffix: str = "_Mean") -> s
 
 
 def _theoretical_power(
-    wind_speed: pd.Series, rated_power: float = _DEFAULT_RATED_POWER, **kwargs: float
+    wind_speed: pd.Series,
+    profile: TurbineProfile | None = None,
+    *,
+    rated_power: float | None = None,
+    **kwargs: float,
 ) -> pd.Series:
     """計算理論功率曲線（簡化三次方模型）。
 
@@ -64,31 +64,37 @@ def _theoretical_power(
     ----------
     wind_speed : pd.Series
         風速序列 (m/s)。
-    rated_power : float
-        額定功率 (kW)。
+    profile : TurbineProfile or None
+        風機參數（優先使用）。
+    rated_power : float or None
+        額定功率 (kW)，向下相容用；若提供 profile 則忽略。
 
     Returns
     -------
     pd.Series
         理論功率序列 (kW)。
     """
+    if profile is None and rated_power is not None:
+        p = TurbineProfile(rated_power_kw=rated_power)
+    else:
+        p = profile or TurbineProfile()
     ws = wind_speed.copy()
     power = pd.Series(0.0, index=ws.index)
 
-    # 支援動態參數（從 turbine_profiler 推斷）
-    cut_in = kwargs.get("cut_in_speed", _DEFAULT_CUT_IN)
-    rated_wind = kwargs.get("rated_wind_speed", _DEFAULT_RATED_WIND)
-    cut_out = kwargs.get("cut_out_speed", _DEFAULT_CUT_OUT)
+    rp = p.rated_power_kw
+    cut_in = kwargs.get("cut_in_speed", p.cut_in_speed_ms)
+    rated_wind = kwargs.get("rated_wind_speed", p.rated_wind_speed_ms)
+    cut_out = kwargs.get("cut_out_speed", p.cut_out_speed_ms)
 
     # 切入 ~ 額定風速：三次方關係
     partial_mask = (ws >= cut_in) & (ws < rated_wind)
     divisor = rated_wind - cut_in
     if divisor > 0:
-        power[partial_mask] = rated_power * ((ws[partial_mask] - cut_in) / divisor) ** 3
+        power[partial_mask] = rp * ((ws[partial_mask] - cut_in) / divisor) ** 3
 
     # 額定風速 ~ 切出風速：額定功率
     full_mask = (ws >= rated_wind) & (ws <= cut_out)
-    power[full_mask] = rated_power
+    power[full_mask] = rp
 
     # 超過切出風速：關機
     power[ws > cut_out] = 0.0
@@ -98,7 +104,9 @@ def _theoretical_power(
 
 def compute_power_curve_features(
     df: pd.DataFrame,
-    rated_power: float = _DEFAULT_RATED_POWER,
+    profile: TurbineProfile | None = None,
+    *,
+    rated_power: float | None = None,
     **kwargs: float,
 ) -> pd.DataFrame:
     """計算功率曲線相關特徵。
@@ -114,14 +122,22 @@ def compute_power_curve_features(
     ----------
     df : pd.DataFrame
         含風速與功率欄位的 SCADA 資料。
-    rated_power : float
-        額定功率 (kW)，預設 2050。
+    profile : TurbineProfile or None
+        風機參數（優先使用）。
+    rated_power : float or None
+        額定功率 (kW)，向下相容用；若提供 profile 則忽略。
 
     Returns
     -------
     pd.DataFrame
         新增功率曲線特徵後的資料表。
     """
+    if profile is None and rated_power is not None:
+        p = TurbineProfile(rated_power_kw=rated_power)
+    else:
+        p = profile or TurbineProfile()
+    rp = p.rated_power_kw
+
     df = df.copy()
 
     ws_col = _find_col(df, ["wind speed", "windspeed", "ws"])
@@ -132,7 +148,7 @@ def compute_power_curve_features(
         pwr = df[power_col].astype(float)
 
         # 理論功率
-        df["theoretical_power"] = _theoretical_power(ws, rated_power, **kwargs)
+        df["theoretical_power"] = _theoretical_power(ws, profile=p, **kwargs)
 
         # 功率曲線偏差
         df["power_curve_deviation"] = pwr - df["theoretical_power"]
@@ -144,10 +160,10 @@ def compute_power_curve_features(
             )
 
         # 容量因數
-        df["capacity_factor"] = pwr / rated_power
+        df["capacity_factor"] = pwr / rp
 
         # 正規化功率
-        df["normalized_power"] = np.clip(pwr / rated_power, 0, 1.2)
+        df["normalized_power"] = np.clip(pwr / rp, 0, 1.2)
 
     return df
 
@@ -232,7 +248,10 @@ def compute_temperature_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def compute_operational_features(df: pd.DataFrame) -> pd.DataFrame:
+def compute_operational_features(
+    df: pd.DataFrame,
+    profile: TurbineProfile | None = None,
+) -> pd.DataFrame:
     """計算運行狀態與機械特徵。
 
     新增欄位：
@@ -243,12 +262,15 @@ def compute_operational_features(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         含風速、功率、轉子轉速等欄位的 SCADA 資料。
+    profile : TurbineProfile or None
+        風機參數。
 
     Returns
     -------
     pd.DataFrame
         新增運行特徵後的資料表。
     """
+    p = profile or TurbineProfile()
     df = df.copy()
 
     ws_col = _find_col(df, ["wind speed", "windspeed", "ws"])
@@ -261,10 +283,10 @@ def compute_operational_features(df: pd.DataFrame) -> pd.DataFrame:
         pwr = df[power_col].astype(float)
 
         conditions = [
-            (ws < _DEFAULT_CUT_IN) | (pwr <= 0),  # idle
-            (ws >= _DEFAULT_CUT_IN) & (pwr > 0) & (pwr < _DEFAULT_RATED_POWER * 0.95),  # partial
-            pwr >= _DEFAULT_RATED_POWER * 0.95,  # full
-            ws > _DEFAULT_CUT_OUT,  # shutdown
+            (ws < p.cut_in_speed_ms) | (pwr <= 0),  # idle
+            (ws >= p.cut_in_speed_ms) & (pwr > 0) & (pwr < p.rated_power_kw * 0.95),  # partial
+            pwr >= p.rated_power_kw * 0.95,  # full
+            ws > p.cut_out_speed_ms,  # shutdown
         ]
         choices = ["idle", "partial", "full", "shutdown"]
         df["operating_state"] = np.select(conditions, choices, default="unknown")
@@ -273,7 +295,7 @@ def compute_operational_features(df: pd.DataFrame) -> pd.DataFrame:
     if ws_col and rotor_col:
         ws = df[ws_col].astype(float)
         rotor_rpm = df[rotor_col].astype(float)
-        radius = _DEFAULT_ROTOR_DIAMETER / 2.0
+        radius = (p.rotor_diameter_m or 92.0) / 2.0
 
         # TSR = (omega * R) / V = (RPM * 2 * pi / 60) * R / V
         omega = rotor_rpm * 2 * np.pi / 60

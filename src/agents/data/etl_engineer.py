@@ -56,7 +56,7 @@ class EtlEngineer(BaseAgent):
 
     async def _run_etl_pipeline(self, params: dict[str, Any]) -> TaskResult:
         """執行完整 ETL pipeline：載入 → 清洗 → 特徵工程 → 輸出。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         output_format = params.get("output_format", "parquet")
 
         await self.update_progress(0.05, f"啟動 ETL pipeline — {turbine_id}")
@@ -179,7 +179,7 @@ class EtlEngineer(BaseAgent):
 
     async def _quality_report(self, params: dict[str, Any]) -> TaskResult:
         """產生資料品質報告。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.1, f"載入 {turbine_id} 資料")
 
         try:

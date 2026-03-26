@@ -44,7 +44,7 @@ class PredictiveModeler(BaseAgent):
 
     async def _predict_rul(self, params: dict[str, Any]) -> TaskResult:
         """使用退化模型預測剩餘使用壽命。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         component = params.get("component", "gearbox")
 
         await self.update_progress(0.1, f"載入 {turbine_id} 資料")
@@ -137,7 +137,7 @@ class PredictiveModeler(BaseAgent):
 
     async def _analyze_trend(self, params: dict[str, Any]) -> TaskResult:
         """分析退化趨勢。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
 
         await self.update_progress(0.1, f"載入 {turbine_id} 退化資料")
 

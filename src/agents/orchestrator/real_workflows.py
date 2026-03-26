@@ -1,8 +1,9 @@
 """WindAI Lab 真實資料工作流程。
 
-使用代理框架（BaseAgent）協調真實的 Kelmarsh SCADA 資料分析。
+使用代理框架（BaseAgent）協調 SCADA 資料分析。
 各步驟委派至已註冊的代理實例，由代理自行管理狀態與進度廣播。
 包含 ML Pipeline 整合（NBM、故障分類器、RUL 退化模型）。
+不綁定特定風場或風機型號。
 """
 
 from __future__ import annotations
@@ -20,21 +21,6 @@ logger = get_logger("orchestrator.real_workflows")
 
 
 # ── 輔助工具 ─────────────────────────────────────────────────
-
-TURBINE_MAP: dict[str, str] = {
-    "WT-01": "Kelmarsh_1",
-    "WT-02": "Kelmarsh_2",
-    "WT-03": "Kelmarsh_3",
-    "WT-04": "Kelmarsh_4",
-    "WT-05": "Kelmarsh_5",
-    "WT-06": "Kelmarsh_6",
-    "Kelmarsh_1": "Kelmarsh_1",
-    "Kelmarsh_2": "Kelmarsh_2",
-    "Kelmarsh_3": "Kelmarsh_3",
-    "Kelmarsh_4": "Kelmarsh_4",
-    "Kelmarsh_5": "Kelmarsh_5",
-    "Kelmarsh_6": "Kelmarsh_6",
-}
 
 PARTICIPATING_AGENTS = [
     "project-director",
@@ -75,21 +61,22 @@ async def _reset_agents() -> None:
 # ── 主工作流程 ─────────────────────────────────────────────────
 
 
-async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
+async def run_real_diagnose(turbine_id: str = "WT-01") -> dict:
     """執行真實的故障診斷工作流程（含 ML Pipeline）。
 
-    透過代理框架協調多個代理，使用 Kelmarsh SCADA 真實資料。
+    透過代理框架協調多個代理，使用 SCADA 真實資料。
     包含 NBM 功率曲線建模、ML 故障分類、RUL 退化預測。
+    不綁定特定風場，turbine_id 由使用者或上游提供。
 
     Args:
-        turbine_id: 風機 ID（支援 WT-XX 或 Kelmarsh_X 格式）。
+        turbine_id: 風機 ID。
 
     Returns:
         診斷結果字典。
     """
     from src.agents.registry import agent_instances
 
-    data_id = TURBINE_MAP.get(turbine_id, "Kelmarsh_1")
+    data_id = turbine_id
     results: dict = {}
 
     # ── Step 1: 專案總監確認任務 ──
@@ -107,7 +94,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
         await _broadcast_log(
             "project-director",
             "專案總監",
-            "Kelmarsh 風場 — Senvion MM92, 2050 kW, 92m 轉子直徑",
+            f"啟動 {turbine_id} 風機故障診斷（參數由 TurbineProfiler 自動推斷）",
         )
     else:
         await _broadcast_log(
@@ -230,7 +217,7 @@ async def run_real_diagnose(turbine_id: str = "Kelmarsh_1") -> dict:
     lit_reviewer = agent_instances.get("literature-reviewer")
     if lit_reviewer:
         ctx = TaskContext(
-            parameters={"topic": f"Senvion MM92 {turbine_id} fault diagnosis"},
+            parameters={"topic": f"wind turbine {turbine_id} fault diagnosis"},
         )
         lit_result = await lit_reviewer.run_task("搜索相關故障案例文獻", ctx)
         results["literature"] = lit_result.data

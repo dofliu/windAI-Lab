@@ -58,7 +58,7 @@ class AnomalyDetector(BaseAgent):
 
     async def _detect_anomalies(self, params: dict[str, Any]) -> TaskResult:
         """對 SCADA 資料執行多策略異常偵測。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         method = params.get("method", "combined")
 
         await self.update_progress(0.05, f"載入 {turbine_id} SCADA 資料")

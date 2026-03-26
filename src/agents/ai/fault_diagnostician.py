@@ -46,7 +46,7 @@ class FaultDiagnostician(BaseAgent):
 
     async def _run_diagnosis(self, params: dict[str, Any]) -> TaskResult:
         """執行完整故障診斷流程（統計分析 + ML 分類）。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.05, f"載入 {turbine_id} 的 SCADA 與感測器資料")
 
         try:
@@ -176,7 +176,7 @@ class FaultDiagnostician(BaseAgent):
 
     async def _detect_anomalies(self, params: dict[str, Any]) -> TaskResult:
         """執行異常偵測。"""
-        turbine_id = params.get("turbine_id", "Kelmarsh_1")
+        turbine_id = params.get("turbine_id", "WT-01")
         await self.update_progress(0.3, "載入並分析資料")
 
         try:

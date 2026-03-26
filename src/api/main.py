@@ -173,7 +173,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     from src.agents.base import TaskContext
                     from src.agents.dynamic_registry import dynamic_registry
 
-                    tid = parameters.get("turbine_id", "Kelmarsh_1")
+                    tid = parameters.get("turbine_id", "WT-01")
                     agent = dynamic_registry.get_instance("fault-diagnostician")
                     if agent:
                         ctx = TaskContext(parameters={"turbine_id": tid})
@@ -198,7 +198,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     from src.agents.base import TaskContext
                     from src.agents.dynamic_registry import dynamic_registry
 
-                    tid = parameters.get("turbine_id", "Kelmarsh_1")
+                    tid = parameters.get("turbine_id", "WT-01")
                     agent = dynamic_registry.get_instance("power-curve-expert")
                     if agent:
                         ctx = TaskContext(parameters={"turbine_id": tid})
@@ -210,7 +210,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     from src.agents.base import TaskContext
                     from src.agents.dynamic_registry import dynamic_registry
 
-                    tid = parameters.get("turbine_id", "Kelmarsh_1")
+                    tid = parameters.get("turbine_id", "WT-01")
                     agent = dynamic_registry.get_instance("predictive-modeler")
                     if agent:
                         ctx = TaskContext(parameters={"turbine_id": tid})
@@ -425,7 +425,7 @@ async def execute_command(command_name: str, parameters: dict[str, Any] | None =
 
         from src.agents.orchestrator.real_workflows import run_real_diagnose
 
-        turbine_id = parameters.get("turbine_id", "Kelmarsh_1")
+        turbine_id = parameters.get("turbine_id", "WT-01")
         task_id = str(uuid.uuid4())
         _aio.create_task(run_real_diagnose(turbine_id))
         return {
@@ -446,7 +446,7 @@ async def execute_command(command_name: str, parameters: dict[str, Any] | None =
         topic = parameters.get("topic", "wind turbine fault diagnosis")
         workflow = workflow_factory(topic)
     elif command_name in ("data:load", "data:clean", "ai:train", "ai:evaluate"):
-        turbine_id = parameters.get("turbine_id", "Kelmarsh_1")
+        turbine_id = parameters.get("turbine_id", "WT-01")
         workflow = workflow_factory(turbine_id)
     else:
         workflow = workflow_factory()
@@ -515,7 +515,7 @@ def _get_ml_pipeline() -> Any:
 
 
 @app.post("/api/ml/train", tags=["ML Pipeline"])
-async def ml_train(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
+async def ml_train(turbine_id: str = "WT-01") -> JSONResponse:
     """訓練 ML Pipeline（NBM + 故障分類器 + RUL 模型）。
 
     使用指定風機的 SCADA 資料端到端訓練三個模型。
@@ -549,7 +549,7 @@ async def ml_train(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
 
 
 @app.post("/api/ml/inference", tags=["ML Pipeline"])
-async def ml_inference(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
+async def ml_inference(turbine_id: str = "WT-01") -> JSONResponse:
     """使用已訓練的 ML Pipeline 進行推論。
 
     需先呼叫 /api/ml/train 完成訓練。
@@ -599,7 +599,7 @@ def _safe_float(value: Any, decimals: int = 2) -> float | None:
 
 
 @app.get("/api/scada/{turbine_id}/overview", tags=["SCADA 資料"])
-async def scada_overview(turbine_id: str = "Kelmarsh_1", limit: int = 2000) -> JSONResponse:
+async def scada_overview(turbine_id: str = "WT-01", limit: int = 2000) -> JSONResponse:
     """取得指定風機的 SCADA 資料概覽（用於前端圖表視覺化）。
 
     智慧載入：先嘗試 Kelmarsh 專用 loader，失敗自動切換通用 smart_load，
@@ -851,7 +851,7 @@ async def file_watcher_history() -> dict[str, Any]:
 
 
 @app.get("/api/scada/{turbine_id}/features", tags=["特徵分析"])
-async def feature_analysis(turbine_id: str = "Kelmarsh_1") -> JSONResponse:
+async def feature_analysis(turbine_id: str = "WT-01") -> JSONResponse:
     """對指定風機執行全自動特徵分析。
 
     自動偵測所有欄位、計算相關性、特徵重要度、異常值、分佈、漂移。
