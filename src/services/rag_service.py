@@ -204,15 +204,127 @@ class RAGService:
         collection.delete(ids=[doc_id])
         return {"deleted": doc_id, "collection": collection.name}
 
-    def ingest_text_file(
+    def list_sources(self, collection_name: str | None = None) -> list[dict[str, Any]]:
+        """列出知識庫中所有來源檔案（依 source 分組）。
+
+        Returns:
+            [{source, chunks, file_type}] 的列表。
+        """
+        collection = self._get_collection(collection_name)
+        total = collection.count()
+        if total == 0:
+            return []
+
+        # 取回所有文件的 metadata
+        all_docs = collection.get(include=["metadatas"])
+        source_map: dict[str, dict[str, Any]] = {}
+
+        for meta in all_docs.get("metadatas", []):
+            if not meta:
+                continue
+            source = meta.get("source", "未知")
+            if source not in source_map:
+                source_map[source] = {
+                    "source": source,
+                    "chunks": 0,
+                    "file_type": meta.get("file_type", ""),
+                    "file_path": meta.get("file_path", ""),
+                }
+            source_map[source]["chunks"] += 1
+
+        return sorted(source_map.values(), key=lambda x: x["source"])
+
+    def delete_by_source(
+        self, source: str, collection_name: str | None = None
+    ) -> dict[str, Any]:
+        """刪除指定來源的所有 chunks。
+
+        Args:
+            source: 來源檔案名稱（metadata.source 值）。
+            collection_name: 集合名稱。
+
+        Returns:
+            刪除結果摘要。
+        """
+        collection = self._get_collection(collection_name)
+
+        # 找出所有屬於此 source 的文件 ID
+        all_docs = collection.get(where={"source": source}, include=["metadatas"])
+        ids_to_delete = all_docs.get("ids", [])
+
+        if not ids_to_delete:
+            return {"deleted": 0, "source": source, "collection": collection.name}
+
+        collection.delete(ids=ids_to_delete)
+        logger.info(f"已刪除來源 '{source}' 的 {len(ids_to_delete)} 個 chunks")
+        return {
+            "deleted": len(ids_to_delete),
+            "source": source,
+            "collection": collection.name,
+            "remaining": collection.count(),
+        }
+
+    # ── 支援的文件格式 ─────────────────────────────────────────
+
+    SUPPORTED_EXTENSIONS: set[str] = {".pdf", ".txt", ".md", ".csv", ".tsv", ".xlsx", ".xls", ".docx"}
+
+    @staticmethod
+    def _read_pdf(path: Path) -> str:
+        """讀取 PDF 檔案並提取全文。"""
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(path))
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(pages)
+
+    @staticmethod
+    def _read_tabular_as_text(path: Path) -> str:
+        """將表格檔（CSV/Excel）轉為可嵌入的文字格式。
+
+        每行轉為「欄位名: 值」格式，適合語意搜尋。
+        """
+        import pandas as pd
+
+        ext = path.suffix.lower()
+        if ext in (".csv", ".tsv"):
+            sep = "\t" if ext == ".tsv" else ","
+            df = pd.read_csv(path, sep=sep, encoding="utf-8", on_bad_lines="skip")
+        elif ext in (".xlsx", ".xls"):
+            df = pd.read_excel(path)
+        else:
+            return ""
+
+        if df.empty:
+            return ""
+
+        # 轉為文字：每行用「欄位: 值」格式
+        lines: list[str] = []
+        lines.append(f"檔案：{path.name}，共 {len(df)} 筆資料，欄位：{', '.join(df.columns)}")
+        lines.append("")
+
+        for idx, row in df.iterrows():
+            parts = [f"{col}: {val}" for col, val in row.items() if pd.notna(val)]
+            lines.append(" | ".join(parts))
+
+            # 限制總長度避免過大
+            if len("\n".join(lines)) > 50000:
+                lines.append(f"... （截斷，共 {len(df)} 筆）")
+                break
+
+        return "\n".join(lines)
+
+    def ingest_file(
         self,
         file_path: str,
-        chunk_size: int = 500,
-        chunk_overlap: int = 50,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
         metadata: dict[str, Any] | None = None,
         collection_name: str | None = None,
     ) -> dict[str, Any]:
-        """讀取文字檔案並分割為 chunks 後嵌入。
+        """讀取文件並分塊嵌入至知識庫。
+
+        支援：PDF、TXT、MD、CSV、TSV、XLSX、DOCX。
+        表格檔會轉為文字格式再分塊嵌入。
 
         Args:
             file_path: 檔案路徑。
@@ -228,13 +340,42 @@ class RAGService:
         if not path.exists():
             raise FileNotFoundError(f"檔案不存在：{file_path}")
 
-        text = path.read_text(encoding="utf-8")
+        suffix = path.suffix.lower()
+        if suffix == ".pdf":
+            text = self._read_pdf(path)
+        elif suffix in (".txt", ".md"):
+            text = path.read_text(encoding="utf-8")
+        elif suffix in (".csv", ".tsv", ".xlsx", ".xls"):
+            text = self._read_tabular_as_text(path)
+        elif suffix == ".docx":
+            # 簡易 docx 讀取（純文字提取）
+            try:
+                import zipfile
+                with zipfile.ZipFile(path) as z:
+                    from xml.etree import ElementTree
+                    xml_content = z.read("word/document.xml")
+                    tree = ElementTree.fromstring(xml_content)
+                    ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+                    paragraphs = tree.findall(".//w:p", ns)
+                    text = "\n".join(
+                        "".join(node.text or "" for node in p.findall(".//w:t", ns))
+                        for p in paragraphs
+                    )
+            except Exception:
+                text = ""
+        else:
+            raise ValueError(f"不支援的檔案格式：{suffix}")
+
+        if not text.strip():
+            logger.warning(f"檔案內容為空：{file_path}")
+            return {"added": 0, "collection": self._default_collection_name, "total": 0}
+
         chunks = self._split_text(text, chunk_size, chunk_overlap)
 
         base_meta = {
             "source": str(path.name),
             "file_path": str(path),
-            "file_type": path.suffix.lstrip("."),
+            "file_type": suffix.lstrip("."),
             **(metadata or {}),
         }
 
@@ -247,6 +388,154 @@ class RAGService:
         ]
 
         return self.add_documents(documents, collection_name)
+
+    def ingest_text_file(
+        self,
+        file_path: str,
+        chunk_size: int = 500,
+        chunk_overlap: int = 50,
+        metadata: dict[str, Any] | None = None,
+        collection_name: str | None = None,
+    ) -> dict[str, Any]:
+        """讀取文字檔案並分割為 chunks 後嵌入（向下相容）。
+
+        建議改用 ingest_file()，支援 PDF/TXT/MD。
+        """
+        return self.ingest_file(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            metadata=metadata,
+            collection_name=collection_name,
+        )
+
+    def ingest_folder(
+        self,
+        folder_path: str,
+        collection_name: str | None = None,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200,
+        progress_cb: Any = None,
+    ) -> dict[str, Any]:
+        """批次匯入資料夾中所有支援格式的文件。
+
+        Args:
+            folder_path: 資料夾路徑。
+            collection_name: 目標集合名稱。
+            chunk_size: 每個 chunk 的最大字元數。
+            chunk_overlap: chunks 之間的重疊字元數。
+            progress_cb: 進度回呼函式 (pct: float, msg: str) -> None。
+
+        Returns:
+            匯入結果摘要。
+        """
+        folder = Path(folder_path)
+        if not folder.exists() or not folder.is_dir():
+            raise FileNotFoundError(f"資料夾不存在：{folder_path}")
+
+        files = sorted(
+            f
+            for f in folder.rglob("*")
+            if f.is_file()
+            and f.suffix.lower() in self.SUPPORTED_EXTENSIONS
+            and not f.name.startswith(".")
+        )
+
+        results: dict[str, Any] = {
+            "total": len(files),
+            "ingested": 0,
+            "skipped": 0,
+            "errors": [],
+            "chunks_added": 0,
+        }
+
+        if not files:
+            logger.warning(f"資料夾中無支援格式文件：{folder_path}")
+            return results
+
+        step = max(1, len(files) // 20)
+        for i, fpath in enumerate(files):
+            try:
+                result = self.ingest_file(
+                    str(fpath),
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    collection_name=collection_name,
+                )
+                results["ingested"] += 1
+                results["chunks_added"] += result.get("added", 0)
+            except Exception as e:
+                results["errors"].append(f"{fpath.name}: {e}")
+                results["skipped"] += 1
+
+            if progress_cb and (i + 1) % step == 0:
+                pct = (i + 1) / len(files)
+                progress_cb(pct, f"已處理 {i + 1}/{len(files)} 份文件...")
+
+        stats = self.get_collection_stats(collection_name)
+        results["collection"] = stats.get("name", "")
+        results["total_in_collection"] = stats.get("count", 0)
+        logger.info(
+            f"資料夾匯入完成：{results['ingested']}/{results['total']} 份文件, "
+            f"{results['chunks_added']} 個 chunks"
+        )
+        return results
+
+    def ask(
+        self,
+        query: str,
+        n_results: int = 5,
+        collection_name: str | None = None,
+    ) -> dict[str, Any]:
+        """RAG 問答：檢索相關文件 → LLM 生成回答。
+
+        Args:
+            query: 使用者的問題。
+            n_results: 檢索結果數量。
+            collection_name: 搜尋集合名稱。
+
+        Returns:
+            包含 answer、sources 的結果字典。
+        """
+        from src.services.llm_service import LLMService
+
+        # Step 1: 語意搜尋
+        results = self.search(query=query, n_results=n_results, collection_name=collection_name)
+
+        if not results:
+            return {
+                "answer": "知識庫中未找到相關文件，無法回答此問題。請先匯入相關文件。",
+                "sources": [],
+                "query": query,
+            }
+
+        # Step 2: 組裝 context
+        contexts = [
+            {
+                "content": r.content,
+                "source": r.metadata.get("source", "未知"),
+                "relevance": r.relevance_score,
+            }
+            for r in results
+        ]
+
+        # Step 3: LLM 生成回答
+        llm = LLMService()
+        answer = llm.rag_answer(query=query, contexts=contexts)
+
+        return {
+            "answer": answer,
+            "sources": [
+                {
+                    "doc_id": r.doc_id,
+                    "source": r.metadata.get("source", ""),
+                    "relevance": round(r.relevance_score, 3),
+                    "content_preview": r.content[:200],
+                }
+                for r in results
+            ],
+            "query": query,
+        }
 
     @staticmethod
     def _split_text(text: str, chunk_size: int, overlap: int) -> list[str]:

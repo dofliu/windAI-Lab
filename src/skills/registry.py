@@ -73,7 +73,7 @@ class SkillRegistry:
         skills_root = Path(__file__).parent
         count_before = self.count
 
-        for subdir in ["data", "ml", "features", "reporting"]:
+        for subdir in ["data", "ml", "features", "reporting", "rag"]:
             pkg_path = skills_root / subdir
             if not pkg_path.exists():
                 continue

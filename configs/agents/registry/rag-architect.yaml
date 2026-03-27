@@ -6,7 +6,11 @@ color: "#8b5cf6"
 icon: "🧠"
 core: true
 description: "設計與優化 RAG 向量檢索管線、知識庫架構"
-skills: []
+skills:
+  - "rag_document_scanner"
+  - "rag_ingest"
 task_routing:
-  - match: ["RAG", "知識庫", "檢索"]
-    pipeline: []
+  - match: ["RAG", "知識庫", "檢索", "ingest", "embed", "嵌入"]
+    pipeline: ["rag_document_scanner", "rag_ingest"]
+  - match: ["scan", "掃描文件"]
+    pipeline: ["rag_document_scanner"]

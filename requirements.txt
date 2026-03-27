@@ -23,6 +23,7 @@ onnxruntime==1.19.0
 langchain==0.3.0
 chromadb==0.5.0
 sentence-transformers==3.0.0
+pypdf>=4.0.0
 
 # 實驗追蹤
 mlflow==2.16.0
@@ -40,6 +41,9 @@ black==24.8.0
 mypy==1.11.0
 pytest==8.3.0
 pytest-asyncio==0.24.0
+
+# LLM 服務
+google-genai>=1.0.0
 
 # 工具套件
 python-dotenv==1.0.0

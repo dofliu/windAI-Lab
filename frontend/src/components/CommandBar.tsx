@@ -14,8 +14,11 @@ const COMMANDS = [
   { name: 'diagnose-real', label: '/diagnose-real', description: '故障診斷（真實 ML）', paramHint: '風機 ID', category: 'diagnose' },
   { name: 'train-nbm', label: '/train-nbm', description: 'NBM 功率曲線訓練', paramHint: '風機 ID', category: 'ai' },
   { name: 'predict-rul', label: '/predict-rul', description: 'RUL 壽命預測', paramHint: '風機 ID', category: 'ai' },
+  { name: 'project:onboard', label: '/project:onboard', description: '專案一鍵上線（LLM 分類+RAG+資料）', paramHint: '資料夾路徑', category: 'data' },
   { name: 'data:folder', label: '/data:folder', description: '資料夾批次載入', paramHint: '資料夾路徑', category: 'data' },
   { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題', category: 'research' },
+  { name: 'rag:ingest', label: '/rag:ingest', description: 'RAG 資料夾嵌入', paramHint: '資料夾路徑', category: 'research' },
+  { name: 'rag:search', label: '/rag:search', description: 'RAG 語意搜尋', paramHint: '查詢關鍵字', category: 'research' },
   // ── 模擬指令（無需後端） ──
   { name: 'simu-load', label: '/simu-load', description: '模擬：資料載入動畫', paramHint: '風機 ID', category: 'simu' },
   { name: 'simu-clean', label: '/simu-clean', description: '模擬：資料清洗動畫', paramHint: '風機 ID', category: 'simu' },
@@ -28,9 +31,11 @@ const COMMANDS = [
 ]
 
 const QUICK_ACTIONS = [
+  { name: 'project:onboard', label: '專案上線', icon: '🚀', category: 'data' },
   { name: 'diagnose-real', label: '故障診斷', icon: '🔧', category: 'diagnose' },
   { name: 'train-nbm', label: 'NBM 訓練', icon: '📈', category: 'ai' },
   { name: 'predict-rul', label: 'RUL 預測', icon: '⏱️', category: 'ai' },
+  { name: 'rag:ingest', label: 'RAG 嵌入', icon: '📚', category: 'research' },
   { name: 'simu-load', label: '模擬載入', icon: '📂', category: 'simu' },
   { name: 'simu-train', label: '模擬訓練', icon: '🧠', category: 'simu' },
 ]
@@ -87,6 +92,12 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
         params.folder_path = paramValue
       } else if (cmdName === 'lit-search' && paramValue) {
         params.topic = paramValue
+      } else if (cmdName === 'project:onboard' && paramValue) {
+        params.folder_path = paramValue
+      } else if (cmdName === 'rag:ingest' && paramValue) {
+        params.folder_path = paramValue
+      } else if (cmdName === 'rag:search' && paramValue) {
+        params.query = paramValue
       } else if (cmdName === 'bosscall' && paramValue) {
         params.target = paramValue
       } else if (cmdName.startsWith('simu-')) {
@@ -100,6 +111,12 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
 
   const handleQuickAction = (cmdName: string) => {
     if (disabled) return
+    // 需要路徑參數的指令：填入輸入框而非直接執行
+    if (cmdName === 'project:onboard' || cmdName === 'rag:ingest') {
+      setInput(`/${cmdName} `)
+      inputRef.current?.focus()
+      return
+    }
     const params: Record<string, string> = {}
     if (TURBINE_COMMANDS.includes(cmdName)) {
       params.turbine_id = selectedTurbine
