@@ -133,6 +133,163 @@ export const defaultTheme: WindAITheme = {
   },
 }
 
+// ── 深色森林 ────────────────────────────────────────────────
+
+export const darkForest: WindAITheme = {
+  id: 'dark-forest',
+  name: '深色森林',
+  isDark: true,
+
+  global: {
+    pageBg: '#0c1a14',
+    panelBg: '#142a1e',
+    headerBg: '#142a1e',
+    textPrimary: '#e8f5e9',
+    textSecondary: '#81c784',
+    textMuted: '#4a6b52',
+    border: '#2e5940',
+    accent: '#4caf50',
+    accentHover: '#388e3c',
+  },
+
+  tiers: {
+    leadership:  { name: 'amber',   primary: '#e6a817', bg: '#5c3f0a', bgLight: '#7a5410' },
+    data:        { name: 'emerald', primary: '#2dd4bf', bg: '#0d3b36', bgLight: '#115e56' },
+    'ai-ml':     { name: 'lime',    primary: '#84cc16', bg: '#1a3a08', bgLight: '#2d5a10' },
+    domain:      { name: 'rose',    primary: '#e879a0', bg: '#5c1a30', bgLight: '#7a2240' },
+    engineering: { name: 'orange',  primary: '#fb923c', bg: '#5c2a0e', bgLight: '#7a3812' },
+    research:    { name: 'teal',    primary: '#2dd4bf', bg: '#0d3b36', bgLight: '#115e56' },
+  },
+
+  statuses: {
+    idle:      { dot: '#81c784', bg: '#1b3a20', text: '#81c784' },
+    working:   { dot: '#66bb6a', bg: '#1b4a22', text: '#66bb6a' },
+    waiting:   { dot: '#ffb74d', bg: '#5c3f0a', text: '#ffb74d' },
+    completed: { dot: '#4fc3f7', bg: '#0e3b50', text: '#4fc3f7' },
+    error:     { dot: '#ef5350', bg: '#5c1515', text: '#ef5350' },
+    offline:   { dot: '#78909c', bg: '#1a2c20', text: '#78909c' },
+  },
+
+  rooms: {
+    leadership:  { border: 'rgba(230,168,23,0.4)', floor: 'rgba(230,168,23,0.06)', label: '#e6a817' },
+    data:        { border: 'rgba(45,212,191,0.4)', floor: 'rgba(45,212,191,0.06)', label: '#2dd4bf' },
+    'ai-ml':     { border: 'rgba(132,204,22,0.4)', floor: 'rgba(132,204,22,0.06)', label: '#84cc16' },
+    domain:      { border: 'rgba(232,121,160,0.4)', floor: 'rgba(232,121,160,0.06)', label: '#e879a0' },
+    engineering: { border: 'rgba(251,146,60,0.4)', floor: 'rgba(251,146,60,0.06)', label: '#fb923c' },
+    research:    { border: 'rgba(45,212,191,0.4)', floor: 'rgba(45,212,191,0.06)', label: '#2dd4bf' },
+    meeting:     { border: 'rgba(76,175,80,0.5)',  floor: 'rgba(76,175,80,0.08)',  label: '#4caf50' },
+    'boss-room': { border: 'rgba(230,168,23,0.5)', floor: 'rgba(230,168,23,0.08)', label: '#e6a817' },
+    'tea-room':  { border: 'rgba(102,187,106,0.4)', floor: 'rgba(102,187,106,0.06)', label: '#66bb6a' },
+    'game-room': { border: 'rgba(239,83,80,0.4)',  floor: 'rgba(239,83,80,0.06)',  label: '#ef5350' },
+  },
+}
+
+// ── 深色海洋 ────────────────────────────────────────────────
+
+export const darkOcean: WindAITheme = {
+  id: 'dark-ocean',
+  name: '深色海洋',
+  isDark: true,
+
+  global: {
+    pageBg: '#0a1628',
+    panelBg: '#0f2035',
+    headerBg: '#0f2035',
+    textPrimary: '#e0f2fe',
+    textSecondary: '#7dd3fc',
+    textMuted: '#3b6a8c',
+    border: '#1e4976',
+    accent: '#0ea5e9',
+    accentHover: '#0284c7',
+  },
+
+  tiers: {
+    leadership:  { name: 'amber',   primary: '#fbbf24', bg: '#5c3f0a', bgLight: '#7a5410' },
+    data:        { name: 'sky',     primary: '#38bdf8', bg: '#0c3554', bgLight: '#0e4a70' },
+    'ai-ml':     { name: 'indigo',  primary: '#818cf8', bg: '#252880', bgLight: '#3034a0' },
+    domain:      { name: 'pink',    primary: '#f472b6', bg: '#5c1a42', bgLight: '#7a2258' },
+    engineering: { name: 'orange',  primary: '#fb923c', bg: '#5c2a0e', bgLight: '#7a3812' },
+    research:    { name: 'cyan',    primary: '#22d3ee', bg: '#0c4a5e', bgLight: '#0e5c74' },
+  },
+
+  statuses: {
+    idle:      { dot: '#7dd3fc', bg: '#0c3554', text: '#7dd3fc' },
+    working:   { dot: '#34d399', bg: '#064e3b', text: '#34d399' },
+    waiting:   { dot: '#fcd34d', bg: '#5c3f0a', text: '#fcd34d' },
+    completed: { dot: '#60a5fa', bg: '#1e3a8a', text: '#60a5fa' },
+    error:     { dot: '#f87171', bg: '#7f1d1d', text: '#f87171' },
+    offline:   { dot: '#6b7280', bg: '#0f2035', text: '#6b7280' },
+  },
+
+  rooms: {
+    leadership:  { border: 'rgba(251,191,36,0.4)', floor: 'rgba(251,191,36,0.06)', label: '#fbbf24' },
+    data:        { border: 'rgba(56,189,248,0.4)', floor: 'rgba(56,189,248,0.06)', label: '#38bdf8' },
+    'ai-ml':     { border: 'rgba(129,140,248,0.4)', floor: 'rgba(129,140,248,0.06)', label: '#818cf8' },
+    domain:      { border: 'rgba(244,114,182,0.4)', floor: 'rgba(244,114,182,0.06)', label: '#f472b6' },
+    engineering: { border: 'rgba(251,146,60,0.4)', floor: 'rgba(251,146,60,0.06)', label: '#fb923c' },
+    research:    { border: 'rgba(34,211,238,0.4)', floor: 'rgba(34,211,238,0.06)', label: '#22d3ee' },
+    meeting:     { border: 'rgba(14,165,233,0.5)', floor: 'rgba(14,165,233,0.08)', label: '#0ea5e9' },
+    'boss-room': { border: 'rgba(251,191,36,0.5)', floor: 'rgba(251,191,36,0.08)', label: '#fbbf24' },
+    'tea-room':  { border: 'rgba(52,211,153,0.4)', floor: 'rgba(52,211,153,0.06)', label: '#34d399' },
+    'game-room': { border: 'rgba(248,113,113,0.4)', floor: 'rgba(248,113,113,0.06)', label: '#f87171' },
+  },
+}
+
+// ── 淺色簡約 ────────────────────────────────────────────────
+
+export const lightClean: WindAITheme = {
+  id: 'light-clean',
+  name: '淺色簡約',
+  isDark: false,
+
+  global: {
+    pageBg: '#f8fafc',
+    panelBg: '#ffffff',
+    headerBg: '#ffffff',
+    textPrimary: '#1e293b',
+    textSecondary: '#475569',
+    textMuted: '#94a3b8',
+    border: '#e2e8f0',
+    accent: '#4f46e5',
+    accentHover: '#4338ca',
+  },
+
+  tiers: {
+    leadership:  { name: 'amber',   primary: '#d97706', bg: '#fef3c7', bgLight: '#fde68a' },
+    data:        { name: 'emerald', primary: '#059669', bg: '#d1fae5', bgLight: '#a7f3d0' },
+    'ai-ml':     { name: 'violet',  primary: '#7c3aed', bg: '#ede9fe', bgLight: '#ddd6fe' },
+    domain:      { name: 'pink',    primary: '#db2777', bg: '#fce7f3', bgLight: '#fbcfe8' },
+    engineering: { name: 'orange',  primary: '#ea580c', bg: '#fff7ed', bgLight: '#fed7aa' },
+    research:    { name: 'cyan',    primary: '#0891b2', bg: '#cffafe', bgLight: '#a5f3fc' },
+  },
+
+  statuses: {
+    idle:      { dot: '#94a3b8', bg: '#f1f5f9', text: '#64748b' },
+    working:   { dot: '#059669', bg: '#d1fae5', text: '#059669' },
+    waiting:   { dot: '#d97706', bg: '#fef3c7', text: '#d97706' },
+    completed: { dot: '#2563eb', bg: '#dbeafe', text: '#2563eb' },
+    error:     { dot: '#dc2626', bg: '#fee2e2', text: '#dc2626' },
+    offline:   { dot: '#9ca3af', bg: '#f3f4f6', text: '#9ca3af' },
+  },
+
+  rooms: {
+    leadership:  { border: 'rgba(217,119,6,0.3)',  floor: 'rgba(217,119,6,0.05)',  label: '#d97706' },
+    data:        { border: 'rgba(5,150,105,0.3)',   floor: 'rgba(5,150,105,0.05)',  label: '#059669' },
+    'ai-ml':     { border: 'rgba(124,58,237,0.3)',  floor: 'rgba(124,58,237,0.05)', label: '#7c3aed' },
+    domain:      { border: 'rgba(219,39,119,0.3)',  floor: 'rgba(219,39,119,0.05)', label: '#db2777' },
+    engineering: { border: 'rgba(234,88,12,0.3)',   floor: 'rgba(234,88,12,0.05)',  label: '#ea580c' },
+    research:    { border: 'rgba(8,145,178,0.3)',   floor: 'rgba(8,145,178,0.05)',  label: '#0891b2' },
+    meeting:     { border: 'rgba(79,70,229,0.3)',   floor: 'rgba(79,70,229,0.05)',  label: '#4f46e5' },
+    'boss-room': { border: 'rgba(217,119,6,0.4)',   floor: 'rgba(217,119,6,0.06)',  label: '#d97706' },
+    'tea-room':  { border: 'rgba(5,150,105,0.3)',   floor: 'rgba(5,150,105,0.05)',  label: '#059669' },
+    'game-room': { border: 'rgba(220,38,38,0.3)',   floor: 'rgba(220,38,38,0.05)',  label: '#dc2626' },
+  },
+}
+
+// ── 所有可用主題 ────────────────────────────────────────────
+
+export const ALL_THEMES: WindAITheme[] = [defaultTheme, darkForest, darkOcean, lightClean]
+
 // ── 主題工具函式 ──────────────────────────────────────────────
 
 /** 將主題注入為 CSS custom properties */

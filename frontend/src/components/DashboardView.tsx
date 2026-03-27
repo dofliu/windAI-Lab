@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Agent, WorkLog } from '../types/agent'
+import { Agent, WorkLog, TaskRecord } from '../types/agent'
 import AgentDetail from './AgentDetail'
 import AgentManagement from './AgentManagement'
 import FileWatcherStatus from './FileWatcherStatus'
 import KnowledgeBasePanel from './KnowledgeBasePanel'
 import MLDashboard from './MLDashboard'
 import ScadaDashboard from './ScadaDashboard'
+import TaskHistoryList from './TaskHistoryList'
 import WorkflowDAG from './WorkflowDAG'
 import WorkLogPanel from './WorkLogPanel'
 
-type DashTab = 'detail' | 'scada' | 'ml' | 'kb' | 'dag' | 'hr' | 'logs'
+export type DashTab = 'detail' | 'scada' | 'ml' | 'kb' | 'dag' | 'hr' | 'logs' | 'history'
 
 interface FileEventPayload {
   filename: string
@@ -34,6 +35,11 @@ interface DashboardViewProps {
   fileEvents?: FileEventPayload[]
   onHireAgent?: (agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => void
   onFireAgent?: (agentId: string) => void
+  taskHistory?: TaskRecord[]
+  onDeleteTaskRecord?: (id: string) => void
+  onClearTaskHistory?: () => void
+  initialTab?: DashTab
+  onTabChange?: (tab: DashTab) => void
 }
 
 const TABS: { id: DashTab; label: string; icon: string; color: string }[] = [
@@ -44,6 +50,7 @@ const TABS: { id: DashTab; label: string; icon: string; color: string }[] = [
   { id: 'dag',    label: '流程圖',      icon: '🔀', color: 'orange' },
   { id: 'hr',     label: '人事管理',    icon: '👥', color: 'amber' },
   { id: 'logs',   label: '工作日誌',    icon: '📝', color: 'slate' },
+  { id: 'history', label: '歷史記錄',  icon: '🗂️', color: 'teal' },
 ]
 
 const ACTIVE_COLORS: Record<string, string> = {
@@ -54,15 +61,29 @@ const ACTIVE_COLORS: Record<string, string> = {
   orange:  'border-orange-500 text-orange-400 bg-orange-500/10',
   amber:   'border-amber-500 text-amber-400 bg-amber-500/10',
   slate:   'border-slate-500 text-slate-300 bg-slate-500/10',
+  teal:    'border-teal-500 text-teal-400 bg-teal-500/10',
 }
 
-export default function DashboardView({ workLogs, selectedAgent, allAgents = [], fileEvents = [], onHireAgent, onFireAgent }: DashboardViewProps) {
+export default function DashboardView({
+  workLogs, selectedAgent, allAgents = [], fileEvents = [],
+  onHireAgent, onFireAgent,
+  taskHistory, onDeleteTaskRecord, onClearTaskHistory,
+  initialTab, onTabChange,
+}: DashboardViewProps) {
   const [activeTab, setActiveTab] = useState<DashTab>('scada')
 
   // Auto-switch to detail tab when an agent is selected
   useEffect(() => {
     if (selectedAgent) setActiveTab('detail')
   }, [selectedAgent?.id])
+
+  // 外部導航（例如從 MissionPanel 的「查看歷史記錄」）
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+      onTabChange?.(initialTab)
+    }
+  }, [initialTab])
 
   return (
     <div className="flex h-full flex-col">
@@ -99,6 +120,11 @@ export default function DashboardView({ workLogs, selectedAgent, allAgents = [],
                   {workLogs.length}
                 </span>
               )}
+              {tab.id === 'history' && (taskHistory?.length ?? 0) > 0 && (
+                <span className="ml-1 rounded-full bg-teal-900/40 px-1.5 py-0.5 text-[9px] text-teal-400">
+                  {taskHistory!.length}
+                </span>
+              )}
             </button>
           )
         })}
@@ -118,6 +144,12 @@ export default function DashboardView({ workLogs, selectedAgent, allAgents = [],
           <WorkflowDAG agents={allAgents} title="代理協作流程" />
         ) : activeTab === 'hr' ? (
           <AgentManagement allAgents={allAgents} onHire={onHireAgent} onFire={onFireAgent} />
+        ) : activeTab === 'history' ? (
+          <TaskHistoryList
+            records={taskHistory ?? []}
+            onDeleteRecord={onDeleteTaskRecord ?? (() => {})}
+            onClearAll={onClearTaskHistory ?? (() => {})}
+          />
         ) : (
           <WorkLogPanel logs={workLogs} />
         )}

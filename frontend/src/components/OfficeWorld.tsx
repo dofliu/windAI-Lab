@@ -16,7 +16,7 @@ interface RoomDef {
 
 const MEETING: RoomDef = {
   x: 11, y: 8, w: 78, h: 14,
-  label: '會議室', icon: '🏛️', themeKey: 'meeting',
+  label: '戰情中心', icon: '⚔️', themeKey: 'meeting',
 }
 
 const BOSS_ROOM: RoomDef = {
@@ -121,9 +121,10 @@ interface Props {
   selectedAgent: Agent | null
   onSelectAgent: (agent: Agent) => void
   speechBubbles?: SpeechBubble[]
+  isWarRoomActive?: boolean
 }
 
-export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speechBubbles = [] }: Props) {
+export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speechBubbles = [], isWarRoomActive }: Props) {
   const { theme } = useTheme()
   const allAgents = useMemo(() => rooms.flatMap((r) => r.agents), [rooms])
 
@@ -290,7 +291,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
       )}
 
       {/* ════ Meeting Room ════ */}
-      <RoomBox room={MEETING} count={meetingCount} extra={meetingCount > 0 ? '進行中' : '空閒'} />
+      <RoomBox room={MEETING} count={meetingCount} extra={meetingCount > 0 ? '進行中' : '空閒'} isActive={isWarRoomActive && meetingCount > 0} />
 
       {/* Conference table */}
       <div
@@ -472,11 +473,13 @@ function RoomBox({
   count,
   inMeeting = 0,
   extra,
+  isActive = false,
 }: {
   room: RoomDef
   count: number
   inMeeting?: number
   extra?: string
+  isActive?: boolean
 }) {
   const { theme } = useTheme()
   const colors = getRoomColor(theme, room.themeKey)
@@ -490,7 +493,11 @@ function RoomBox({
         width: `${room.w}%`,
         height: `${room.h}%`,
         backgroundColor: colors.floor,
-        borderColor: colors.border,
+        borderColor: isActive ? colors.label : colors.border,
+        boxShadow: isActive
+          ? `0 0 14px 3px ${colors.label}44, inset 0 0 10px 0px ${colors.label}18`
+          : undefined,
+        transition: 'box-shadow 0.5s ease, border-color 0.5s ease',
       }}
     >
       {/* Label */}
@@ -498,7 +505,7 @@ function RoomBox({
         <span className="mr-1">{room.icon}</span>
         <span className="font-semibold">{room.label}</span>
         {inMeeting > 0 && (
-          <span className="ml-2 text-[8px] text-indigo-400/60">{inMeeting} 在會議室</span>
+          <span className="ml-2 text-[8px] text-indigo-400/60">{inMeeting} 在戰情中心</span>
         )}
         {extra && (
           <span className="ml-2 text-[8px] opacity-60">{extra}</span>

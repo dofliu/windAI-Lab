@@ -130,6 +130,111 @@ app.add_middleware(
 )
 
 
+# ── 資料夾批次載入背景任務 ────────────────────────────────────────
+
+
+async def _run_folder_load(folder_path: str, ws_mgr: Any) -> None:
+    """透過 DataInspectorSkill + BatchLoadSkill 載入整個資料夾。"""
+    import traceback
+    from pathlib import Path
+
+    try:
+        from src.skills.base import SkillInput
+        from src.skills.data.data_inspector import DataInspectorSkill
+        from src.skills.data.batch_load import BatchLoadSkill
+
+        folder = Path(folder_path)
+        if not folder.exists() or not folder.is_dir():
+            await ws_mgr.broadcast({
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": "system",
+                    "agent_name": "WindAI Lab",
+                    "message": f"資料夾不存在或不是目錄：{folder_path}",
+                    "type": "error",
+                },
+            })
+            return
+
+        # Step 1: DataInspector 掃描資料夾
+        inspector = DataInspectorSkill()
+        inspect_input = SkillInput(parameters={"folder_path": folder_path})
+        inspect_result = await inspector.execute(inspect_input)
+
+        await ws_mgr.broadcast({
+            "type": "work_log_entry",
+            "timestamp": datetime.now().isoformat(),
+            "payload": {
+                "id": str(uuid.uuid4()),
+                "agent_id": "scada-processor",
+                "agent_name": "SCADA 資料工程師",
+                "message": f"資料夾掃描完成，策略：{inspect_result.data.get('strategy', 'unknown')}",
+                "type": "info",
+            },
+        })
+
+        # Step 2: BatchLoad 執行載入
+        loader = BatchLoadSkill()
+        load_input = SkillInput(
+            parameters={
+                "folder_path": folder_path,
+                "strategy": inspect_result.data.get("strategy", "direct_concat"),
+            },
+            context={"data": inspect_result.data},
+        )
+        load_result = await loader.execute(load_input)
+
+        file_count = load_result.data.get("files_loaded", 0)
+        total_rows = load_result.data.get("total_rows", 0)
+        await ws_mgr.broadcast({
+            "type": "work_log_entry",
+            "timestamp": datetime.now().isoformat(),
+            "payload": {
+                "id": str(uuid.uuid4()),
+                "agent_id": "scada-processor",
+                "agent_name": "SCADA 資料工程師",
+                "message": f"批次載入完成：{file_count} 檔案，共 {total_rows} 筆資料",
+                "type": "success",
+            },
+        })
+
+        # 推送結果圖表
+        if load_result.data.get("column_summary"):
+            await ws_mgr.broadcast({
+                "type": "analysis_result",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "chart_type": "bar",
+                    "title": f"資料夾載入結果（{file_count} 檔案）",
+                    "data": [
+                        {"name": k, "value": v}
+                        for k, v in list(load_result.data.get("column_summary", {}).items())[:15]
+                    ],
+                    "metadata": {
+                        "files_loaded": file_count,
+                        "total_rows": total_rows,
+                        "strategy": inspect_result.data.get("strategy", "unknown"),
+                    },
+                },
+            })
+
+    except Exception as e:
+        logger.error(f"資料夾載入失敗：{e}\n{traceback.format_exc()}")
+        await ws_mgr.broadcast({
+            "type": "work_log_entry",
+            "timestamp": datetime.now().isoformat(),
+            "payload": {
+                "id": str(uuid.uuid4()),
+                "agent_id": "system",
+                "agent_name": "WindAI Lab",
+                "message": f"資料夾載入失敗：{e}",
+                "type": "error",
+            },
+        })
+
+
 # ── WebSocket 端點 ──────────────────────────────────────────────
 
 
@@ -215,6 +320,28 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     if agent:
                         ctx = TaskContext(parameters={"turbine_id": tid})
                         _aio.create_task(agent.run_task(f"predict RUL {tid}", ctx))
+
+                elif command_name == "data:folder":
+                    import asyncio as _aio
+
+                    folder_path = parameters.get("folder_path", "")
+                    if folder_path:
+                        _aio.create_task(
+                            _run_folder_load(folder_path, ws_manager)
+                        )
+                        await ws_manager.broadcast(
+                            {
+                                "type": "work_log_entry",
+                                "timestamp": datetime.now().isoformat(),
+                                "payload": {
+                                    "id": str(uuid.uuid4()),
+                                    "agent_id": "system",
+                                    "agent_name": "WindAI Lab",
+                                    "message": f"開始批次載入資料夾：{folder_path}",
+                                    "type": "info",
+                                },
+                            }
+                        )
 
                 elif command_name in AVAILABLE_WORKFLOWS:
                     workflow_factory = AVAILABLE_WORKFLOWS[command_name]

@@ -173,8 +173,8 @@ export function useWebSocket() {
 
   const sendCommand = useCallback((command: string, parameters: Record<string, string> = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      // 新任務開始時清除上次的分析結果
-      setAnalysisResults([])
+      // 注意：不再於此自動清除 analysisResults
+      // 由 App.tsx 在任務記錄存檔後手動呼叫 clearAnalysisResults
       wsRef.current.send(JSON.stringify({
         type: 'execute_command',
         command,
@@ -182,6 +182,8 @@ export function useWebSocket() {
       }))
     }
   }, [])
+
+  const clearAnalysisResults = useCallback(() => setAnalysisResults([]), [])
 
   useEffect(() => {
     connect()
@@ -192,5 +194,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults }
 }

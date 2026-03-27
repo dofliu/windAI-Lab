@@ -40,3 +40,32 @@ export interface SpeechBubble {
   text: string
   timestamp: Date
 }
+
+/** 後端推送的分析結果 */
+export interface AnalysisResultPayload {
+  chart_type: string
+  title: string
+  data: Array<Record<string, number | string>>
+  metadata?: Record<string, number | string>
+}
+
+/** 已完成任務的歷史記錄 */
+export interface TaskRecord {
+  id: string
+  description: string
+  timestamp: string  // ISO 8601
+  durationMs: number
+  agentIds: string[]
+  agentNames: string[]
+  analysisResults: AnalysisResultPayload[]
+  extractedMetrics: Array<{ name: string; value: number; agent: string; timestamp: number }>
+  workLogSnapshot: Array<{
+    id: string
+    timestamp: string
+    agentId: string
+    agentName: string
+    message: string
+    type: 'info' | 'success' | 'warning' | 'error'
+  }>
+  status: 'completed' | 'error'
+}

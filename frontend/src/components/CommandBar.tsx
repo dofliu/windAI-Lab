@@ -6,27 +6,33 @@ interface CommandBarProps {
   disabled?: boolean
 }
 
-const TURBINE_COMMANDS = ['diagnose', 'diagnose-real', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
+/** 需要帶 turbine_id 參數的真實後端指令 */
+const TURBINE_COMMANDS = ['diagnose-real', 'train-nbm', 'predict-rul']
 
 const COMMANDS = [
-  { name: 'data:load', label: '/data:load', description: '智慧載入 SCADA 資料', paramHint: '風機 ID', category: 'data' },
-  { name: 'data:clean', label: '/data:clean', description: '自動資料清洗', paramHint: '風機 ID', category: 'data' },
-  { name: 'ai:train', label: '/ai:train', description: '端到端 ML 模型訓練', paramHint: '風機 ID', category: 'ai' },
-  { name: 'ai:evaluate', label: '/ai:evaluate', description: '模型效能評估', paramHint: '風機 ID', category: 'ai' },
-  { name: 'diagnose-real', label: '/diagnose-real', description: '真實資料故障診斷', paramHint: '風機 ID', category: 'diagnose' },
-  { name: 'diagnose', label: '/diagnose', description: '風機故障診斷 (模擬)', paramHint: '風機 ID', category: 'diagnose' },
+  // ── 真實後端指令（需啟動後端） ──
+  { name: 'diagnose-real', label: '/diagnose-real', description: '故障診斷（真實 ML）', paramHint: '風機 ID', category: 'diagnose' },
+  { name: 'train-nbm', label: '/train-nbm', description: 'NBM 功率曲線訓練', paramHint: '風機 ID', category: 'ai' },
+  { name: 'predict-rul', label: '/predict-rul', description: 'RUL 壽命預測', paramHint: '風機 ID', category: 'ai' },
+  { name: 'data:folder', label: '/data:folder', description: '資料夾批次載入', paramHint: '資料夾路徑', category: 'data' },
   { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題', category: 'research' },
+  // ── 模擬指令（無需後端） ──
+  { name: 'simu-load', label: '/simu-load', description: '模擬：資料載入動畫', paramHint: '風機 ID', category: 'simu' },
+  { name: 'simu-clean', label: '/simu-clean', description: '模擬：資料清洗動畫', paramHint: '風機 ID', category: 'simu' },
+  { name: 'simu-train', label: '/simu-train', description: '模擬：ML 訓練動畫', paramHint: '風機 ID', category: 'simu' },
+  { name: 'simu-evaluate', label: '/simu-evaluate', description: '模擬：模型評估動畫', paramHint: '風機 ID', category: 'simu' },
+  // ── 辦公室互動 ──
   { name: 'bosscall', label: '/bosscall', description: '小房間召喚', paramHint: '員工名稱', category: 'fun' },
   { name: 'teatime', label: '/teatime', description: '茶水間休息', paramHint: '', category: 'fun' },
   { name: 'gametime', label: '/gametime', description: '遊戲間打電動', paramHint: '', category: 'fun' },
 ]
 
 const QUICK_ACTIONS = [
-  { name: 'data:load', label: '載入資料', icon: '📂', category: 'data' },
-  { name: 'data:clean', label: '清洗資料', icon: '🧹', category: 'data' },
   { name: 'diagnose-real', label: '故障診斷', icon: '🔧', category: 'diagnose' },
-  { name: 'ai:train', label: 'ML 訓練', icon: '🧠', category: 'ai' },
-  { name: 'ai:evaluate', label: '模型評估', icon: '📊', category: 'ai' },
+  { name: 'train-nbm', label: 'NBM 訓練', icon: '📈', category: 'ai' },
+  { name: 'predict-rul', label: 'RUL 預測', icon: '⏱️', category: 'ai' },
+  { name: 'simu-load', label: '模擬載入', icon: '📂', category: 'simu' },
+  { name: 'simu-train', label: '模擬訓練', icon: '🧠', category: 'simu' },
 ]
 
 const FALLBACK_TURBINES = ['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6']
@@ -60,6 +66,7 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
     ai: theme.tiers['ai-ml'].primary,
     diagnose: theme.tiers.engineering.primary,
     research: theme.tiers.research.primary,
+    simu: theme.global.textMuted,
     fun: theme.statuses.waiting.dot,
   }
 
@@ -75,12 +82,15 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
     if (cmd) {
       const params: Record<string, string> = {}
       if (TURBINE_COMMANDS.includes(cmdName)) {
-        // 優先使用手動輸入的參數，否則用下拉選單的值
         params.turbine_id = paramValue || selectedTurbine
+      } else if (cmdName === 'data:folder' && paramValue) {
+        params.folder_path = paramValue
       } else if (cmdName === 'lit-search' && paramValue) {
         params.topic = paramValue
       } else if (cmdName === 'bosscall' && paramValue) {
         params.target = paramValue
+      } else if (cmdName.startsWith('simu-')) {
+        params.turbine_id = paramValue || selectedTurbine
       }
       onExecute(cmdName, params)
       setInput('')

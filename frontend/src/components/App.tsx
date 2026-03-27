@@ -1,19 +1,23 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { Agent, SpeechBubble } from '../types/agent'
+import { Agent, SpeechBubble, TaskRecord } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
+import { useTaskHistory } from '../hooks/useTaskHistory'
 import { useTheme } from '../themes'
 import { initialRooms } from '../utils/mockData'
+import { extractMetricsFromLogs, serializeWorkLog } from '../utils/extractMetrics'
 import CompactOffice from './CompactOffice'
-import DashboardView from './DashboardView'
-import MissionView from './MissionView'
+import DashboardView, { type DashTab } from './DashboardView'
+import MissionPanel from './MissionPanel'
 import OfficeWorld from './OfficeWorld'
 import CommandBar from './CommandBar'
+import ThemeSwitcher from './ThemeSwitcher'
 
 export default function App() {
   const ws = useWebSocket()
   const sim = useAgentSimulation()
   const { theme } = useTheme()
+  const { records: taskRecords, saveRecord, deleteRecord, clearRecords } = useTaskHistory()
 
   const isConnected = ws.connectionStatus === 'connected'
   const hasBackend = isConnected && ws.hasLiveUpdates
@@ -133,15 +137,48 @@ export default function App() {
   // 任務完成後保持戰情中心畫面，讓使用者能查看結果
   const [missionSticky, setMissionSticky] = useState(false)
   const wasWorking = useRef(false)
+  const taskStartTimeRef = useRef<number | null>(null)
+  const taskStartLogCountRef = useRef<number>(0)
+  const [lastCommandDescription, setLastCommandDescription] = useState<string>('')
+
+  // DashboardView 外部導航
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<DashTab | undefined>(undefined)
 
   useEffect(() => {
     if (isActivelyWorking) {
       wasWorking.current = true
+      taskStartTimeRef.current = Date.now()
+      taskStartLogCountRef.current = workLogs.length
       setMissionSticky(true)
     } else if (wasWorking.current) {
-      // 任務剛完成 → 保持在戰情中心
+      // 任務剛完成 → 保持結果畫面 + 存檔
       wasWorking.current = false
-      // missionSticky 維持 true，等使用者手動關閉
+
+      const durationMs = taskStartTimeRef.current
+        ? Date.now() - taskStartTimeRef.current
+        : 0
+
+      // 只取本次任務的日誌
+      const taskLogs = workLogs.slice(taskStartLogCountRef.current)
+      const participatingAgentIds = new Set(
+        taskLogs.map((l) => l.agentId).filter((id) => id !== 'system'),
+      )
+      const participatingAgents = agents.filter((a) => participatingAgentIds.has(a.id))
+
+      const record: TaskRecord = {
+        id: `WLAB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36)}`,
+        description: lastCommandDescription || '未命名任務',
+        timestamp: new Date().toISOString(),
+        durationMs,
+        agentIds: participatingAgents.map((a) => a.id),
+        agentNames: participatingAgents.map((a) => a.displayName),
+        analysisResults: ws.analysisResults ?? [],
+        extractedMetrics: extractMetricsFromLogs(taskLogs),
+        workLogSnapshot: taskLogs.slice(-50).map(serializeWorkLog),
+        status: 'completed',
+      }
+      saveRecord(record)
+      taskStartTimeRef.current = null
     }
   }, [isActivelyWorking])
 
@@ -149,7 +186,14 @@ export default function App() {
 
   const handleCloseMission = useCallback(() => {
     setMissionSticky(false)
-  }, [])
+    ws.clearAnalysisResults()
+  }, [ws])
+
+  const handleViewFullRecord = useCallback(() => {
+    setMissionSticky(false)
+    ws.clearAnalysisResults()
+    setDashboardInitialTab('history')
+  }, [ws])
 
   /* ── Hire / Fire handlers (simulation mode) ── */
   const handleHire = useCallback((agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => {
@@ -170,12 +214,22 @@ export default function App() {
   }, [])
 
   /* ── Command routing ── */
-  const SIM_COMMANDS = new Set(['bosscall', 'teatime'])
+  const SIM_COMMANDS = new Set([
+    'bosscall', 'teatime', 'gametime',
+    'simu-load', 'simu-clean', 'simu-train', 'simu-evaluate',
+  ])
 
   const handleCommand = (command: string, parameters: Record<string, string>) => {
-    // 新指令時重置戰情中心 sticky（讓舊結果清除）
+    // 新指令時重置
     if (!SIM_COMMANDS.has(command)) {
       setMissionSticky(false)
+      ws.clearAnalysisResults()
+      // 記錄指令描述
+      const paramStr = Object.entries(parameters)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ')
+      setLastCommandDescription(paramStr ? `${command} (${paramStr})` : command)
     }
     sim.sendCommand(command, parameters)
     if (isConnected && !SIM_COMMANDS.has(command)) {
@@ -250,135 +304,130 @@ export default function App() {
             <span className={`h-1.5 w-1.5 rounded-full ${connectionLabel.dot} ${hasBackend ? 'animate-pulse-slow' : ''}`} />
             <span className={`text-[9px] ${connectionLabel.color}`}>{connectionLabel.text}</span>
           </div>
+          <ThemeSwitcher />
         </div>
       </header>
 
-      {/* ── Main Content ── */}
+      {/* ── Main Content — 統一佈局：左側辦公室永遠可見 ── */}
       <div className="flex flex-1 overflow-hidden">
-        {isMissionMode ? (
-          /* ══ 戰情中心模式 ══ */
-          <MissionView
-            agents={agents}
-            workLogs={workLogs}
-            analysisResults={ws.analysisResults ?? []}
-            onAgentClick={setSelectedAgent}
-            isCompleted={!isActivelyWorking && missionSticky}
-            onClose={handleCloseMission}
-          />
-        ) : (
-          /* ══ 一般辦公室模式 ══ */
-          <>
-            {/* Left: Resizable Office Panel */}
-            <aside
-              className="shrink-0 border-r overflow-hidden"
-              style={{
-                width: sidebarCollapsed ? 48 : sidebarWidth,
-                borderColor: theme.global.border,
-                backgroundColor: theme.global.panelBg + '80',
-              }}
-            >
-              {/* Toggle button */}
-              <div
-                className="flex items-center justify-between border-b px-2 py-1"
-                style={{ borderColor: theme.global.border + '66' }}
-              >
-                {!sidebarCollapsed && sidebarWidth >= PIXEL_MODE_THRESHOLD && (
-                  <span className="text-[8px]" style={{ color: theme.global.textMuted }}>🎮 像素模式</span>
-                )}
-                {!sidebarCollapsed && sidebarWidth < PIXEL_MODE_THRESHOLD && (
-                  <span className="text-[8px]" style={{ color: theme.global.textMuted }}>← 拖拉邊框調寬度</span>
-                )}
-                <button
-                  onClick={() => {
-                    if (sidebarCollapsed) {
-                      setSidebarCollapsed(false)
-                      setSidebarWidth(260)
-                    } else {
-                      setSidebarCollapsed(true)
-                    }
-                  }}
-                  className="ml-auto rounded p-1 transition-colors hover:opacity-80"
-                  style={{ color: theme.global.textMuted }}
-                  title={sidebarCollapsed ? '展開研究室面板' : '收合研究室面板'}
-                >
-                  <svg
-                    className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Office content — switches between compact and pixel mode */}
-              <div className="h-[calc(100%-32px)] overflow-hidden">
-                {sidebarWidth >= PIXEL_MODE_THRESHOLD && !sidebarCollapsed ? (
-                  <div className="h-full overflow-y-auto overflow-x-hidden">
-                    <OfficeWorld
-                      rooms={rooms}
-                      selectedAgent={currentSelected}
-                      onSelectAgent={setSelectedAgent}
-                      speechBubbles={speechBubbles}
-                    />
-                  </div>
-                ) : (
-                  <CompactOffice
-                    agents={agents}
-                    selectedAgent={currentSelected}
-                    onSelectAgent={setSelectedAgent}
-                    collapsed={sidebarCollapsed}
-                  />
-                )}
-              </div>
-            </aside>
-
-            {/* Drag handle */}
-            {!sidebarCollapsed && (
-              <div
-                onMouseDown={handleMouseDown}
-                className="w-1.5 shrink-0 cursor-col-resize transition-colors hover:opacity-70"
-                style={{ backgroundColor: theme.global.border + '4d' }}
-                title="拖拉調整寬度"
-              />
+        {/* Left: Resizable Office Panel — ALWAYS VISIBLE */}
+        <aside
+          className="shrink-0 border-r overflow-hidden"
+          style={{
+            width: sidebarCollapsed ? 48 : sidebarWidth,
+            borderColor: theme.global.border,
+            backgroundColor: theme.global.panelBg + '80',
+          }}
+        >
+          {/* Toggle button */}
+          <div
+            className="flex items-center justify-between border-b px-2 py-1"
+            style={{ borderColor: theme.global.border + '66' }}
+          >
+            {!sidebarCollapsed && sidebarWidth >= PIXEL_MODE_THRESHOLD && (
+              <span className="text-[8px]" style={{ color: theme.global.textMuted }}>🎮 像素模式</span>
             )}
+            {!sidebarCollapsed && sidebarWidth < PIXEL_MODE_THRESHOLD && (
+              <span className="text-[8px]" style={{ color: theme.global.textMuted }}>← 拖拉邊框調寬度</span>
+            )}
+            <button
+              onClick={() => {
+                if (sidebarCollapsed) {
+                  setSidebarCollapsed(false)
+                  setSidebarWidth(260)
+                } else {
+                  setSidebarCollapsed(true)
+                }
+              }}
+              className="ml-auto rounded p-1 transition-colors hover:opacity-80"
+              style={{ color: theme.global.textMuted }}
+              title={sidebarCollapsed ? '展開研究室面板' : '收合研究室面板'}
+            >
+              <svg
+                className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
 
-            {/* Right: Dashboard + CommandBar */}
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <div className="flex-1 overflow-hidden">
-                <DashboardView
-                  workLogs={workLogs}
+          {/* Office content — switches between compact and pixel mode */}
+          <div className="h-[calc(100%-32px)] overflow-hidden">
+            {sidebarWidth >= PIXEL_MODE_THRESHOLD && !sidebarCollapsed ? (
+              <div className="h-full overflow-y-auto overflow-x-hidden">
+                <OfficeWorld
+                  rooms={rooms}
                   selectedAgent={currentSelected}
-                  allAgents={agents}
-                  fileEvents={ws.fileEvents ?? []}
-                  onHireAgent={handleHire}
-                  onFireAgent={handleFire}
+                  onSelectAgent={setSelectedAgent}
+                  speechBubbles={speechBubbles}
+                  isWarRoomActive={isActivelyWorking}
                 />
               </div>
+            ) : (
+              <CompactOffice
+                agents={agents}
+                selectedAgent={currentSelected}
+                onSelectAgent={setSelectedAgent}
+                collapsed={sidebarCollapsed}
+              />
+            )}
+          </div>
+        </aside>
 
-              {/* Command Bar */}
-              <div
-                className="border-t px-4 py-2"
-                style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg + '99' }}
-              >
-                <CommandBar onExecute={handleCommand} />
-              </div>
-            </div>
-          </>
+        {/* Drag handle */}
+        {!sidebarCollapsed && (
+          <div
+            onMouseDown={handleMouseDown}
+            className="w-1.5 shrink-0 cursor-col-resize transition-colors hover:opacity-70"
+            style={{ backgroundColor: theme.global.border + '4d' }}
+            title="拖拉調整寬度"
+          />
         )}
-      </div>
 
-      {/* Command Bar (always visible, even in mission mode) */}
-      {isMissionMode && (
-        <div
-          className="border-t px-4 py-2"
-          style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg + '99' }}
-        >
-          <CommandBar onExecute={handleCommand} />
+        {/* Right: Conditional Panel + CommandBar */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            {isMissionMode ? (
+              <MissionPanel
+                agents={agents}
+                workLogs={workLogs}
+                analysisResults={ws.analysisResults ?? []}
+                isCompleted={!isActivelyWorking && missionSticky}
+                isActivelyWorking={isActivelyWorking}
+                onClose={handleCloseMission}
+                onViewFullRecord={handleViewFullRecord}
+                currentTaskDescription={lastCommandDescription}
+              />
+            ) : (
+              <DashboardView
+                workLogs={workLogs}
+                selectedAgent={currentSelected}
+                allAgents={agents}
+                fileEvents={ws.fileEvents ?? []}
+                onHireAgent={handleHire}
+                onFireAgent={handleFire}
+                taskHistory={taskRecords}
+                onDeleteTaskRecord={deleteRecord}
+                onClearTaskHistory={clearRecords}
+                initialTab={dashboardInitialTab}
+                onTabChange={setDashboardInitialTab}
+              />
+            )}
+          </div>
+
+          {/* Command Bar — 統一在底部，只渲染一次 */}
+          <div
+            className="border-t px-4 py-2"
+            style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg + '99' }}
+          >
+            <CommandBar onExecute={handleCommand} />
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

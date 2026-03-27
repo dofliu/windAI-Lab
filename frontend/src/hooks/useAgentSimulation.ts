@@ -109,10 +109,14 @@ let logSeq = initialWorkLogs.length + 1
    ════════════════════════════════════════════ */
 
 const IDLE_MICRO_REACTIONS: string[] = [
-  '👀', '🤔', '💪', '👍', '☕', '📝', '😊', '💻',
-  '🔍', '📊', '⚡', '✅', '🎯', '📈', '🧠', '🌬️',
-  '嗯', '好的', '收到', '加油', '不錯', '哈',
-  '噢', 'OK', '嘿', '讚', '喔', '嗯嗯',
+  // 表情符號
+  '👀', '🤔', '💪', '👍', '☕', '😊', '💻', '🔍',
+  '⚡', '🎯', '🌬️', '😄', '🙂', '😎', '🤗', '🫡',
+  '✨', '🎵', '🌤️', '🍵', '🍰', '🎂', '🐱', '🐶',
+  // 生活短句
+  '嗯', '好的', '哈', '噢', 'OK', '嘿', '讚', '嗯嗯',
+  '呵呵', '嘻嘻', '哇', '耶', '嗨', '呦', '唔', '哦哦',
+  '好喔', '嘿嘿', '嗶嗶', '噗', '哼哼', '嘛', '是啊',
 ]
 
 /* ════════════════════════════════════════════
@@ -121,12 +125,20 @@ const IDLE_MICRO_REACTIONS: string[] = [
    ════════════════════════════════════════════ */
 
 const IDLE_OFFICE_CHAT: string[] = [
-  '好無聊...', '☕ 喝咖啡', '午餐吃啥？', '快下班了', '天氣好好',
-  '要開會嗎', '好想睡 😴', '週五了！', '加油加油', '看個新聞',
-  '休息一下', '伸展筋骨', '出去走走', '好累喔', '寫文件中',
-  '來杯茶 🍵', '整理桌面', '回個信', '查個資料', '等消息中',
-  '打個哈欠', '看報告...', '還好嗎？', '嗯嗯', '好的 👌',
-  '☀️ 好熱', '下雨了 🌧️', '肚子餓了', '😎', '💤',
+  // 天氣
+  '好熱 ☀️', '下雨了 🌧️', '天氣好好', '涼涼的~', '起風了 🌬️', '好冷 🥶',
+  // 飲食
+  '午餐吃啥？', '肚子餓了', '☕ 喝咖啡', '來杯茶 🍵', '吃飽了~', '想吃甜的',
+  '便當到了嗎', '要訂飲料嗎', '我要珍奶', '吃太撐了', '下午茶 🍰',
+  // 辦公日常
+  '好無聊...', '好想睡 😴', '快下班了', '週五了！', '又週一了',
+  '休息一下', '伸展筋骨', '出去走走', '好累喔', '打個哈欠',
+  '整理桌面', '回個信', '等消息中', '好的 👌', '還好嗎？',
+  // 閒聊
+  '加油加油', '看個新聞', '你們忙嗎', '嗯嗯', '😎',
+  '💤', '今天還好嗎', '週末計畫？', '看劇了嗎', '好片推薦',
+  '運動去！', '瑜伽好棒', '追劇中...', '逛街去~', '散步回來了',
+  '聽音樂 🎵', '看書中 📖', '澆花 🌱', '好安靜喔', '打瞌睡~',
 ]
 
 /* ════════════════════════════════════════════
@@ -444,6 +456,14 @@ export function useAgentSimulation() {
   }, [addLog, showBubble, batchUpdate])
 
   /* ── sendCommand: external command handler ── */
+  // 模擬指令使用 simu-* 前綴，與真實後端指令區隔
+  const SIMU_COMMAND_MAP: Record<string, string> = {
+    'simu-load': 'data:load',
+    'simu-clean': 'data:clean',
+    'simu-train': 'ai:train',
+    'simu-evaluate': 'ai:evaluate',
+  }
+
   const sendCommand = useCallback((command: string, params: Record<string, string> = {}) => {
     if (command === 'bosscall') {
       handleBossCall(params.target ?? '')
@@ -451,8 +471,8 @@ export function useAgentSimulation() {
       handleTeaTime()
     } else if (command === 'gametime') {
       handleGameTime()
-    } else if (['data:load', 'data:clean', 'ai:train', 'ai:evaluate'].includes(command)) {
-      triggerSlashMission(command, params.turbine_id || 'Kelmarsh_1')
+    } else if (SIMU_COMMAND_MAP[command]) {
+      triggerSlashMission(SIMU_COMMAND_MAP[command], params.turbine_id || 'WT-01')
     }
   }, [handleBossCall, handleTeaTime, handleGameTime, triggerSlashMission])
 
@@ -471,28 +491,15 @@ export function useAgentSimulation() {
       timers.push(t)
     }
 
-    function schedAutoTea() {
-      if (cancelled) return
-      const delay = 25000 + Math.random() * 15000
-      autoTeaTimer = setTimeout(() => {
-        if (!cancelled) {
-          // 30% 機率去遊戲間，70% 去茶水間
-          if (Math.random() < 0.3) {
-            handleGameTime()
-          } else {
-            handleTeaTime()
-          }
-          schedAutoTea()
-        }
-      }, delay)
-    }
+    // schedAutoTea 已停用 — 不再自動觸發茶歇/遊戲，僅由使用者手動指令
+    // function schedAutoTea() { ... }
 
     /* ═══════════════════════════════════════════
        氣泡策略分流
        ═══════════════════════════════════════════ */
     function schedIdleChat() {
       if (cancelled) return
-      const delay = 5000 + Math.random() * 8000 // 5-13s 間距，比以前稀疏
+      const delay = 15000 + Math.random() * 15000 // 15-30s 間距，降低頻率
       idleChatTimer = setTimeout(() => {
         if (cancelled) return
         const cur = agentsRef.current
@@ -669,8 +676,8 @@ export function useAgentSimulation() {
 
     // Start idle chatter (心情氣泡)
     schedIdleChat()
-    // Start auto tea/game (休息活動)
-    sched(schedAutoTea, 8000)
+    // 不再自動觸發茶歇/遊戲，僅由使用者手動 /teatime 或 /gametime 觸發
+    // sched(schedAutoTea, 8000)
 
     return () => {
       cancelled = true

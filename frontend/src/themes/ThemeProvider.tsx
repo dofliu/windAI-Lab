@@ -3,10 +3,14 @@
  *
  * 在應用最外層包裹 <ThemeProvider>，所有子元件
  * 即可透過 useTheme() 存取目前主題並切換。
+ *
+ * 主題選擇透過 localStorage 持久化。
  */
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { type WindAITheme, defaultTheme, applyThemeToRoot } from './theme'
+import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { type WindAITheme, defaultTheme, applyThemeToRoot, ALL_THEMES } from './theme'
+
+const THEME_STORAGE_KEY = 'windai_theme_id'
 
 interface ThemeContextValue {
   /** 當前主題 */
@@ -25,12 +29,34 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 interface ThemeProviderProps {
   children: ReactNode
-  /** 初始主題（預設使用 defaultTheme） */
+  /** 初始主題（預設從 localStorage 讀取，回退到 defaultTheme） */
   initialTheme?: WindAITheme
 }
 
+function loadSavedTheme(): WindAITheme {
+  try {
+    const savedId = localStorage.getItem(THEME_STORAGE_KEY)
+    if (savedId) {
+      const found = ALL_THEMES.find((t) => t.id === savedId)
+      if (found) return found
+    }
+  } catch {
+    // localStorage 不可用
+  }
+  return defaultTheme
+}
+
 export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<WindAITheme>(initialTheme ?? defaultTheme)
+  const [theme, setThemeState] = useState<WindAITheme>(initialTheme ?? loadSavedTheme)
+
+  const setTheme = useCallback((newTheme: WindAITheme) => {
+    setThemeState(newTheme)
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme.id)
+    } catch {
+      // quota exceeded
+    }
+  }, [])
 
   // 當主題變更時，注入 CSS custom properties
   useEffect(() => {
@@ -39,7 +65,7 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
 
   const value = useMemo(
     () => ({ theme, setTheme, themeId: theme.id }),
-    [theme],
+    [theme, setTheme],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
