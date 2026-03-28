@@ -140,22 +140,24 @@ async def _run_folder_load(folder_path: str, ws_mgr: Any) -> None:
 
     try:
         from src.skills.base import SkillInput
-        from src.skills.data.data_inspector import DataInspectorSkill
         from src.skills.data.batch_load import BatchLoadSkill
+        from src.skills.data.data_inspector import DataInspectorSkill
 
         folder = Path(folder_path)
         if not folder.exists() or not folder.is_dir():
-            await ws_mgr.broadcast({
-                "type": "work_log_entry",
-                "timestamp": datetime.now().isoformat(),
-                "payload": {
-                    "id": str(uuid.uuid4()),
-                    "agent_id": "system",
-                    "agent_name": "WindAI Lab",
-                    "message": f"資料夾不存在或不是目錄：{folder_path}",
-                    "type": "error",
-                },
-            })
+            await ws_mgr.broadcast(
+                {
+                    "type": "work_log_entry",
+                    "timestamp": datetime.now().isoformat(),
+                    "payload": {
+                        "id": str(uuid.uuid4()),
+                        "agent_id": "system",
+                        "agent_name": "WindAI Lab",
+                        "message": f"資料夾不存在或不是目錄：{folder_path}",
+                        "type": "error",
+                    },
+                }
+            )
             return
 
         # Step 1: DataInspector 掃描資料夾
@@ -163,17 +165,19 @@ async def _run_folder_load(folder_path: str, ws_mgr: Any) -> None:
         inspect_input = SkillInput(parameters={"folder_path": folder_path})
         inspect_result = await inspector.execute(inspect_input)
 
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": "scada-processor",
-                "agent_name": "SCADA 資料工程師",
-                "message": f"資料夾掃描完成，策略：{inspect_result.data.get('strategy', 'unknown')}",
-                "type": "info",
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": "scada-processor",
+                    "agent_name": "SCADA 資料工程師",
+                    "message": f"資料夾掃描完成，策略：{inspect_result.data.get('strategy', 'unknown')}",
+                    "type": "info",
+                },
+            }
+        )
 
         # Step 2: BatchLoad 執行載入
         loader = BatchLoadSkill()
@@ -188,51 +192,59 @@ async def _run_folder_load(folder_path: str, ws_mgr: Any) -> None:
 
         file_count = load_result.data.get("files_loaded", 0)
         total_rows = load_result.data.get("total_rows", 0)
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": "scada-processor",
-                "agent_name": "SCADA 資料工程師",
-                "message": f"批次載入完成：{file_count} 檔案，共 {total_rows} 筆資料",
-                "type": "success",
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": "scada-processor",
+                    "agent_name": "SCADA 資料工程師",
+                    "message": f"批次載入完成：{file_count} 檔案，共 {total_rows} 筆資料",
+                    "type": "success",
+                },
+            }
+        )
 
         # 推送結果圖表
         if load_result.data.get("column_summary"):
-            await ws_mgr.broadcast({
-                "type": "analysis_result",
-                "timestamp": datetime.now().isoformat(),
-                "payload": {
-                    "chart_type": "bar",
-                    "title": f"資料夾載入結果（{file_count} 檔案）",
-                    "data": [
-                        {"name": k, "value": v}
-                        for k, v in list(load_result.data.get("column_summary", {}).items())[:15]
-                    ],
-                    "metadata": {
-                        "files_loaded": file_count,
-                        "total_rows": total_rows,
-                        "strategy": inspect_result.data.get("strategy", "unknown"),
+            await ws_mgr.broadcast(
+                {
+                    "type": "analysis_result",
+                    "timestamp": datetime.now().isoformat(),
+                    "payload": {
+                        "chart_type": "bar",
+                        "title": f"資料夾載入結果（{file_count} 檔案）",
+                        "data": [
+                            {"name": k, "value": v}
+                            for k, v in list(load_result.data.get("column_summary", {}).items())[
+                                :15
+                            ]
+                        ],
+                        "metadata": {
+                            "files_loaded": file_count,
+                            "total_rows": total_rows,
+                            "strategy": inspect_result.data.get("strategy", "unknown"),
+                        },
                     },
-                },
-            })
+                }
+            )
 
     except Exception as e:
         logger.error(f"資料夾載入失敗：{e}\n{traceback.format_exc()}")
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": "system",
-                "agent_name": "WindAI Lab",
-                "message": f"資料夾載入失敗：{e}",
-                "type": "error",
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": "system",
+                    "agent_name": "WindAI Lab",
+                    "message": f"資料夾載入失敗：{e}",
+                    "type": "error",
+                },
+            }
+        )
 
 
 # ── RAG 知識庫嵌入背景任務 ──────────────────────────────────────
@@ -249,38 +261,40 @@ async def _run_rag_ingest(folder_path: str, ws_mgr: Any) -> None:
 
         # Step 1: 掃描文件
         scanner = RagDocumentScannerSkill()
-        scan_result = await scanner.execute(
-            SkillInput(parameters={"folder_path": folder_path})
-        )
+        scan_result = await scanner.execute(SkillInput(parameters={"folder_path": folder_path}))
 
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": "rag-architect",
-                "agent_name": "RAG 架構師",
-                "message": scan_result.summary,
-                "type": "info",
-            },
-        })
-
-        if scan_result.status.value == "error":
-            return
-
-        # Step 2: 嵌入文件
-        async def _progress(pct: float, msg: str) -> None:
-            await ws_mgr.broadcast({
+        await ws_mgr.broadcast(
+            {
                 "type": "work_log_entry",
                 "timestamp": datetime.now().isoformat(),
                 "payload": {
                     "id": str(uuid.uuid4()),
                     "agent_id": "rag-architect",
                     "agent_name": "RAG 架構師",
-                    "message": msg,
+                    "message": scan_result.summary,
                     "type": "info",
                 },
-            })
+            }
+        )
+
+        if scan_result.status.value == "error":
+            return
+
+        # Step 2: 嵌入文件
+        async def _progress(pct: float, msg: str) -> None:
+            await ws_mgr.broadcast(
+                {
+                    "type": "work_log_entry",
+                    "timestamp": datetime.now().isoformat(),
+                    "payload": {
+                        "id": str(uuid.uuid4()),
+                        "agent_id": "rag-architect",
+                        "agent_name": "RAG 架構師",
+                        "message": msg,
+                        "type": "info",
+                    },
+                }
+            )
 
         ingester = RagIngestSkill()
         ingest_input = SkillInput(
@@ -294,46 +308,52 @@ async def _run_rag_ingest(folder_path: str, ws_mgr: Any) -> None:
         errors_count = ingest_result.data.get("errors_count", 0)
         total_in_col = ingest_result.data.get("total_in_collection", 0)
 
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": "rag-architect",
-                "agent_name": "RAG 架構師",
-                "message": ingest_result.summary,
-                "type": "success",
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": "rag-architect",
+                    "agent_name": "RAG 架構師",
+                    "message": ingest_result.summary,
+                    "type": "success",
+                },
+            }
+        )
 
-        await ws_mgr.broadcast({
-            "type": "analysis_result",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "chart_type": "bar",
-                "title": f"RAG 知識庫嵌入完成（{ingested} 份文件）",
-                "data": [
-                    {"name": "已嵌入", "value": ingested},
-                    {"name": "失敗", "value": errors_count},
-                    {"name": "知識庫總量", "value": total_in_col},
-                ],
-                "metadata": ingest_result.data,
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "analysis_result",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "chart_type": "bar",
+                    "title": f"RAG 知識庫嵌入完成（{ingested} 份文件）",
+                    "data": [
+                        {"name": "已嵌入", "value": ingested},
+                        {"name": "失敗", "value": errors_count},
+                        {"name": "知識庫總量", "value": total_in_col},
+                    ],
+                    "metadata": ingest_result.data,
+                },
+            }
+        )
 
     except Exception as e:
         logger.error(f"RAG 資料夾嵌入失敗：{e}\n{traceback.format_exc()}")
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": "rag-architect",
-                "agent_name": "RAG 架構師",
-                "message": f"RAG 嵌入失敗：{e}",
-                "type": "error",
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": "rag-architect",
+                    "agent_name": "RAG 架構師",
+                    "message": f"RAG 嵌入失敗：{e}",
+                    "type": "error",
+                },
+            }
+        )
 
 
 # ── 專案上線背景任務 ────────────────────────────────────────────
@@ -345,19 +365,23 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
     import traceback
 
     async def _log(agent_id: str, agent_name: str, message: str, log_type: str = "info") -> None:
-        await ws_mgr.broadcast({
-            "type": "work_log_entry",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "id": str(uuid.uuid4()),
-                "agent_id": agent_id,
-                "agent_name": agent_name,
-                "message": message,
-                "type": log_type,
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "work_log_entry",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "id": str(uuid.uuid4()),
+                    "agent_id": agent_id,
+                    "agent_name": agent_name,
+                    "message": message,
+                    "type": log_type,
+                },
+            }
+        )
 
-    async def _set_agent_status(agent_id: str, status: str, task: str = "", progress: float = 0.0) -> None:
+    async def _set_agent_status(
+        agent_id: str, status: str, task: str = "", progress: float = 0.0
+    ) -> None:
         """廣播 agent 狀態變更，讓前端戰情中心能感知。"""
         from src.api.agent_registry import update_agent_status
 
@@ -392,20 +416,22 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
         other_files = classify_result.data.get("other", [])
 
         # 廣播分類結果圖表
-        await ws_mgr.broadcast({
-            "type": "analysis_result",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "chart_type": "bar",
-                "title": "專案檔案分類結果",
-                "data": [
-                    {"name": "SCADA 資料", "value": len(data_files)},
-                    {"name": "技術文件", "value": len(documents)},
-                    {"name": "其他", "value": len(other_files)},
-                ],
-                "metadata": {"folder": folder_path},
-            },
-        })
+        await ws_mgr.broadcast(
+            {
+                "type": "analysis_result",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "chart_type": "bar",
+                    "title": "專案檔案分類結果",
+                    "data": [
+                        {"name": "SCADA 資料", "value": len(data_files)},
+                        {"name": "技術文件", "value": len(documents)},
+                        {"name": "其他", "value": len(other_files)},
+                    ],
+                    "metadata": {"folder": folder_path},
+                },
+            }
+        )
 
         # ═══ Step 2: 平行分派 RAG + 資料載入 ═══
         rag_result_holder: dict[str, Any] = {}
@@ -422,7 +448,10 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
             from src.skills.rag.rag_ingest import RagIngestSkill
 
             ingester = RagIngestSkill()
-            doc_files = [{"path": d["path"], "name": d["name"], "type": d.get("extension", "")} for d in documents]
+            doc_files = [
+                {"path": d["path"], "name": d["name"], "type": d.get("extension", "")}
+                for d in documents
+            ]
 
             async def _rag_progress(pct: float, msg: str) -> None:
                 await _log("rag-architect", "RAG 架構師", msg)
@@ -448,8 +477,9 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
             await _set_agent_status("scada-processor", "working", f"分析 {total} 份資料", 0.1)
 
             # 不逐一載入所有檔案（14000+ 會卡死），只抽樣分析
+            from pathlib import Path as _Path
+
             import pandas as pd
-            from pathlib import Path as _P
 
             sample_size = min(5, total)
             sample_files = data_files[:sample_size]
@@ -459,7 +489,7 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
 
             for i, f_info in enumerate(sample_files):
                 try:
-                    fpath = _P(f_info["path"])
+                    fpath = _Path(f_info["path"])
                     ext = f_info.get("extension", fpath.suffix.lower())
                     file_sizes.append(f_info.get("size_bytes", 0))
 
@@ -475,7 +505,7 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
                     columns_found.update(df.columns.tolist())
                     # 粗估行數
                     if ext == ".csv":
-                        with open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
+                        with open(fpath, encoding="utf-8", errors="ignore") as fh:
                             line_count = sum(1 for _ in fh) - 1
                         total_rows += line_count
                     else:
@@ -484,7 +514,9 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
                     pass
 
                 pct = 0.1 + 0.8 * (i + 1) / sample_size
-                await _set_agent_status("scada-processor", "working", f"抽樣分析 {i + 1}/{sample_size}", pct)
+                await _set_agent_status(
+                    "scada-processor", "working", f"抽樣分析 {i + 1}/{sample_size}", pct
+                )
 
             # 推估全量
             if sample_size > 0 and total_rows > 0:
@@ -495,17 +527,20 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
             avg_size = sum(file_sizes) / len(file_sizes) if file_sizes else 0
             total_size_mb = avg_size * total / (1024 * 1024)
 
-            data_result_holder.update({
-                "files_found": total,
-                "sample_analyzed": sample_size,
-                "estimated_rows": estimated_total,
-                "columns": sorted(columns_found),
-                "estimated_size_mb": round(total_size_mb, 1),
-            })
+            data_result_holder.update(
+                {
+                    "files_found": total,
+                    "sample_analyzed": sample_size,
+                    "estimated_rows": estimated_total,
+                    "columns": sorted(columns_found),
+                    "estimated_size_mb": round(total_size_mb, 1),
+                }
+            )
 
             await _set_agent_status("scada-processor", "working", "分析完成", 1.0)
             await _log(
-                "scada-processor", "SCADA 資料工程師",
+                "scada-processor",
+                "SCADA 資料工程師",
                 f"分析完成：{total} 檔案, 預估 {estimated_total:,} 筆, "
                 f"約 {total_size_mb:.0f} MB, {len(columns_found)} 個欄位",
                 "success",
@@ -535,11 +570,12 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
         if documents:
             await _log("rag-architect", "RAG 架構師", "從知識庫萃取風機規格...")
 
+            # 從資料夾名稱猜測風機型號
+            from pathlib import Path as _Path
+
             from src.skills.rag.turbine_spec_extractor import TurbineSpecExtractorSkill
 
-            # 從資料夾名稱猜測風機型號
-            from pathlib import Path as _P
-            turbine_hint = _P(folder_path).name
+            turbine_hint = _Path(folder_path).name
 
             spec_skill = TurbineSpecExtractorSkill()
             spec_result = await spec_skill.execute(
@@ -554,26 +590,28 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
         data_files_count = data_result_holder.get("files_found", 0)
         specs_found = sum(1 for v in specs.values() if v is not None)
 
-        await ws_mgr.broadcast({
-            "type": "analysis_result",
-            "timestamp": datetime.now().isoformat(),
-            "payload": {
-                "chart_type": "bar",
-                "title": f"專案上線完成：{_P(folder_path).name}",
-                "data": [
-                    {"name": "文件已嵌入", "value": docs_ingested},
-                    {"name": "SCADA 檔案", "value": data_files_count},
-                    {"name": "預估資料筆數", "value": estimated_rows},
-                    {"name": "規格已萃取", "value": specs_found},
-                ],
-                "metadata": {
-                    "turbine_specs": specs,
-                    "classification": classify_result.data,
-                    "data_columns": data_result_holder.get("columns", []),
-                    "folder": folder_path,
+        await ws_mgr.broadcast(
+            {
+                "type": "analysis_result",
+                "timestamp": datetime.now().isoformat(),
+                "payload": {
+                    "chart_type": "bar",
+                    "title": f"專案上線完成：{_Path(folder_path).name}",
+                    "data": [
+                        {"name": "文件已嵌入", "value": docs_ingested},
+                        {"name": "SCADA 檔案", "value": data_files_count},
+                        {"name": "預估資料筆數", "value": estimated_rows},
+                        {"name": "規格已萃取", "value": specs_found},
+                    ],
+                    "metadata": {
+                        "turbine_specs": specs,
+                        "classification": classify_result.data,
+                        "data_columns": data_result_holder.get("columns", []),
+                        "folder": folder_path,
+                    },
                 },
-            },
-        })
+            }
+        )
 
         summary_parts = []
         if docs_ingested:
@@ -584,7 +622,8 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
             summary_parts.append(f"{specs_found} 項規格萃取")
 
         await _log(
-            "wLab:director", "專案總監",
+            "wLab:director",
+            "專案總監",
             f"專案上線完成：{', '.join(summary_parts)}",
             "success",
         )
@@ -691,9 +730,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                     folder_path = parameters.get("folder_path", "")
                     if folder_path:
-                        _aio.create_task(
-                            _run_folder_load(folder_path, ws_manager)
-                        )
+                        _aio.create_task(_run_folder_load(folder_path, ws_manager))
                         await ws_manager.broadcast(
                             {
                                 "type": "work_log_entry",
@@ -713,9 +750,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                     folder_path = parameters.get("folder_path", "")
                     if folder_path:
-                        _aio.create_task(
-                            _run_rag_ingest(folder_path, ws_manager)
-                        )
+                        _aio.create_task(_run_rag_ingest(folder_path, ws_manager))
                         await ws_manager.broadcast(
                             {
                                 "type": "work_log_entry",
@@ -735,58 +770,65 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                     query = parameters.get("query", "")
                     if query:
+
                         async def _run_rag_ask(q: str) -> None:
                             try:
-                                await ws_manager.broadcast({
-                                    "type": "work_log_entry",
-                                    "timestamp": datetime.now().isoformat(),
-                                    "payload": {
-                                        "id": str(uuid.uuid4()),
-                                        "agent_id": "rag-architect",
-                                        "agent_name": "RAG 架構師",
-                                        "message": f"正在搜尋並整理：{q[:50]}...",
-                                        "type": "info",
-                                    },
-                                })
+                                await ws_manager.broadcast(
+                                    {
+                                        "type": "work_log_entry",
+                                        "timestamp": datetime.now().isoformat(),
+                                        "payload": {
+                                            "id": str(uuid.uuid4()),
+                                            "agent_id": "rag-architect",
+                                            "agent_name": "RAG 架構師",
+                                            "message": f"正在搜尋並整理：{q[:50]}...",
+                                            "type": "info",
+                                        },
+                                    }
+                                )
                                 rag = _get_rag_service()
-                                loop = asyncio.get_event_loop()
+                                loop = _aio.get_event_loop()
                                 result = await loop.run_in_executor(
                                     None, lambda: rag.ask(query=q, n_results=5)
                                 )
                                 # 推送 LLM 回答
-                                await ws_manager.broadcast({
-                                    "type": "analysis_result",
-                                    "timestamp": datetime.now().isoformat(),
-                                    "payload": {
-                                        "chart_type": "rag_answer",
-                                        "title": f"RAG 問答：{q[:40]}",
-                                        "data": [
-                                            {
-                                                "name": s.get("source", ""),
-                                                "value": round(s.get("relevance", 0) * 100, 1),
-                                            }
-                                            for s in result.get("sources", [])
-                                        ],
-                                        "metadata": {
-                                            "query": q,
-                                            "answer": result.get("answer", ""),
-                                            "sources": result.get("sources", []),
+                                await ws_manager.broadcast(
+                                    {
+                                        "type": "analysis_result",
+                                        "timestamp": datetime.now().isoformat(),
+                                        "payload": {
+                                            "chart_type": "rag_answer",
+                                            "title": f"RAG 問答：{q[:40]}",
+                                            "data": [
+                                                {
+                                                    "name": s.get("source", ""),
+                                                    "value": round(s.get("relevance", 0) * 100, 1),
+                                                }
+                                                for s in result.get("sources", [])
+                                            ],
+                                            "metadata": {
+                                                "query": q,
+                                                "answer": result.get("answer", ""),
+                                                "sources": result.get("sources", []),
+                                            },
                                         },
-                                    },
-                                })
+                                    }
+                                )
                             except Exception as e:
                                 logger.error(f"RAG 問答失敗：{e}")
-                                await ws_manager.broadcast({
-                                    "type": "work_log_entry",
-                                    "timestamp": datetime.now().isoformat(),
-                                    "payload": {
-                                        "id": str(uuid.uuid4()),
-                                        "agent_id": "rag-architect",
-                                        "agent_name": "RAG 架構師",
-                                        "message": f"RAG 問答失敗：{e}",
-                                        "type": "error",
-                                    },
-                                })
+                                await ws_manager.broadcast(
+                                    {
+                                        "type": "work_log_entry",
+                                        "timestamp": datetime.now().isoformat(),
+                                        "payload": {
+                                            "id": str(uuid.uuid4()),
+                                            "agent_id": "rag-architect",
+                                            "agent_name": "RAG 架構師",
+                                            "message": f"RAG 問答失敗：{e}",
+                                            "type": "error",
+                                        },
+                                    }
+                                )
 
                         _aio.create_task(_run_rag_ask(query))
 
@@ -795,9 +837,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                     folder_path = parameters.get("folder_path", "")
                     if folder_path:
-                        _aio.create_task(
-                            _run_project_onboard(folder_path, ws_manager)
-                        )
+                        _aio.create_task(_run_project_onboard(folder_path, ws_manager))
 
                 elif command_name in AVAILABLE_WORKFLOWS:
                     workflow_factory = AVAILABLE_WORKFLOWS[command_name]
@@ -1608,16 +1648,14 @@ async def kb_ingest_folder(
 ) -> JSONResponse:
     """匯入文件至知識庫（支援單一檔案路徑或資料夾路徑）。"""
     if not folder_path:
-        return JSONResponse(
-            status_code=400, content={"status": "error", "detail": "路徑不可為空"}
-        )
+        return JSONResponse(status_code=400, content={"status": "error", "detail": "路徑不可為空"})
 
     try:
         import asyncio
-        from pathlib import Path as _P
+        from pathlib import Path as _Path
 
         rag = _get_rag_service()
-        target = _P(folder_path)
+        target = _Path(folder_path)
 
         if target.is_file():
             # 單一檔案模式

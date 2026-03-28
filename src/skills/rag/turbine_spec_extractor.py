@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from src.skills.base import BaseSkill, ProgressCallback, SkillInput, SkillOutput, SkillStatus
 

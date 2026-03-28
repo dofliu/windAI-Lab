@@ -194,7 +194,6 @@ export default function MinimalOfficeView({
       <div className="space-y-3">
         {tierGroups.map(({ tier, label, agents }) => {
           const roomColor = getRoomColor(theme, tier)
-          const tierColor = getTierColor(theme, tier)
 
           return (
             <div

@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { type CompactViewProps } from '../types'
 import { useTheme, getTierColor, getStatusColor } from '../../themes'
-import { type Agent, type AgentTier } from '../../types/agent'
+import { type AgentTier } from '../../types/agent'
 
 const TIER_ORDER: AgentTier[] = ['leadership', 'data', 'ai-ml', 'domain', 'engineering', 'research']
 
