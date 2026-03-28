@@ -2,16 +2,22 @@
 
 負責執行工作流程，依序或平行調度代理，並透過 WebSocket 即時廣播狀態變更。
 支援兩種模式：
-- 模擬模式（simulate=True）：漸進式進度動畫，無實際計算
-- 真實模式（simulate=False）：呼叫 BaseAgent.execute() 執行真實邏輯
+- 真實模式：代理已註冊實例時，呼叫 BaseAgent.run_task() 執行真實技能管線
+- 模擬模式：代理未註冊時，退回至漸進式進度動畫（向下相容）
+
+每個 WorkflowStep 同時攜帶真實執行參數（task_template / task_parameters）
+與模擬 fallback 設定（sub_messages / progress_messages / duration），
+引擎自動根據代理是否有實例來決定走哪條路徑。
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import uuid
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any
 
 from src.api.agent_registry import get_agent, update_agent_status
 from src.api.models import AgentStatus, WorkLogEntry
@@ -29,15 +35,33 @@ class StepType(StrEnum):
 
 @dataclass
 class WorkflowStep:
-    """工作流程步驟定義。"""
+    """工作流程步驟定義。
 
-    name: str  # 步驟名稱
-    agent_ids: list[str]  # 參與的代理 ID
-    description: str  # 步驟描述（顯示在 UI）
-    duration: float = 3.0  # 模擬執行時間（秒）
+    同時支援真實執行與模擬 fallback：
+    - task_template + task_parameters → 真實代理路徑
+    - sub_messages + progress_messages + duration → 模擬動畫路徑
+    """
+
+    name: str
+    agent_ids: list[str]
+    description: str
+    duration: float = 3.0
     step_type: StepType = StepType.SEQUENTIAL
-    sub_messages: list[str] = field(default_factory=list)  # 執行過程中的日誌訊息
-    progress_messages: dict[int, str] = field(default_factory=dict)  # 進度 -> 訊息
+    sub_messages: list[str] = field(default_factory=list)
+    progress_messages: dict[int, str] = field(default_factory=dict)
+
+    # ── 真實執行參數 ──
+    task_template: str = ""
+    """傳給 agent.run_task() 的任務字串模板，支援 {param} 佔位符。
+    例如 "diagnose {turbine_id}" 會觸發 YAML task_routing 關鍵字匹配。
+    若為空，退回使用 description。"""
+
+    task_parameters: dict[str, Any] = field(default_factory=dict)
+    """注入 TaskContext.parameters 的參數，如 {"turbine_id": "WT-01"}。"""
+
+    collaborator_ids: list[str] = field(default_factory=list)
+    """明確指定的協作代理 ID，注入 TaskContext.collaborators。
+    若為空，自動使用同步驟的其他代理。"""
 
 
 @dataclass
@@ -48,6 +72,9 @@ class Workflow:
     name: str
     description: str
     steps: list[WorkflowStep]
+
+    parameters: dict[str, Any] = field(default_factory=dict)
+    """工作流程層級參數，會合併到每個步驟的 task_parameters 中。"""
 
 
 class OrchestrationEngine:
@@ -95,34 +122,48 @@ class OrchestrationEngine:
             await ws_manager.broadcast_agent_status(updated)
 
     async def _run_agent_step(
-        self, agent_id: str, step: WorkflowStep, collaborators: list[str] | None = None
-    ) -> None:
+        self,
+        agent_id: str,
+        step: WorkflowStep,
+        accumulated_results: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """執行單一代理的工作步驟。
 
-        優先使用已註冊的真實代理實例（BaseAgent.execute），
+        優先使用已註冊的真實代理實例（BaseAgent.run_task），
         若代理未實作則退回至模擬進度動畫。
+
+        Returns:
+            該代理的執行結果（真實路徑），或空 dict（模擬路徑）。
         """
         from src.agents.base import TaskContext
         from src.agents.dynamic_registry import dynamic_registry
 
         agent_model = get_agent(agent_id)
         if not agent_model:
-            return
+            return {}
 
         display_name = agent_model.display_name
         other_agents = [aid for aid in step.agent_ids if aid != agent_id]
+        collaborators = step.collaborator_ids or other_agents
 
         # ── 真實代理路徑 ──
         real_agent = dynamic_registry.get_instance(agent_id)
         if real_agent is not None:
+            # 組裝任務字串：優先使用 task_template，退回 description
+            task_str = step.task_template or step.description
+            with contextlib.suppress(KeyError, IndexError):
+                task_str = task_str.format(**step.task_parameters)
+
             ctx = TaskContext(
-                parameters={"step_name": step.name},
-                collaborators=other_agents,
+                parameters=step.task_parameters,
+                collaborators=collaborators,
+                results=accumulated_results or {},
             )
+
             log = self._create_log(agent_id, display_name, f"開始：{step.description}")
             await ws_manager.broadcast_work_log(log)
 
-            result = await real_agent.run_task(step.description, ctx)
+            result = await real_agent.run_task(task_str, ctx)
 
             # 發送子訊息（workflow 層級的補充說明）
             for msg in step.sub_messages:
@@ -137,7 +178,7 @@ class OrchestrationEngine:
                 "success" if result.status.value == "success" else "warning",
             )
             await ws_manager.broadcast_work_log(log)
-            return
+            return {agent_id: result.data} if result.data else {}
 
         # ── 模擬路徑（向下相容） ──
         await self._update_and_broadcast(
@@ -174,17 +215,30 @@ class OrchestrationEngine:
         )
         log = self._create_log(agent_id, display_name, f"完成：{step.description}", "success")
         await ws_manager.broadcast_work_log(log)
+        return {}
 
-    async def _run_step(self, step: WorkflowStep) -> None:
-        """執行工作流程步驟（可能包含多個平行代理）。"""
+    async def _run_step(
+        self, step: WorkflowStep, accumulated_results: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """執行工作流程步驟（可能包含多個平行代理）。
+
+        Returns:
+            所有代理在此步驟產出的結果合集。
+        """
+        step_results: dict[str, Any] = {}
         if step.step_type == StepType.PARALLEL:
-            # 平行執行所有代理
-            tasks = [self._run_agent_step(aid, step) for aid in step.agent_ids]
-            await asyncio.gather(*tasks)
+            tasks = [
+                self._run_agent_step(aid, step, accumulated_results) for aid in step.agent_ids
+            ]
+            results = await asyncio.gather(*tasks)
+            for r in results:
+                step_results.update(r)
         else:
-            # 依序執行
             for aid in step.agent_ids:
-                await self._run_agent_step(aid, step)
+                r = self._run_agent_step(aid, step, accumulated_results)
+                result = await r
+                step_results.update(result)
+        return step_results
 
     async def execute_workflow(self, workflow: Workflow) -> str:
         """執行完整工作流程。"""
@@ -197,13 +251,20 @@ class OrchestrationEngine:
         )
         await ws_manager.broadcast_work_log(log)
 
+        accumulated_results: dict[str, Any] = {}
+
         try:
             for i, step in enumerate(workflow.steps):
+                # 合併 workflow 層級參數到步驟
+                merged_params = {**workflow.parameters, **step.task_parameters}
+                step.task_parameters = merged_params
+
                 step_label = f"[{i+1}/{len(workflow.steps)}]"
                 log = self._create_log("system", "系統", f"📋 {step_label} {step.name}", "info")
                 await ws_manager.broadcast_work_log(log)
 
-                await self._run_step(step)
+                step_results = await self._run_step(step, accumulated_results)
+                accumulated_results.update(step_results)
 
                 # 步驟間短暫停頓
                 await asyncio.sleep(0.5)
@@ -254,7 +315,7 @@ class OrchestrationEngine:
     ) -> dict:
         """直接呼叫已註冊的 BaseAgent 實例執行任務。
 
-        與模擬工作流不同，此方法使用代理的真實 execute() 邏輯。
+        與工作流程不同，此方法直接指定單一代理執行。
 
         Args:
             agent_id: 代理 ID。

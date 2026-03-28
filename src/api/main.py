@@ -675,57 +675,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 command_name = data.get("command", "")
                 parameters = data.get("parameters", {})
 
-                # ═══ 新系統：透過 SkillComposingAgent 技能管線執行 ═══
-                if command_name in ("diagnose-real", "diagnose-skill"):
-                    import asyncio as _aio
-
-                    from src.agents.base import TaskContext
-                    from src.agents.dynamic_registry import dynamic_registry
-
-                    tid = parameters.get("turbine_id", "WT-01")
-                    agent = dynamic_registry.get_instance("fault-diagnostician")
-                    if agent:
-                        ctx = TaskContext(parameters={"turbine_id": tid})
-                        _aio.create_task(agent.run_task(f"diagnose {tid}", ctx))
-                        await ws_manager.broadcast(
-                            {
-                                "type": "work_log_entry",
-                                "timestamp": datetime.now().isoformat(),
-                                "payload": {
-                                    "id": str(uuid.uuid4()),
-                                    "agent_id": "system",
-                                    "agent_name": "WindAI Lab",
-                                    "message": f"已派任故障診斷師分析 {tid}（技能管線）",
-                                    "type": "info",
-                                },
-                            }
-                        )
-
-                elif command_name == "train-nbm":
-                    import asyncio as _aio
-
-                    from src.agents.base import TaskContext
-                    from src.agents.dynamic_registry import dynamic_registry
-
-                    tid = parameters.get("turbine_id", "WT-01")
-                    agent = dynamic_registry.get_instance("power-curve-expert")
-                    if agent:
-                        ctx = TaskContext(parameters={"turbine_id": tid})
-                        _aio.create_task(agent.run_task(f"NBM {tid}", ctx))
-
-                elif command_name == "predict-rul":
-                    import asyncio as _aio
-
-                    from src.agents.base import TaskContext
-                    from src.agents.dynamic_registry import dynamic_registry
-
-                    tid = parameters.get("turbine_id", "WT-01")
-                    agent = dynamic_registry.get_instance("predictive-modeler")
-                    if agent:
-                        ctx = TaskContext(parameters={"turbine_id": tid})
-                        _aio.create_task(agent.run_task(f"predict RUL {tid}", ctx))
-
-                elif command_name == "data:folder":
+                # ═══ 特殊指令：非 workflow 類（保留獨立處理） ═══
+                if command_name == "data:folder":
                     import asyncio as _aio
 
                     folder_path = parameters.get("folder_path", "")
@@ -839,16 +790,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     if folder_path:
                         _aio.create_task(_run_project_onboard(folder_path, ws_manager))
 
+                # ═══ 統一 Workflow 路由 ═══
                 elif command_name in AVAILABLE_WORKFLOWS:
+                    from src.agents.orchestrator.workflows import extract_workflow_params
+
                     workflow_factory = AVAILABLE_WORKFLOWS[command_name]
-                    if command_name == "diagnose":
-                        workflow = workflow_factory(parameters.get("turbine_id", "WT-07"))
-                    elif command_name == "lit-search":
-                        workflow = workflow_factory(
-                            parameters.get("topic", "wind turbine fault diagnosis")
-                        )
-                    else:
-                        workflow = workflow_factory()
+                    wf_params = extract_workflow_params(command_name, parameters)
+                    workflow = workflow_factory(**wf_params)
                     await orchestration_engine.run_workflow_background(workflow)
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
@@ -1042,37 +990,11 @@ async def execute_command(command_name: str, parameters: dict[str, Any] | None =
             detail=f"指令 '/{command_name}' 不存在。可用指令：{list(AVAILABLE_WORKFLOWS.keys())}",
         )
 
-    # ── 真實資料診斷（特殊處理） ──
-    if command_name == "diagnose-real":
-        import asyncio as _aio
-
-        from src.agents.orchestrator.real_workflows import run_real_diagnose
-
-        turbine_id = parameters.get("turbine_id", "WT-01")
-        task_id = str(uuid.uuid4())
-        _aio.create_task(run_real_diagnose(turbine_id))
-        return {
-            "task_id": task_id,
-            "command": command_name,
-            "workflow": f"真實資料故障診斷 — {turbine_id}",
-            "status": "started",
-            "message": f"真實資料工作流程已啟動（Kelmarsh SCADA — {turbine_id}）",
-        }
+    from src.agents.orchestrator.workflows import extract_workflow_params
 
     workflow_factory = AVAILABLE_WORKFLOWS[command_name]
-
-    # 根據指令類型傳入參數
-    if command_name == "diagnose":
-        turbine_id = parameters.get("turbine_id", "WT-07")
-        workflow = workflow_factory(turbine_id)
-    elif command_name == "lit-search":
-        topic = parameters.get("topic", "wind turbine fault diagnosis")
-        workflow = workflow_factory(topic)
-    elif command_name in ("data:load", "data:clean", "ai:train", "ai:evaluate"):
-        turbine_id = parameters.get("turbine_id", "WT-01")
-        workflow = workflow_factory(turbine_id)
-    else:
-        workflow = workflow_factory()
+    wf_params = extract_workflow_params(command_name, parameters)
+    workflow = workflow_factory(**wf_params)
 
     task_id = await orchestration_engine.run_workflow_background(workflow)
 
