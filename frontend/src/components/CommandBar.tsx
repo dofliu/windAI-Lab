@@ -6,24 +6,24 @@ interface CommandBarProps {
   disabled?: boolean
 }
 
-/** 需要帶 turbine_id 參數的真實後端指令 */
-const TURBINE_COMMANDS = ['diagnose-real', 'train-nbm', 'predict-rul']
+/** 需要帶 turbine_id 參數的指令 */
+const TURBINE_COMMANDS = ['diagnose', 'train-nbm', 'predict-rul', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
 
 const COMMANDS = [
-  // ── 真實後端指令（需啟動後端） ──
-  { name: 'diagnose-real', label: '/diagnose-real', description: '故障診斷（真實 ML）', paramHint: '風機 ID', category: 'diagnose' },
+  // ── 後端 Workflow 指令（統一路由） ──
+  { name: 'diagnose', label: '/diagnose', description: '故障診斷（完整流程）', paramHint: '風機 ID', category: 'diagnose' },
   { name: 'train-nbm', label: '/train-nbm', description: 'NBM 功率曲線訓練', paramHint: '風機 ID', category: 'ai' },
   { name: 'predict-rul', label: '/predict-rul', description: 'RUL 壽命預測', paramHint: '風機 ID', category: 'ai' },
+  { name: 'data:load', label: '/data:load', description: '資料載入 + 品質檢查', paramHint: '風機 ID', category: 'data' },
+  { name: 'data:clean', label: '/data:clean', description: '資料清洗 + 異常過濾', paramHint: '風機 ID', category: 'data' },
+  { name: 'ai:train', label: '/ai:train', description: 'ML 模型訓練（平行）', paramHint: '風機 ID', category: 'ai' },
+  { name: 'ai:evaluate', label: '/ai:evaluate', description: '模型效能評估', paramHint: '風機 ID', category: 'ai' },
+  { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題', category: 'research' },
+  // ── 特殊指令 ──
   { name: 'project:onboard', label: '/project:onboard', description: '專案一鍵上線（LLM 分類+RAG+資料）', paramHint: '資料夾路徑', category: 'data' },
   { name: 'data:folder', label: '/data:folder', description: '資料夾批次載入', paramHint: '資料夾路徑', category: 'data' },
-  { name: 'lit-search', label: '/lit-search', description: '系統性文獻搜索', paramHint: '搜索主題', category: 'research' },
   { name: 'rag:ingest', label: '/rag:ingest', description: 'RAG 資料夾嵌入', paramHint: '資料夾路徑', category: 'research' },
   { name: 'rag:search', label: '/rag:search', description: 'RAG 語意搜尋', paramHint: '查詢關鍵字', category: 'research' },
-  // ── 模擬指令（無需後端） ──
-  { name: 'simu-load', label: '/simu-load', description: '模擬：資料載入動畫', paramHint: '風機 ID', category: 'simu' },
-  { name: 'simu-clean', label: '/simu-clean', description: '模擬：資料清洗動畫', paramHint: '風機 ID', category: 'simu' },
-  { name: 'simu-train', label: '/simu-train', description: '模擬：ML 訓練動畫', paramHint: '風機 ID', category: 'simu' },
-  { name: 'simu-evaluate', label: '/simu-evaluate', description: '模擬：模型評估動畫', paramHint: '風機 ID', category: 'simu' },
   // ── 辦公室互動 ──
   { name: 'bosscall', label: '/bosscall', description: '小房間召喚', paramHint: '員工名稱', category: 'fun' },
   { name: 'teatime', label: '/teatime', description: '茶水間休息', paramHint: '', category: 'fun' },
@@ -31,13 +31,13 @@ const COMMANDS = [
 ]
 
 const QUICK_ACTIONS = [
-  { name: 'project:onboard', label: '專案上線', icon: '🚀', category: 'data' },
-  { name: 'diagnose-real', label: '故障診斷', icon: '🔧', category: 'diagnose' },
+  { name: 'diagnose', label: '故障診斷', icon: '🔧', category: 'diagnose' },
   { name: 'train-nbm', label: 'NBM 訓練', icon: '📈', category: 'ai' },
   { name: 'predict-rul', label: 'RUL 預測', icon: '⏱️', category: 'ai' },
+  { name: 'data:load', label: '資料載入', icon: '📂', category: 'data' },
+  { name: 'ai:train', label: 'ML 訓練', icon: '🧠', category: 'ai' },
+  { name: 'project:onboard', label: '專案上線', icon: '🚀', category: 'data' },
   { name: 'rag:ingest', label: 'RAG 嵌入', icon: '📚', category: 'research' },
-  { name: 'simu-load', label: '模擬載入', icon: '📂', category: 'simu' },
-  { name: 'simu-train', label: '模擬訓練', icon: '🧠', category: 'simu' },
 ]
 
 const FALLBACK_TURBINES = ['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6']
