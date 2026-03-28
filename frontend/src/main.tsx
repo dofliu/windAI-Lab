@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './components/App'
 import { ThemeProvider } from './themes'
+import './renderers'  // 註冊所有 office renderer
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
