@@ -370,12 +370,21 @@ windAILab/
 | POST | `/api/agents/fire?agent_id=xxx` | 解聘代理 |
 | GET | `/api/skills` | 所有技能清單 |
 
-### 指令執行（WebSocket）
-| 指令 | 說明 | 技能管線 |
+### 指令執行（統一 Workflow 路由）
+
+所有指令走同一條路徑：`AVAILABLE_WORKFLOWS[command] → Workflow → OrchestrationEngine`
+引擎自動偵測代理是否有真實實例，有則走 skill pipeline，無則播放模擬動畫。
+
+| 指令 | 說明 | 真實執行時的技能管線 |
 |------|------|---------|
-| `diagnose-real` | 故障診斷 | ingestion → cleaning → features → classification |
-| `train-nbm` | NBM 訓練 | ingestion → cleaning → features → nbm |
-| `predict-rul` | RUL 預測 | ingestion → cleaning → features → rul |
+| `diagnose` | 故障診斷 | ingestion → profiler → cleaning → features → classification → nbm |
+| `train-nbm` | NBM 訓練 | ingestion → profiler → cleaning → features → nbm |
+| `predict-rul` | RUL 預測 | ingestion → profiler → cleaning → features → rul |
+| `data:load` | 資料載入 | scada_ingestion |
+| `data:clean` | 資料清洗 | scada_cleaning |
+| `ai:train` | 模型訓練 | 平行：fault + NBM + RUL |
+| `ai:evaluate` | 模型評估 | 平行：fault + RUL |
+| `lit-search` | 文獻搜索 | 模擬（無真實 skill） |
 
 ### 檔案監控
 | 方法 | 端點 | 說明 |

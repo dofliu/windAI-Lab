@@ -44,7 +44,7 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10 ←→ 11  12
 | ~~自動實驗技能~~ | AutoExperimentSkill（網格搜尋 + 排行榜） | ✅ |
 | ~~警報事件處理~~ | AlarmProcessorSkill（事件→時間序列） | ✅ |
 
-### ✅ 已完成 / 🔧 進行中 — Phase 10：UI 抽象層重構
+### ✅ 已完成 / 🔧 進行中 — Phase 10：UI 抽象層 + Workflow 統一架構
 
 | 項目 | 說明 | 狀態 |
 |------|------|------|
@@ -56,8 +56,14 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10 ←→ 11  12
 | ~~Theme visualStyle~~ | WindAITheme 擴展 visualStyle 欄位，主題綁定 renderer | ✅ |
 | ~~ThemeSwitcher 升級~~ | 依 visualStyle 分組顯示，色塊 + 風格圖示預覽 | ✅ |
 | ~~App.tsx 解耦~~ | 不再直接 import 特定 renderer，動態從 registry 取得 | ✅ |
+| ~~Workflow 統一架構~~ | WorkflowStep 擴展 task_template/task_parameters/collaborator_ids | ✅ |
+| ~~指令路由統一~~ | 刪除 main.py 硬寫分支，所有指令走 AVAILABLE_WORKFLOWS | ✅ |
+| ~~diagnose 真實管線~~ | diagnose 指令自動偵測真實代理，走 skill pipeline | ✅ |
+| ~~train-nbm / predict-rul~~ | 新增為獨立 Workflow，走統一路由 | ✅ |
+| ~~real_workflows.py 棄用~~ | 標記 deprecated，不再被 import | ✅ |
 | 更多 Renderer 風格 | 等距 3D / 賽博龐克 / 日系手繪 等（未來擴展） | ⬜ |
-| Renderer 內部元件拆分 | 將各 renderer 的子元件進一步模組化 | ⬜ |
+| 總監 Checkpoint 機制 | pipeline 中間插入品質檢查點，決定是否調參重跑 | ⬜ |
+| 錯誤重試/降級 | skill 失敗重試 + 降級策略 + 總監介入 | ⬜ |
 
 ### 🔴 高優先 — RAG 知識庫
 
@@ -137,9 +143,12 @@ class MySkill(BaseSkill):
 
 ## 4. 建議的下一步順序
 
-1. **RAG 知識庫**（BGE-3 嵌入 + ChromaDB + 風機手冊）
-2. **戰情中心介面**（MissionView + AnalysisDashboard + ViewSwitcher）
-3. ~~**主題系統**（Theme Pack — 視覺資產獨立可替換）~~ → ✅ 已完成（Phase 10 Renderer 架構）
-4. **擴展更多 Renderer**（等距 3D / 賽博龐克 / 自定義風格）
-5. **補齊剩餘技能**（異常偵測、報告生成）
-6. **新 ML 模型**（Weibull + LSTM）
+1. ~~**主題系統**~~ → ✅ 已完成（Phase 10 Renderer 架構）
+2. ~~**Workflow 統一架構**~~ → ✅ 已完成（Phase 10 指令路由統一）
+3. **總監 Checkpoint 機制**（pipeline 中間品質檢查，決定是否調參/重跑）
+4. **錯誤重試/降級**（skill 失敗重試 + 降級策略）
+5. **RAG 知識庫**（BGE-3 嵌入 + ChromaDB + 風機手冊）
+6. **戰情中心介面**（MissionView + AnalysisDashboard + ViewSwitcher）
+7. **擴展更多 Renderer**（等距 3D / 賽博龐克 / 自定義風格）
+8. **補齊剩餘技能**（異常偵測、報告生成）
+9. **新 ML 模型**（Weibull + LSTM）

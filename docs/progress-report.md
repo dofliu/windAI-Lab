@@ -459,10 +459,67 @@ frontend/src/renderers/
 - [x] `index.css` — modern-pulse 動效 keyframe
 - [x] Vite build 驗證通過
 
+### Phase 10b — 統一 Workflow 架構（2026-03-28）
+
+**目標**：消除三條平行的指令執行路徑，統一為一條 Workflow → OrchestrationEngine 路線。
+
+**問題診斷**：
+- `diagnose-real` 在 `real_workflows.py` 硬寫 200 行直接呼叫 agent
+- `train-nbm`、`predict-rul` 在 `main.py` WebSocket handler 硬寫 if/elif
+- `diagnose`（模擬）走 `workflows.py` → OrchestrationEngine，但只播動畫
+- 三條路做類似的事，無法共用，維護成本高
+
+**架構設計**：
+
+```
+所有指令 → AVAILABLE_WORKFLOWS 查表 → extract_workflow_params()
+  → workflow_factory(**params) → Workflow 物件
+  → OrchestrationEngine.execute_workflow()
+      ├─ dynamic_registry 有實例 → run_task(task_template) → YAML skill routing → ML pipeline
+      └─ 無實例 → 模擬動畫 fallback（sub_messages + duration，原有行為不變）
+```
+
+**開發過程**：
+
+1. **Phase 1 — 擴展資料模型**（engine.py）：
+   - `WorkflowStep` 新增 `task_template`（觸發 YAML 關鍵字路由的任務字串模板）
+   - `WorkflowStep` 新增 `task_parameters`（注入 TaskContext.parameters）
+   - `WorkflowStep` 新增 `collaborator_ids`（明確指定協作代理）
+   - `Workflow` 新增 `parameters`（工作流程層級參數，自動合併到每個步驟）
+   - 所有新欄位都有預設值，完全向後相容
+
+2. **Phase 2 — 引擎支援真實執行**（engine.py）：
+   - `_run_agent_step()` 改用 `task_template.format(**task_parameters)` 組裝任務字串
+   - `execute_workflow()` 加入 `accumulated_results` 累積器
+   - 後面步驟可透過 `TaskContext.results` 取得前面步驟的結果
+
+3. **Phase 3 — 重寫 Workflow 定義**（workflows.py）：
+   - `create_diagnose_workflow()` 從 8 步純動畫 → 6 步真實可執行
+     - Step 2: `task_template="diagnose {turbine_id}"` → 觸發 fault-diagnostician 的 6-skill pipeline
+     - Step 3: 平行 NBM + RUL
+   - 新增 `create_train_nbm_workflow()` 和 `create_predict_rul_workflow()`
+   - 新增 `extract_workflow_params()` 統一參數萃取
+   - `AVAILABLE_WORKFLOWS` 移除 `"diagnose-real": None`，新增 `train-nbm` 和 `predict-rul`
+
+4. **Phase 4 — 簡化 main.py**（-75 行）：
+   - WebSocket handler 刪除 `diagnose-real`、`diagnose-skill`、`train-nbm`、`predict-rul` 四個硬寫分支
+   - 替換為 5 行統一 dispatch：`AVAILABLE_WORKFLOWS[command] → workflow_factory → engine.run_workflow_background`
+   - REST endpoint 同步簡化，移除 `diagnose-real` 特殊處理
+
+5. **Phase 5 — 棄用 real_workflows.py**：
+   - 加 deprecated 標記，移除所有 import
+
+**產出**：
+- [x] `engine.py` — WorkflowStep/Workflow 擴展 + 結果累積 + 真實執行路徑增強
+- [x] `workflows.py` — 8 個 workflow 全部加 task_template + 2 個新 workflow + extract_workflow_params
+- [x] `main.py` — 刪除 4 個硬寫分支（-75 行），統一 5 行 dispatch
+- [x] `real_workflows.py` — deprecated
+- [x] 506 tests passed, 0 failed
+
 **下一步規劃**：
-- 擴展更多 Renderer 風格（等距 3D / 賽博龐克 / 日系手繪）
-- RAG 知識庫整合
-- 戰情中心介面進一步強化
+- 總監 Checkpoint 機制（pipeline 中間品質檢查）
+- 錯誤重試/降級策略
+- 擴展更多 Renderer 風格
 
 ---
 
@@ -632,3 +689,4 @@ frontend/src/renderers/
 | ADR-18 | AutoExperiment 網格搜尋 | 自動化實驗循環，JSONL 記錄與 ExperimentTracker 相容 |
 | ADR-19 | AlarmProcessor 事件→時間序列 | 離散警報轉為固定頻率 DataFrame，可與 SCADA 合併 |
 | ADR-20 | OfficeRenderer 可插拔架構 | 主題不只換色要換風格，renderer 與業務邏輯完全解耦 |
+| ADR-21 | Workflow 統一架構 | 三條平行路徑合一，WorkflowStep 攜帶 task_template 支援真實/模擬雙模式 |
