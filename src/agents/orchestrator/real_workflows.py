@@ -1,6 +1,10 @@
-"""WindAI Lab 真實資料工作流程。
+"""WindAI Lab 真實資料工作流程。（已棄用）
 
-使用代理框架（BaseAgent）協調 SCADA 資料分析。
+⚠️ DEPRECATED: 此模組已被統一 Workflow 架構取代。
+所有指令現在透過 workflows.py → OrchestrationEngine 統一路由。
+此檔案保留供參考，將於後續版本移除。
+
+原始功能：使用代理框架（BaseAgent）協調 SCADA 資料分析。
 各步驟委派至已註冊的代理實例，由代理自行管理狀態與進度廣播。
 包含 ML Pipeline 整合（NBM、故障分類器、RUL 退化模型）。
 不綁定特定風場或風機型號。
