@@ -66,6 +66,13 @@ export interface WindAITheme {
   /** 是否為深色主題 */
   isDark: boolean
 
+  /**
+   * 視覺風格 ID — 對應 OfficeRenderer 的 id。
+   * 決定辦公室用哪個 renderer 渲染（pixel / modern / minimal 等）。
+   * 切換主題時會自動切換對應的辦公室風格。
+   */
+  visualStyle: string
+
   /** 全域色板 */
   global: GlobalPalette
 
@@ -88,6 +95,7 @@ export const defaultTheme: WindAITheme = {
   id: 'dark-default',
   name: '深色科技',
   isDark: true,
+  visualStyle: 'pixel',
 
   global: {
     pageBg: '#0f172a',       // slate-900
@@ -139,6 +147,7 @@ export const darkForest: WindAITheme = {
   id: 'dark-forest',
   name: '深色森林',
   isDark: true,
+  visualStyle: 'pixel',
 
   global: {
     pageBg: '#0c1a14',
@@ -190,6 +199,7 @@ export const darkOcean: WindAITheme = {
   id: 'dark-ocean',
   name: '深色海洋',
   isDark: true,
+  visualStyle: 'pixel',
 
   global: {
     pageBg: '#0a1628',
@@ -241,6 +251,7 @@ export const lightClean: WindAITheme = {
   id: 'light-clean',
   name: '淺色簡約',
   isDark: false,
+  visualStyle: 'pixel',
 
   global: {
     pageBg: '#f8fafc',
@@ -286,9 +297,120 @@ export const lightClean: WindAITheme = {
   },
 }
 
+// ── 現代企業風（全新視覺風格：glassmorphism + 圓角卡片） ───
+
+export const modernCorporate: WindAITheme = {
+  id: 'modern-corporate',
+  name: '現代企業',
+  isDark: true,
+  visualStyle: 'modern',
+
+  global: {
+    pageBg: '#09090b',        // zinc-950
+    panelBg: '#18181b',       // zinc-900
+    headerBg: '#18181b',
+    textPrimary: '#fafafa',
+    textSecondary: '#a1a1aa',
+    textMuted: '#52525b',
+    border: '#27272a',
+    accent: '#a78bfa',        // violet-400
+    accentHover: '#8b5cf6',
+  },
+
+  tiers: {
+    leadership:  { name: 'amber',   primary: '#fbbf24', bg: '#1c1917', bgLight: '#292524' },
+    data:        { name: 'emerald', primary: '#34d399', bg: '#0c1917', bgLight: '#132420' },
+    'ai-ml':     { name: 'violet',  primary: '#a78bfa', bg: '#1a1625', bgLight: '#251e36' },
+    domain:      { name: 'rose',    primary: '#fb7185', bg: '#1c1015', bgLight: '#2a1820' },
+    engineering: { name: 'orange',  primary: '#fb923c', bg: '#1c1510', bgLight: '#2a2018' },
+    research:    { name: 'sky',     primary: '#38bdf8', bg: '#0c1522', bgLight: '#122030' },
+  },
+
+  statuses: {
+    idle:      { dot: '#71717a', bg: '#27272a', text: '#a1a1aa' },
+    working:   { dot: '#34d399', bg: '#052e16', text: '#34d399' },
+    waiting:   { dot: '#fbbf24', bg: '#422006', text: '#fbbf24' },
+    completed: { dot: '#a78bfa', bg: '#2e1065', text: '#a78bfa' },
+    error:     { dot: '#f87171', bg: '#450a0a', text: '#f87171' },
+    offline:   { dot: '#52525b', bg: '#18181b', text: '#52525b' },
+  },
+
+  rooms: {
+    leadership:  { border: 'rgba(251,191,36,0.25)', floor: 'rgba(251,191,36,0.04)', label: '#fbbf24' },
+    data:        { border: 'rgba(52,211,153,0.25)', floor: 'rgba(52,211,153,0.04)', label: '#34d399' },
+    'ai-ml':     { border: 'rgba(167,139,250,0.25)', floor: 'rgba(167,139,250,0.04)', label: '#a78bfa' },
+    domain:      { border: 'rgba(251,113,133,0.25)', floor: 'rgba(251,113,133,0.04)', label: '#fb7185' },
+    engineering: { border: 'rgba(251,146,60,0.25)',  floor: 'rgba(251,146,60,0.04)',  label: '#fb923c' },
+    research:    { border: 'rgba(56,189,248,0.25)',  floor: 'rgba(56,189,248,0.04)',  label: '#38bdf8' },
+    meeting:     { border: 'rgba(167,139,250,0.3)',  floor: 'rgba(167,139,250,0.05)', label: '#a78bfa' },
+    'boss-room': { border: 'rgba(251,191,36,0.3)',   floor: 'rgba(251,191,36,0.05)',  label: '#fbbf24' },
+    'tea-room':  { border: 'rgba(52,211,153,0.25)',  floor: 'rgba(52,211,153,0.04)',  label: '#34d399' },
+    'game-room': { border: 'rgba(251,113,133,0.25)', floor: 'rgba(251,113,133,0.04)', label: '#fb7185' },
+  },
+}
+
+// ── 極簡白板風（全新視覺風格：手繪線條 + 極簡佈局） ─────────
+
+export const minimalWhiteboard: WindAITheme = {
+  id: 'minimal-whiteboard',
+  name: '極簡白板',
+  isDark: false,
+  visualStyle: 'minimal',
+
+  global: {
+    pageBg: '#fefefe',
+    panelBg: '#ffffff',
+    headerBg: '#fefefe',
+    textPrimary: '#1a1a1a',
+    textSecondary: '#666666',
+    textMuted: '#aaaaaa',
+    border: '#e0e0e0',
+    accent: '#1a1a1a',
+    accentHover: '#333333',
+  },
+
+  tiers: {
+    leadership:  { name: 'amber',   primary: '#b45309', bg: '#fffbeb', bgLight: '#fef3c7' },
+    data:        { name: 'emerald', primary: '#047857', bg: '#ecfdf5', bgLight: '#d1fae5' },
+    'ai-ml':     { name: 'violet',  primary: '#6d28d9', bg: '#f5f3ff', bgLight: '#ede9fe' },
+    domain:      { name: 'rose',    primary: '#be123c', bg: '#fff1f2', bgLight: '#ffe4e6' },
+    engineering: { name: 'orange',  primary: '#c2410c', bg: '#fff7ed', bgLight: '#ffedd5' },
+    research:    { name: 'sky',     primary: '#0369a1', bg: '#f0f9ff', bgLight: '#e0f2fe' },
+  },
+
+  statuses: {
+    idle:      { dot: '#d4d4d4', bg: '#fafafa', text: '#a3a3a3' },
+    working:   { dot: '#22c55e', bg: '#f0fdf4', text: '#15803d' },
+    waiting:   { dot: '#eab308', bg: '#fefce8', text: '#a16207' },
+    completed: { dot: '#6366f1', bg: '#eef2ff', text: '#4338ca' },
+    error:     { dot: '#ef4444', bg: '#fef2f2', text: '#b91c1c' },
+    offline:   { dot: '#d4d4d4', bg: '#fafafa', text: '#a3a3a3' },
+  },
+
+  rooms: {
+    leadership:  { border: '#b45309', floor: 'rgba(180,83,9,0.03)',  label: '#b45309' },
+    data:        { border: '#047857', floor: 'rgba(4,120,87,0.03)',  label: '#047857' },
+    'ai-ml':     { border: '#6d28d9', floor: 'rgba(109,40,217,0.03)', label: '#6d28d9' },
+    domain:      { border: '#be123c', floor: 'rgba(190,18,60,0.03)', label: '#be123c' },
+    engineering: { border: '#c2410c', floor: 'rgba(194,65,12,0.03)', label: '#c2410c' },
+    research:    { border: '#0369a1', floor: 'rgba(3,105,161,0.03)', label: '#0369a1' },
+    meeting:     { border: '#1a1a1a', floor: 'rgba(26,26,26,0.02)',  label: '#1a1a1a' },
+    'boss-room': { border: '#b45309', floor: 'rgba(180,83,9,0.03)',  label: '#b45309' },
+    'tea-room':  { border: '#047857', floor: 'rgba(4,120,87,0.03)',  label: '#047857' },
+    'game-room': { border: '#be123c', floor: 'rgba(190,18,60,0.03)', label: '#be123c' },
+  },
+}
+
 // ── 所有可用主題 ────────────────────────────────────────────
 
-export const ALL_THEMES: WindAITheme[] = [defaultTheme, darkForest, darkOcean, lightClean]
+export const ALL_THEMES: WindAITheme[] = [
+  defaultTheme,
+  darkForest,
+  darkOcean,
+  lightClean,
+  modernCorporate,
+  minimalWhiteboard,
+]
 
 // ── 主題工具函式 ──────────────────────────────────────────────
 

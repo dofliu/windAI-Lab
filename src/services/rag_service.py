@@ -234,9 +234,7 @@ class RAGService:
 
         return sorted(source_map.values(), key=lambda x: x["source"])
 
-    def delete_by_source(
-        self, source: str, collection_name: str | None = None
-    ) -> dict[str, Any]:
+    def delete_by_source(self, source: str, collection_name: str | None = None) -> dict[str, Any]:
         """刪除指定來源的所有 chunks。
 
         Args:
@@ -266,7 +264,16 @@ class RAGService:
 
     # ── 支援的文件格式 ─────────────────────────────────────────
 
-    SUPPORTED_EXTENSIONS: set[str] = {".pdf", ".txt", ".md", ".csv", ".tsv", ".xlsx", ".xls", ".docx"}
+    SUPPORTED_EXTENSIONS: set[str] = {
+        ".pdf",
+        ".txt",
+        ".md",
+        ".csv",
+        ".tsv",
+        ".xlsx",
+        ".xls",
+        ".docx",
+    }
 
     @staticmethod
     def _read_pdf(path: Path) -> str:
@@ -302,7 +309,7 @@ class RAGService:
         lines.append(f"檔案：{path.name}，共 {len(df)} 筆資料，欄位：{', '.join(df.columns)}")
         lines.append("")
 
-        for idx, row in df.iterrows():
+        for _idx, row in df.iterrows():
             parts = [f"{col}: {val}" for col, val in row.items() if pd.notna(val)]
             lines.append(" | ".join(parts))
 
@@ -351,8 +358,10 @@ class RAGService:
             # 簡易 docx 讀取（純文字提取）
             try:
                 import zipfile
+
                 with zipfile.ZipFile(path) as z:
                     from xml.etree import ElementTree
+
                     xml_content = z.read("word/document.xml")
                     tree = ElementTree.fromstring(xml_content)
                     ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}

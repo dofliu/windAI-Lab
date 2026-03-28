@@ -6,10 +6,9 @@ import { useTaskHistory } from '../hooks/useTaskHistory'
 import { useTheme } from '../themes'
 import { initialRooms } from '../utils/mockData'
 import { extractMetricsFromLogs, serializeWorkLog } from '../utils/extractMetrics'
-import CompactOffice from './CompactOffice'
+import { getRenderer, getDefaultRenderer } from '../renderers'
 import DashboardView, { type DashTab } from './DashboardView'
 import MissionPanel from './MissionPanel'
-import OfficeWorld from './OfficeWorld'
 import CommandBar from './CommandBar'
 import ThemeSwitcher from './ThemeSwitcher'
 
@@ -91,8 +90,14 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(260)
   const isDragging = useRef(false)
 
-  // Threshold: >=550px shows pixel animation OfficeWorld
-  const PIXEL_MODE_THRESHOLD = 550
+  // 根據主題的 visualStyle 取得對應的 renderer
+  const renderer = useMemo(
+    () => getRenderer(theme.visualStyle) ?? getDefaultRenderer()!,
+    [theme.visualStyle],
+  )
+  const EXPAND_THRESHOLD = renderer.minExpandWidth
+  const OfficeView = renderer.OfficeView
+  const CompactView = renderer.CompactView
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -324,10 +329,10 @@ export default function App() {
             className="flex items-center justify-between border-b px-2 py-1"
             style={{ borderColor: theme.global.border + '66' }}
           >
-            {!sidebarCollapsed && sidebarWidth >= PIXEL_MODE_THRESHOLD && (
-              <span className="text-[8px]" style={{ color: theme.global.textMuted }}>🎮 像素模式</span>
+            {!sidebarCollapsed && sidebarWidth >= EXPAND_THRESHOLD && (
+              <span className="text-[8px]" style={{ color: theme.global.textMuted }}>{renderer.icon} {renderer.name}</span>
             )}
-            {!sidebarCollapsed && sidebarWidth < PIXEL_MODE_THRESHOLD && (
+            {!sidebarCollapsed && sidebarWidth < EXPAND_THRESHOLD && (
               <span className="text-[8px]" style={{ color: theme.global.textMuted }}>← 拖拉邊框調寬度</span>
             )}
             <button
@@ -355,11 +360,11 @@ export default function App() {
             </button>
           </div>
 
-          {/* Office content — switches between compact and pixel mode */}
+          {/* Office content — renderer 根據主題 visualStyle 自動切換 */}
           <div className="h-[calc(100%-32px)] overflow-hidden">
-            {sidebarWidth >= PIXEL_MODE_THRESHOLD && !sidebarCollapsed ? (
+            {sidebarWidth >= EXPAND_THRESHOLD && !sidebarCollapsed ? (
               <div className="h-full overflow-y-auto overflow-x-hidden">
-                <OfficeWorld
+                <OfficeView
                   rooms={rooms}
                   selectedAgent={currentSelected}
                   onSelectAgent={setSelectedAgent}
@@ -368,7 +373,7 @@ export default function App() {
                 />
               </div>
             ) : (
-              <CompactOffice
+              <CompactView
                 agents={agents}
                 selectedAgent={currentSelected}
                 onSelectAgent={setSelectedAgent}

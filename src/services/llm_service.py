@@ -133,11 +133,20 @@ class LLMService:
 
     # 副檔名 fallback 規則
     _EXT_CATEGORY: dict[str, str] = {
-        ".csv": "scada_data", ".tsv": "scada_data", ".parquet": "scada_data",
-        ".xlsx": "scada_data", ".xls": "scada_data",
-        ".pdf": "specification_doc", ".txt": "specification_doc", ".md": "specification_doc",
-        ".docx": "specification_doc", ".doc": "specification_doc",
-        ".jpg": "photo", ".jpeg": "photo", ".png": "photo", ".bmp": "photo",
+        ".csv": "scada_data",
+        ".tsv": "scada_data",
+        ".parquet": "scada_data",
+        ".xlsx": "scada_data",
+        ".xls": "scada_data",
+        ".pdf": "specification_doc",
+        ".txt": "specification_doc",
+        ".md": "specification_doc",
+        ".docx": "specification_doc",
+        ".doc": "specification_doc",
+        ".jpg": "photo",
+        ".jpeg": "photo",
+        ".png": "photo",
+        ".bmp": "photo",
     }
 
     def classify_files(
@@ -174,7 +183,7 @@ class LLMService:
             f"- maintenance_report：維護報告、故障紀錄、檢修文件\n"
             f"- photo：照片、圖片\n"
             f"- unknown：無法判斷\n\n"
-            f"請僅輸出 JSON 陣列，格式：[{{\"index\": 0, \"category\": \"scada_data\"}}, ...]\n"
+            f'請僅輸出 JSON 陣列，格式：[{{"index": 0, "category": "scada_data"}}, ...]\n'
             f"不要輸出其他文字。"
         )
 
@@ -186,7 +195,7 @@ class LLMService:
             start = cleaned.find("[")
             end = cleaned.rfind("]")
             if start != -1 and end != -1:
-                cleaned = cleaned[start:end + 1]
+                cleaned = cleaned[start : end + 1]
             parsed = json.loads(cleaned)
 
             result: list[dict[str, str]] = []
@@ -203,9 +212,7 @@ class LLMService:
             logger.warning(f"LLM 檔案分類失敗，使用 fallback：{e}")
             return self._classify_by_extension(file_summaries)
 
-    def _classify_by_extension(
-        self, file_summaries: list[dict[str, str]]
-    ) -> list[dict[str, str]]:
+    def _classify_by_extension(self, file_summaries: list[dict[str, str]]) -> list[dict[str, str]]:
         """副檔名 fallback 分類。"""
         return [
             {
@@ -264,7 +271,7 @@ class LLMService:
             start = cleaned.find("{")
             end = cleaned.rfind("}")
             if start != -1 and end != -1:
-                cleaned = cleaned[start:end + 1]
+                cleaned = cleaned[start : end + 1]
             specs = json.loads(cleaned)
             logger.info(f"風機規格萃取成功：{specs.get('turbine_model', '未知型號')}")
             return specs

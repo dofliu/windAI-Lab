@@ -337,9 +337,19 @@ windAILab/
 │       └── websocket_manager.py
 │
 └── frontend/src/
+    ├── renderers/               # ★ 可插拔辦公室 Renderer 架構
+    │   ├── types.ts             # OfficeRendererDefinition 介面
+    │   ├── registry.ts          # registerRenderer / getRenderer
+    │   ├── pixel/               # 🎮 像素風格（原 OfficeWorld 封裝）
+    │   ├── modern/              # ◉ 現代企業風（Glassmorphism + 光暈）
+    │   └── minimal/             # ◻ 極簡白板風（手繪虛線 + 便利貼）
+    ├── themes/
+    │   ├── theme.ts             # WindAITheme（含 visualStyle 欄位）
+    │   └── ThemeProvider.tsx     # React Context + localStorage
     ├── components/
-    │   ├── OfficeWorld.tsx       # 虛擬辦公室（像素風）
+    │   ├── OfficeWorld.tsx       # 虛擬辦公室（像素風 renderer 用）
     │   ├── AgentManagement.tsx   # 人事管理面板
+    │   ├── ThemeSwitcher.tsx     # 依風格分組的主題切換器
     │   ├── FileWatcherStatus.tsx # 檔案監控狀態
     │   └── ...
     └── hooks/

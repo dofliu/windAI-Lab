@@ -224,52 +224,59 @@ class SkillComposingAgent(BaseAgent):
             if skill_id == "scada_ingestion":
                 detected = data.get("detected_fields", {})
                 if detected:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": f"偵測到的欄位（{data.get('row_count', '?')} 筆 × {data.get('col_count', '?')} 欄）",
-                        "data": [
-                            {"name": field, "value": 1}
-                            for field in list(detected.keys())[:15]
-                        ],
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": f"偵測到的欄位（{data.get('row_count', '?')} 筆 × {data.get('col_count', '?')} 欄）",
+                            "data": [
+                                {"name": field, "value": 1} for field in list(detected.keys())[:15]
+                            ],
+                        }
+                    )
 
             # ── SCADA 清洗結果 ──
             if skill_id == "scada_cleaning":
                 before = data.get("rows_before", 0)
                 after = data.get("rows_after", 0)
                 if before > 0:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": "資料清洗效果",
-                        "data": [
-                            {"name": "清洗前", "value": before},
-                            {"name": "清洗後", "value": after},
-                            {"name": "移除筆數", "value": before - after},
-                        ],
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": "資料清洗效果",
+                            "data": [
+                                {"name": "清洗前", "value": before},
+                                {"name": "清洗後", "value": after},
+                                {"name": "移除筆數", "value": before - after},
+                            ],
+                        }
+                    )
 
             # ── 故障分類結果 → F1 per class 長條圖 ──
             if skill_id == "fault_classification":
                 f1_per_class = data.get("f1_per_class", {})
                 if f1_per_class:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": f"故障分類 F1 Score（Macro: {data.get('f1_macro', 0):.4f}）",
-                        "data": [
-                            {"name": str(cls), "value": round(score, 4)}
-                            for cls, score in f1_per_class.items()
-                        ],
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": f"故障分類 F1 Score（Macro: {data.get('f1_macro', 0):.4f}）",
+                            "data": [
+                                {"name": str(cls), "value": round(score, 4)}
+                                for cls, score in f1_per_class.items()
+                            ],
+                        }
+                    )
                 top_features = data.get("top_features", {})
                 if top_features:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": "Top 特徵重要度",
-                        "data": [
-                            {"name": feat, "value": round(imp, 4)}
-                            for feat, imp in top_features.items()
-                        ],
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": "Top 特徵重要度",
+                            "data": [
+                                {"name": feat, "value": round(imp, 4)}
+                                for feat, imp in top_features.items()
+                            ],
+                        }
+                    )
 
             # ── NBM 功率曲線模型結果 ──
             if skill_id == "nbm_training":
@@ -277,45 +284,48 @@ class SkillComposingAgent(BaseAgent):
                 mae = data.get("mae")
                 rmse = data.get("rmse")
                 if r2 is not None:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": "NBM 模型效能指標",
-                        "data": [
-                            {"name": "R²", "value": round(r2, 4)},
-                            {"name": "MAE (kW)", "value": round(mae, 1) if mae else 0},
-                            {"name": "RMSE (kW)", "value": round(rmse, 1) if rmse else 0},
-                        ],
-                        "metadata": {
-                            "train_samples": data.get("train_samples", 0),
-                            "test_samples": data.get("test_samples", 0),
-                        },
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": "NBM 模型效能指標",
+                            "data": [
+                                {"name": "R²", "value": round(r2, 4)},
+                                {"name": "MAE (kW)", "value": round(mae, 1) if mae else 0},
+                                {"name": "RMSE (kW)", "value": round(rmse, 1) if rmse else 0},
+                            ],
+                            "metadata": {
+                                "train_samples": data.get("train_samples", 0),
+                                "test_samples": data.get("test_samples", 0),
+                            },
+                        }
+                    )
 
             # ── 領域特徵萃取 ──
             if skill_id == "domain_feature_extraction":
                 new_features = data.get("new_features", [])
                 if new_features:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": f"萃取的領域特徵（共 {len(new_features)} 個）",
-                        "data": [
-                            {"name": f, "value": 1}
-                            for f in new_features[:10]
-                        ],
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": f"萃取的領域特徵（共 {len(new_features)} 個）",
+                            "data": [{"name": f, "value": 1} for f in new_features[:10]],
+                        }
+                    )
 
             # ── RUL 預測 ──
             if skill_id == "rul_prediction":
                 rul_days = data.get("predicted_rul_days")
                 if rul_days is not None:
-                    charts.append({
-                        "chart_type": "bar",
-                        "title": "剩餘使用壽命預測 (RUL)",
-                        "data": [
-                            {"name": "RUL (天)", "value": round(rul_days, 1)},
-                        ],
-                        "metadata": data,
-                    })
+                    charts.append(
+                        {
+                            "chart_type": "bar",
+                            "title": "剩餘使用壽命預測 (RUL)",
+                            "data": [
+                                {"name": "RUL (天)", "value": round(rul_days, 1)},
+                            ],
+                            "metadata": data,
+                        }
+                    )
 
         # 廣播所有圖表
         for chart in charts:

@@ -211,8 +211,9 @@ class TestRagCurator:
 
 
 @pytest.mark.skipif(
-    __import__("sys").platform == "win32",
-    reason="ChromaDB segfaults on Windows in CI — run on Linux/Docker",
+    __import__("sys").platform == "win32"
+    or not __import__("importlib").util.find_spec("chromadb"),
+    reason="ChromaDB segfaults on Windows / not installed in CI — run on Linux/Docker",
 )
 class TestRAGService:
     """RAG 知識庫服務測試（需 ChromaDB 可用環境）。"""

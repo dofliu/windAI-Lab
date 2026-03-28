@@ -17,14 +17,35 @@ from src.skills.base import BaseSkill, ProgressCallback, SkillInput, SkillOutput
 
 # SCADA 運轉資料的特徵欄位關鍵字（只要欄位名含這些就是 SCADA）
 _SCADA_KEYWORDS: set[str] = {
-    "wind_speed", "windspeed", "wind speed", "ws_mean", "ws_avg",
-    "active_power", "power_mean", "power_output", "p_avg", "power",
-    "rotor_speed", "rotor speed", "rotorspeed", "gen_rpm", "rotor_rpm",
-    "blade_pitch", "pitch_angle", "pitch",
-    "nacelle_direction", "nacelle_dir", "yaw_angle", "yaw",
-    "generator_temp", "gen_temp", "gen_bear_temp",
-    "ambient_temp", "amb_temp",
-    "wind_direction", "wind_dir",
+    "wind_speed",
+    "windspeed",
+    "wind speed",
+    "ws_mean",
+    "ws_avg",
+    "active_power",
+    "power_mean",
+    "power_output",
+    "p_avg",
+    "power",
+    "rotor_speed",
+    "rotor speed",
+    "rotorspeed",
+    "gen_rpm",
+    "rotor_rpm",
+    "blade_pitch",
+    "pitch_angle",
+    "pitch",
+    "nacelle_direction",
+    "nacelle_dir",
+    "yaw_angle",
+    "yaw",
+    "generator_temp",
+    "gen_temp",
+    "gen_bear_temp",
+    "ambient_temp",
+    "amb_temp",
+    "wind_direction",
+    "wind_dir",
 }
 
 # 純文件格式（不需要讀內容）
@@ -75,12 +96,14 @@ class ProjectClassifierSkill(BaseSkill):
         all_files: list[dict[str, Any]] = []
         for f in sorted(folder.rglob("*")):
             if f.is_file() and not f.name.startswith(".") and not f.name.startswith("~"):
-                all_files.append({
-                    "path": str(f),
-                    "name": f.name,
-                    "extension": f.suffix.lower(),
-                    "size_bytes": f.stat().st_size,
-                })
+                all_files.append(
+                    {
+                        "path": str(f),
+                        "name": f.name,
+                        "extension": f.suffix.lower(),
+                        "size_bytes": f.stat().st_size,
+                    }
+                )
 
         if not all_files:
             return SkillOutput(
