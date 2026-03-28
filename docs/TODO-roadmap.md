@@ -1,17 +1,17 @@
 # WindAI Lab — TODO 路線圖與下一步工作規劃
 
-> 最後更新：2026-03-26
-> 目前進度：Phase 9 完成 — 資料泛化 + 多檔案載入 + 自動實驗 + 警報處理（85%）
+> 最後更新：2026-03-28
+> 目前進度：Phase 10 進行中 — UI 抽象層 + 可插拔 Renderer 架構（88%）
 
 ---
 
 ## 1. 當前狀態摘要
 
 ```
-已完成 █████████████████░░░ 85%
+已完成 ██████████████████░░ 88%
                                       ↑ 我們在這裡
-Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9 ←→ 10  11
-        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅      ⬜   ⬜
+Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10 ←→ 11  12
+        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  🔧      ⬜   ⬜
 ```
 
 | 類別 | 已完成 | 剩餘 |
@@ -21,7 +21,8 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9 ←→ 10  11
 | 技能模組 | 10 | 2-3 |
 | ML 模型 | 3 | 3+ |
 | API 端點 | 30+ | 5+ |
-| 前端元件 | 23 | 5+ |
+| 前端元件 | 28 | 3+ |
+| Office Renderer | 3（pixel / modern / minimal） | 可擴充 |
 
 ### 架構狀態
 
@@ -43,6 +44,21 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9 ←→ 10  11
 | ~~自動實驗技能~~ | AutoExperimentSkill（網格搜尋 + 排行榜） | ✅ |
 | ~~警報事件處理~~ | AlarmProcessorSkill（事件→時間序列） | ✅ |
 
+### ✅ 已完成 / 🔧 進行中 — Phase 10：UI 抽象層重構
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| ~~OfficeRenderer 介面~~ | 定義 OfficeViewProps / CompactViewProps / OfficeRendererDefinition | ✅ |
+| ~~Renderer Registry~~ | registerRenderer / getRenderer / getAllRenderers | ✅ |
+| ~~Pixel Renderer 封裝~~ | 現有 OfficeWorld + CompactOffice 封裝為可插拔 renderer | ✅ |
+| ~~Modern Renderer~~ | Glassmorphism + 圓形 Avatar + 光暈動效 — 全新視覺風格 | ✅ |
+| ~~Minimal Renderer~~ | 白板虛線框 + 便利貼 + 純文字大留白 — 全新視覺風格 | ✅ |
+| ~~Theme visualStyle~~ | WindAITheme 擴展 visualStyle 欄位，主題綁定 renderer | ✅ |
+| ~~ThemeSwitcher 升級~~ | 依 visualStyle 分組顯示，色塊 + 風格圖示預覽 | ✅ |
+| ~~App.tsx 解耦~~ | 不再直接 import 特定 renderer，動態從 registry 取得 | ✅ |
+| 更多 Renderer 風格 | 等距 3D / 賽博龐克 / 日系手繪 等（未來擴展） | ⬜ |
+| Renderer 內部元件拆分 | 將各 renderer 的子元件進一步模組化 | ⬜ |
+
 ### 🔴 高優先 — RAG 知識庫
 
 | 項目 | 說明 | 預估 |
@@ -58,7 +74,7 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9 ←→ 10  11
 | **MissionView 戰情中心** | 任務進行時自動切換，只顯示參與代理 | 4h |
 | **AnalysisDashboard 分析面板** | 右側即時圖表 + 報告清單（可點擊展開） | 4-6h |
 | **ViewSwitcher 自動切換** | 偵測任務狀態 office ↔ mission 切換 | 1-2h |
-| **主題系統 Theme Pack** | 頭像/圖標/配色/底圖獨立可替換 | 3-4h |
+| ~~主題系統 Theme Pack~~ | ~~頭像/圖標/配色/底圖獨立可替換~~ → **已由 Renderer 架構取代** | ✅ |
 
 ### 🟡 中優先 — 技能深化
 
@@ -123,6 +139,7 @@ class MySkill(BaseSkill):
 
 1. **RAG 知識庫**（BGE-3 嵌入 + ChromaDB + 風機手冊）
 2. **戰情中心介面**（MissionView + AnalysisDashboard + ViewSwitcher）
-3. **主題系統**（Theme Pack — 視覺資產獨立可替換）
-4. **補齊剩餘技能**（異常偵測、報告生成）
-5. **新 ML 模型**（Weibull + LSTM）
+3. ~~**主題系統**（Theme Pack — 視覺資產獨立可替換）~~ → ✅ 已完成（Phase 10 Renderer 架構）
+4. **擴展更多 Renderer**（等距 3D / 賽博龐克 / 自定義風格）
+5. **補齊剩餘技能**（異常偵測、報告生成）
+6. **新 ML 模型**（Weibull + LSTM）

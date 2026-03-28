@@ -1,6 +1,6 @@
 # WindAI Lab — 專案進度報告
 
-> 最後更新：2026-03-26（Phase 9 — 資料泛化 + 多檔案載入 + 自動實驗 + 警報處理）
+> 最後更新：2026-03-28（Phase 10 — UI 抽象層重構 + 可插拔 OfficeRenderer 架構）
 
 ---
 
@@ -13,7 +13,8 @@
 | **技能模組** | 10 | 12+ | 83% |
 | **ML 模型** | 3 | 6+ | 50% |
 | **REST API 端點** | 30+ | 35+ | 86% |
-| **前端元件** | 21 | 25+ | 84% |
+| **前端元件** | 28 | 30+ | 93% |
+| **Office Renderer** | 3（pixel / modern / minimal） | 3+ | 100% |
 | **測試覆蓋** | 17 檔案 / 368 測試 | — | 良好 |
 | **Docker 部署** | ✅ | ✅ | 100% |
 | **WebSocket 即時通訊** | ✅ | ✅ | 100% |
@@ -27,8 +28,9 @@
 | **多檔案批次載入** | ✅ | ✅ | 100% |
 | **自動實驗循環** | ✅ | ✅ | 100% |
 | **警報事件處理** | ✅ | ✅ | 100% |
+| **UI 抽象層 (Renderer)** | ✅ | ✅ | 100% |
 
-**整體評估：約 85% 完成度**（資料泛化完成，新增 4 個技能，進入 RAG + 前端強化階段）
+**整體評估：約 88% 完成度**（UI 可插拔架構完成，3 種截然不同的辦公室風格）
 
 ---
 
@@ -357,7 +359,110 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 **下一步規劃**：
 - RAG 知識庫（BGE-3 本地嵌入模型 + ChromaDB，串接風機手冊）
 - 戰情中心介面（MissionView — 任務進行時自動切換，右側即時圖表面板）
-- 主題系統（Theme Pack — 頭像/圖標/配色/底圖獨立可替換）
+- ~~主題系統（Theme Pack — 頭像/圖標/配色/底圖獨立可替換）~~ → Phase 10 完成
+
+### Phase 10 — UI 抽象層重構 + 可插拔 OfficeRenderer 架構（2026-03-28）
+
+**目標**：將辦公室 UI 從「只換顏色」提升為「換整個視覺風格」，建立可插拔的 renderer 架構。
+
+**問題診斷**：
+- 原主題系統只有 4 種配色（深色科技/森林/海洋 + 淺色簡約），結構完全相同
+- 辦公室像素風格硬寫在 OfficeWorld.tsx，無法替換
+- 切換主題「沒什麼感覺」，只是換色系
+
+**架構設計**：
+
+```
+frontend/src/renderers/
+├── types.ts              # OfficeRendererDefinition 介面
+├── registry.ts           # registerRenderer / getRenderer / getAllRenderers
+├── index.ts              # 自動註冊所有內建 renderer
+├── pixel/index.ts        # 🎮 像素辦公室（封裝原有 OfficeWorld + CompactOffice）
+├── modern/               # ◉ 現代企業風（全新）
+│   ├── ModernOfficeView.tsx    # Glassmorphism + 圓形 Avatar + 光暈效果
+│   └── ModernCompactView.tsx   # 圓形 avatar 列表 + 左邊框選中指示
+└── minimal/              # ◻ 極簡白板風（全新）
+    ├── MinimalOfficeView.tsx    # 手繪虛線框 + 便利貼風格 + 大留白
+    └── MinimalCompactView.tsx   # 純文字 + 虛線分隔 + 狀態圓點
+```
+
+**開發過程**：
+
+1. **OfficeRenderer 介面定義**：
+   - `OfficeViewProps`：展開模式（rooms, selectedAgent, speechBubbles, isWarRoomActive）
+   - `CompactViewProps`：收合模式（agents, selectedAgent, collapsed）
+   - `OfficeRendererDefinition`：完整 renderer 定義（id, name, icon, OfficeView, CompactView, minExpandWidth）
+   - Registry 模式：`registerRenderer()` / `getRenderer(id)` / `getAllRenderers()`
+
+2. **既有像素風格封裝**（PixelOfficeRenderer）：
+   - OfficeWorld.tsx 和 CompactOffice.tsx 不需改動，直接封裝為 renderer
+   - minExpandWidth = 550（保持原有行為）
+
+3. **ModernOfficeRenderer**（全新風格）：
+   - Glassmorphism 毛玻璃效果卡片
+   - 圓形 Avatar 以首字母 + Tier 色彩呈現
+   - 狀態用光暈環脈衝動效，非像素圓點
+   - 房間以 2-column grid 卡片排列，hover 有漸層發光
+   - 活躍代理在頂部「戰情區」集中顯示
+   - minExpandWidth = 400（比像素風需要更少空間）
+
+4. **MinimalOfficeRenderer**（全新風格）：
+   - 手繪虛線框（`border: 1px dashed`）模擬白板感
+   - 代理以「便利貼」列表呈現：圓點 + 名字 + 任務
+   - 對話引用為引號樣式
+   - 幾乎無裝飾，高對比大留白
+   - 類似 Excalidraw / 手寫筆記的風格
+   - minExpandWidth = 350
+
+5. **WindAITheme 擴展**：
+   - 新增 `visualStyle: string` 欄位，對應 renderer ID
+   - 6 個主題分配：4 個原主題 → `pixel`，新增 `modern-corporate` → `modern`，`minimal-whiteboard` → `minimal`
+   - 切換主題 = 切換配色 + 切換辦公室風格
+
+6. **ThemeSwitcher 升級**：
+   - 依 `visualStyle` 分組顯示（像素辦公室 / 現代企業 / 極簡白板）
+   - 每組有風格圖示 + 分隔線
+   - 色塊預覽增加第三個色塊（tier 代表色）
+
+7. **App.tsx 完全解耦**：
+   - 移除直接 import OfficeWorld / CompactOffice
+   - 改為 `getRenderer(theme.visualStyle)` 動態取得
+   - 展開門檻也從 renderer 定義中讀取（`minExpandWidth`）
+
+**三種風格視覺對比**：
+
+| 特徵 | 🎮 像素辦公室 | ◉ 現代企業 | ◻ 極簡白板 |
+|------|-------------|-----------|-----------|
+| 角色表現 | SVG chibi 像素人物 | 圓形首字母 Avatar | 小圓點 + 文字 |
+| 房間表現 | 俯瞰平面圖 + 桌椅 | Grid 卡片 + 毛玻璃 | 虛線框 + 便利貼 |
+| 動效 | 走路彈跳 + 氣泡 | 光暈脈衝 + 漸層 | 幾乎無（旋轉微調） |
+| 資訊密度 | 中 | 中高 | 高 |
+| 適合場景 | 趣味展示 | 正式報告 | 高效工作 |
+
+**如何擴展新風格**：
+```
+1. 在 renderers/ 下建新資料夾
+2. 實作 OfficeViewProps + CompactViewProps 兩個元件
+3. 建立 OfficeRendererDefinition 並在 renderers/index.ts 註冊
+4. 在 themes/theme.ts 新增一個 visualStyle 為新 ID 的主題
+```
+
+**產出**：
+- [x] `renderers/types.ts` — OfficeRendererDefinition 介面
+- [x] `renderers/registry.ts` — Renderer 註冊機制
+- [x] `renderers/pixel/` — 像素風格 renderer
+- [x] `renderers/modern/` — 現代企業風格 renderer（ModernOfficeView + ModernCompactView）
+- [x] `renderers/minimal/` — 極簡白板風格 renderer（MinimalOfficeView + MinimalCompactView）
+- [x] `themes/theme.ts` — 新增 `visualStyle` + 2 個新主題
+- [x] `ThemeSwitcher.tsx` — 風格分組切換面板
+- [x] `App.tsx` — 動態 renderer 解析
+- [x] `index.css` — modern-pulse 動效 keyframe
+- [x] Vite build 驗證通過
+
+**下一步規劃**：
+- 擴展更多 Renderer 風格（等距 3D / 賽博龐克 / 日系手繪）
+- RAG 知識庫整合
+- 戰情中心介面進一步強化
 
 ---
 
@@ -488,7 +593,8 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 | 指標 | 數值 |
 |------|------|
 | Python 原始碼檔案 | 90+ |
-| 前端元件 (TSX/TS) | 23 |
+| 前端元件 (TSX/TS) | 28 |
+| Office Renderer | 3（pixel / modern / minimal） |
 | 測試檔案 / 測試數 | 17 / 368 |
 | 技能模組 | 10 (scada_ingestion, scada_cleaning, turbine_profiler, domain_feature_extraction, fault_classification, nbm_training, rul_prediction, data_inspector, batch_load, auto_experiment, alarm_processor) |
 | YAML 代理定義 | 22 (12 core + 10 hirable) |
@@ -525,3 +631,4 @@ JSONResponse 序列化 → JSON 標準不支援 NaN → 前端 crash
 | ADR-17 | DataInspector + BatchLoad 分離 | 先檢視再載入，策略由分析目的驅動 |
 | ADR-18 | AutoExperiment 網格搜尋 | 自動化實驗循環，JSONL 記錄與 ExperimentTracker 相容 |
 | ADR-19 | AlarmProcessor 事件→時間序列 | 離散警報轉為固定頻率 DataFrame，可與 SCADA 合併 |
+| ADR-20 | OfficeRenderer 可插拔架構 | 主題不只換色要換風格，renderer 與業務邏輯完全解耦 |
