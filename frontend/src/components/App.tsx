@@ -8,8 +8,8 @@ import { initialRooms } from '../utils/mockData'
 import { extractMetricsFromLogs, serializeWorkLog } from '../utils/extractMetrics'
 import { getRenderer, getDefaultRenderer } from '../renderers'
 import DashboardView, { type DashTab } from './DashboardView'
-import MissionPanel from './MissionPanel'
-import CommandBar from './CommandBar'
+import WorkflowProgress from './WorkflowProgress'
+import TaskLauncher from './TaskLauncher'
 import ThemeSwitcher from './ThemeSwitcher'
 
 export default function App() {
@@ -197,7 +197,7 @@ export default function App() {
   const handleViewFullRecord = useCallback(() => {
     setMissionSticky(false)
     ws.clearAnalysisResults()
-    setDashboardInitialTab('history')
+    setDashboardInitialTab('records' as DashTab)
   }, [ws])
 
   /* ── Hire / Fire handlers (simulation mode) ── */
@@ -393,21 +393,25 @@ export default function App() {
           />
         )}
 
-        {/* Right: Conditional Panel + CommandBar */}
+        {/* Right: Main work area */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            {isMissionMode ? (
-              <MissionPanel
-                agents={agents}
-                workLogs={workLogs}
-                analysisResults={ws.analysisResults ?? []}
-                isCompleted={!isActivelyWorking && missionSticky}
-                isActivelyWorking={isActivelyWorking}
-                onClose={handleCloseMission}
-                onViewFullRecord={handleViewFullRecord}
-                currentTaskDescription={lastCommandDescription}
-              />
-            ) : (
+          {/* ── 任務進度（進行中或剛完成時顯示） ── */}
+          {isMissionMode && (
+            <WorkflowProgress
+              agents={agents}
+              workLogs={workLogs}
+              analysisResults={ws.analysisResults ?? []}
+              isCompleted={!isActivelyWorking && missionSticky}
+              isActivelyWorking={isActivelyWorking}
+              onClose={handleCloseMission}
+              onViewFullRecord={handleViewFullRecord}
+              currentTaskDescription={lastCommandDescription}
+            />
+          )}
+
+          {/* ── Dashboard（非任務模式，或任務模式下也能切 tab） ── */}
+          {!isMissionMode && (
+            <div className="flex-1 overflow-hidden">
               <DashboardView
                 workLogs={workLogs}
                 selectedAgent={currentSelected}
@@ -421,15 +425,15 @@ export default function App() {
                 initialTab={dashboardInitialTab}
                 onTabChange={setDashboardInitialTab}
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Command Bar — 統一在底部，只渲染一次 */}
+          {/* ── Task Launcher — 底部任務啟動面板 ── */}
           <div
-            className="border-t px-4 py-2"
+            className="shrink-0 border-t px-4 py-2"
             style={{ borderColor: theme.global.border, backgroundColor: theme.global.panelBg + '99' }}
           >
-            <CommandBar onExecute={handleCommand} />
+            <TaskLauncher onExecute={handleCommand} />
           </div>
         </div>
       </div>

@@ -365,10 +365,63 @@ export function useAgentSimulation() {
   /* ── Quick mission trigger for slash commands ── */
   const triggerSlashMission = useCallback((command: string, turbineId: string) => {
     const missionMap: Record<string, { name: string; agents: string[]; tasks: Record<string, string> }> = {
+      'diagnose': {
+        name: `風機故障診斷 — ${turbineId}`,
+        agents: ['project-director', 'fault-diagnostician', 'power-curve-expert', 'predictive-modeler', 'literature-reviewer', 'paper-writer'],
+        tasks: {
+          'project-director': `確認 ${turbineId} 任務範圍並分派`,
+          'fault-diagnostician': '執行故障分類與異常偵測',
+          'power-curve-expert': 'NBM 功率曲線建模',
+          'predictive-modeler': 'RUL 壽命預測',
+          'literature-reviewer': '搜索相關故障案例文獻',
+          'paper-writer': '生成診斷報告',
+        },
+      },
+      'monthly-review': {
+        name: `月度健康評估 — ${turbineId}`,
+        agents: ['project-director', 'scada-processor', 'quality-checker', 'fault-diagnostician', 'power-curve-expert', 'predictive-modeler', 'rag-architect', 'paper-writer'],
+        tasks: {
+          'project-director': `確認 ${turbineId} 月度評估範圍`,
+          'scada-processor': '載入本月 SCADA 運轉資料',
+          'quality-checker': '處理警報事件清單',
+          'fault-diagnostician': '功率曲線偏差 + 故障分類',
+          'power-curve-expert': 'NBM 健康分數評估',
+          'predictive-modeler': '更新 RUL 壽命預測',
+          'rag-architect': '嵌入運維月報 + 歷史案例比對',
+          'paper-writer': '生成月度健康報告',
+        },
+      },
+      'train-nbm': {
+        name: `NBM 訓練 — ${turbineId}`,
+        agents: ['project-director', 'power-curve-expert'],
+        tasks: {
+          'project-director': '確認並分派 NBM 訓練任務',
+          'power-curve-expert': `訓練 ${turbineId} NBM 功率曲線模型`,
+        },
+      },
+      'predict-rul': {
+        name: `RUL 預測 — ${turbineId}`,
+        agents: ['project-director', 'predictive-modeler'],
+        tasks: {
+          'project-director': '確認並分派 RUL 預測任務',
+          'predictive-modeler': `預測 ${turbineId} 剩餘使用壽命`,
+        },
+      },
+      'lit-search': {
+        name: `文獻搜索`,
+        agents: ['project-director', 'research-lead', 'literature-reviewer', 'paper-writer'],
+        tasks: {
+          'project-director': '確認文獻搜索範圍',
+          'research-lead': '規劃搜索策略與關鍵字',
+          'literature-reviewer': '搜索並篩選相關論文',
+          'paper-writer': '整理文獻摘要',
+        },
+      },
       'data:load': {
         name: `資料載入 — ${turbineId}`,
-        agents: ['scada-processor', 'quality-checker', 'feature-engineer'],
+        agents: ['project-director', 'scada-processor', 'quality-checker', 'feature-engineer'],
         tasks: {
+          'project-director': '確認並分派資料載入任務',
           'scada-processor': `智慧載入 ${turbineId} SCADA 資料`,
           'quality-checker': '資料品質檢查與驗證',
           'feature-engineer': '自動特徵偵測與分析',
@@ -376,29 +429,31 @@ export function useAgentSimulation() {
       },
       'data:clean': {
         name: `資料清洗 — ${turbineId}`,
-        agents: ['scada-processor', 'quality-checker'],
+        agents: ['project-director', 'scada-processor', 'quality-checker'],
         tasks: {
+          'project-director': '確認並分派資料清洗任務',
           'scada-processor': `清洗 ${turbineId} 資料（去重、插值）`,
           'quality-checker': '異常值過濾與品質報告',
         },
       },
       'ai:train': {
         name: `ML 訓練 — ${turbineId}`,
-        agents: ['model-trainer', 'fault-diagnostician', 'predictive-modeler', 'experiment-tracker'],
+        agents: ['project-director', 'fault-diagnostician', 'predictive-modeler', 'experiment-tracker'],
         tasks: {
-          'model-trainer': 'NBM 功率曲線訓練',
-          'fault-diagnostician': '故障分類器訓練',
+          'project-director': '確認並分派模型訓練任務',
+          'fault-diagnostician': '故障分類器 + NBM 訓練',
           'predictive-modeler': 'RUL 退化模型擬合',
-          'experiment-tracker': '記錄實驗結果至 MLflow',
+          'experiment-tracker': '記錄實驗結果至追蹤系統',
         },
       },
       'ai:evaluate': {
         name: `模型評估 — ${turbineId}`,
-        agents: ['fault-diagnostician', 'predictive-modeler', 'report-generator'],
+        agents: ['project-director', 'fault-diagnostician', 'predictive-modeler', 'paper-writer'],
         tasks: {
+          'project-director': '確認並分派模型評估任務',
           'fault-diagnostician': 'NBM 殘差分析與異常偵測',
           'predictive-modeler': 'RUL 預測誤差評估',
-          'report-generator': '彙整效能評估報告',
+          'paper-writer': '彙整效能評估報告',
         },
       },
     }
@@ -462,6 +517,16 @@ export function useAgentSimulation() {
     'simu-clean': 'data:clean',
     'simu-train': 'ai:train',
     'simu-evaluate': 'ai:evaluate',
+    // 真實指令也可觸發模擬動畫（做為後端離線時的 fallback）
+    'diagnose': 'diagnose',
+    'monthly-review': 'monthly-review',
+    'train-nbm': 'train-nbm',
+    'predict-rul': 'predict-rul',
+    'data:load': 'data:load',
+    'data:clean': 'data:clean',
+    'ai:train': 'ai:train',
+    'ai:evaluate': 'ai:evaluate',
+    'lit-search': 'lit-search',
   }
 
   const sendCommand = useCallback((command: string, params: Record<string, string> = {}) => {
