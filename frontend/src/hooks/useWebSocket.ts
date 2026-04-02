@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Agent, WorkLog, OfficeRoom, AgentStatus, SpeechBubble } from '../types/agent'
+import { Agent, WorkLog, OfficeRoom, AgentStatus, SpeechBubble, WorkflowRetryEvent, WorkflowDegradationEvent, WorkflowCheckpointEvent } from '../types/agent'
 import { initialRooms } from '../utils/mockData'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -18,6 +18,7 @@ export function useWebSocket() {
   const [hasLiveUpdates, setHasLiveUpdates] = useState(false)
   const [fileEvents, setFileEvents] = useState<any[]>([])
   const [analysisResults, setAnalysisResults] = useState<any[]>([])
+  const [workflowEvents, setWorkflowEvents] = useState<Array<WorkflowRetryEvent | WorkflowDegradationEvent | WorkflowCheckpointEvent>>([])
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
@@ -126,6 +127,16 @@ export function useWebSocket() {
             break
           }
 
+          case 'workflow_retry':
+          case 'workflow_degradation':
+          case 'workflow_checkpoint': {
+            setWorkflowEvents(prev => {
+              const next = [...prev, msg.payload]
+              return next.length > 50 ? next.slice(-50) : next
+            })
+            break
+          }
+
           case 'agent_hired': {
             const newAgent = mapAgent(msg.payload)
             setAgents(prev => {
@@ -184,6 +195,7 @@ export function useWebSocket() {
   }, [])
 
   const clearAnalysisResults = useCallback(() => setAnalysisResults([]), [])
+  const clearWorkflowEvents = useCallback(() => setWorkflowEvents([]), [])
 
   useEffect(() => {
     connect()
@@ -194,5 +206,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults, workflowEvents, clearWorkflowEvents }
 }

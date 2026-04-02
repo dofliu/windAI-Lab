@@ -1,7 +1,16 @@
 """RAG 知識庫服務。
 
-基於 ChromaDB 的向量資料庫，提供風力發電領域文獻的嵌入儲存與語意搜尋。
-支援文件新增、搜尋、集合管理等操作。
+基於 ChromaDB 的向量資料庫，搭配 BGE-3 嵌入模型，提供風力發電領域文獻的
+嵌入儲存與語意搜尋。支援文件新增、MMR 搜尋、集合管理等操作。
+
+嵌入策略：
+- 優先使用 BAAI/bge-small-en-v1.5（768 維），語意理解更佳
+- 降級方案：all-MiniLM-L6-v2（384 維）
+
+Chunking 策略：
+- 段落感知分割（優先在段落邊界切割）
+- 句子感知 fallback（段落過長時按句子切割）
+- 可配置重疊字元數
 """
 
 from __future__ import annotations
@@ -38,14 +47,76 @@ class SearchResult:
     relevance_score: float
 
 
+def _split_into_sentences(text: str) -> list[str]:
+    """簡易句子分割。支援中英文句號、問號、驚嘆號。"""
+    import re
+
+    # 匹配中英文句子結尾
+    parts = re.split(r"(?<=[.!?。！？])\s+", text)
+    return [p.strip() for p in parts if p.strip()]
+
+
+class BGE3EmbeddingFunction:
+    """BGE-3 嵌入模型封裝，適配 ChromaDB EmbeddingFunction 介面。
+
+    使用 BAAI/bge-small-en-v1.5（768 維）取代預設的 all-MiniLM-L6-v2（384 維），
+    提供更好的語意理解能力，特別適合技術文件與風力發電領域術語。
+    若 BGE 模型無法載入，自動降級至 all-MiniLM-L6-v2。
+    """
+
+    _PREFERRED_MODEL = "BAAI/bge-small-en-v1.5"
+    _FALLBACK_MODEL = "all-MiniLM-L6-v2"
+
+    def __init__(self) -> None:
+        self._model: Any = None
+        self._model_name: str = ""
+
+    def _load_model(self) -> None:
+        """延遲載入 SentenceTransformer 模型。"""
+        if self._model is not None:
+            return
+
+        try:
+            from sentence_transformers import SentenceTransformer
+
+            self._model = SentenceTransformer(self._PREFERRED_MODEL)
+            self._model_name = self._PREFERRED_MODEL
+            logger.info(f"嵌入模型已載入：{self._PREFERRED_MODEL}")
+        except Exception:
+            try:
+                from sentence_transformers import SentenceTransformer
+
+                self._model = SentenceTransformer(self._FALLBACK_MODEL)
+                self._model_name = self._FALLBACK_MODEL
+                logger.warning(f"BGE 模型不可用，降級至 {self._FALLBACK_MODEL}")
+            except Exception as e:
+                logger.error(f"無法載入嵌入模型：{e}")
+                raise
+
+    @property
+    def model_name(self) -> str:
+        """目前使用的模型名稱。"""
+        self._load_model()
+        return self._model_name
+
+    def __call__(self, texts: list[str]) -> list[list[float]]:
+        """ChromaDB EmbeddingFunction 介面。"""
+        self._load_model()
+        # BGE 模型建議在查詢前加 "Represent this sentence: " prefix
+        # 但為保持與文件嵌入的一致性，此處不加 prefix
+        embeddings = self._model.encode(texts, normalize_embeddings=True)
+        return embeddings.tolist()
+
+
 class RAGService:
     """RAG 知識庫核心服務。
 
-    使用 ChromaDB 作為向量儲存後端，支援：
-    - 文件嵌入與儲存
-    - 語意搜尋（餘弦相似度）
+    使用 ChromaDB 作為向量儲存後端，搭配 BGE-3 嵌入模型，支援：
+    - 文件嵌入與儲存（BGE-3 768 維向量）
+    - 語意搜尋（餘弦相似度 + MMR 重排序）
     - 集合管理（建立、列出、刪除）
     - 文件 metadata 篩選
+    - 語意分段 chunking（段落感知）
     """
 
     def __init__(self, persist_dir: str | None = None) -> None:
@@ -53,6 +124,7 @@ class RAGService:
             Path(__file__).resolve().parents[2] / "data" / "chromadb"
         )
         self._client: Any = None
+        self._embedding_fn: BGE3EmbeddingFunction | None = None
         self._default_collection_name = "windai_knowledge_base"
 
     @property
@@ -75,13 +147,29 @@ class RAGService:
                 logger.warning("ChromaDB 降級為記憶體模式")
         return self._client
 
+    @property
+    def embedding_fn(self) -> BGE3EmbeddingFunction:
+        """延遲載入 BGE-3 嵌入函式。"""
+        if self._embedding_fn is None:
+            self._embedding_fn = BGE3EmbeddingFunction()
+        return self._embedding_fn
+
     def _get_collection(self, collection_name: str | None = None) -> Any:
-        """取得或建立集合。"""
+        """取得或建立集合（使用 BGE-3 嵌入）。"""
         name = collection_name or self._default_collection_name
-        return self.client.get_or_create_collection(
-            name=name,
-            metadata={"hnsw:space": "cosine"},
-        )
+        try:
+            return self.client.get_or_create_collection(
+                name=name,
+                metadata={"hnsw:space": "cosine"},
+                embedding_function=self.embedding_fn,
+            )
+        except Exception:
+            # 降級：不指定 embedding function（使用 ChromaDB 預設）
+            logger.warning("BGE 嵌入函式初始化失敗，使用 ChromaDB 預設嵌入")
+            return self.client.get_or_create_collection(
+                name=name,
+                metadata={"hnsw:space": "cosine"},
+            )
 
     def add_documents(
         self,
@@ -546,19 +634,159 @@ class RAGService:
             "query": query,
         }
 
+    def search_mmr(
+        self,
+        query: str,
+        n_results: int = 5,
+        n_candidates: int = 20,
+        diversity: float = 0.3,
+        collection_name: str | None = None,
+        where: dict[str, Any] | None = None,
+    ) -> list[SearchResult]:
+        """最大邊際相關性 (MMR) 搜尋，平衡相關性與多樣性。
+
+        先取 n_candidates 個候選結果，再用 MMR 演算法選出 n_results 個結果，
+        避免回傳過度重複的內容。
+
+        Args:
+            query: 搜尋查詢字串。
+            n_results: 最終回傳數量。
+            n_candidates: 候選集大小。
+            diversity: 多樣性權重（0=純相關性, 1=純多樣性），預設 0.3。
+            collection_name: 搜尋集合名稱。
+            where: metadata 篩選條件。
+
+        Returns:
+            MMR 排序後的搜尋結果列表。
+        """
+        # 取得較多候選
+        candidates = self.search(
+            query=query,
+            n_results=min(n_candidates, 50),
+            collection_name=collection_name,
+            where=where,
+        )
+
+        if len(candidates) <= n_results:
+            return candidates
+
+        # MMR 重排序
+        try:
+            import numpy as np
+
+            # 用嵌入函式取得查詢向量和候選向量
+            query_emb = np.array(self.embedding_fn([query])[0])
+            doc_embs = np.array(self.embedding_fn([c.content for c in candidates]))
+
+            # 餘弦相似度（已正規化，直接內積）
+            query_sim = doc_embs @ query_emb
+
+            selected_indices: list[int] = []
+            remaining = list(range(len(candidates)))
+
+            for _ in range(n_results):
+                if not remaining:
+                    break
+
+                best_idx = -1
+                best_score = -float("inf")
+
+                for idx in remaining:
+                    # 與查詢的相似度
+                    rel = float(query_sim[idx])
+
+                    # 與已選文件的最大相似度
+                    if selected_indices:
+                        sel_embs = doc_embs[selected_indices]
+                        max_sim = float(np.max(doc_embs[idx] @ sel_embs.T))
+                    else:
+                        max_sim = 0.0
+
+                    # MMR 分數 = (1-λ) * relevance - λ * max_similarity
+                    mmr_score = (1 - diversity) * rel - diversity * max_sim
+
+                    if mmr_score > best_score:
+                        best_score = mmr_score
+                        best_idx = idx
+
+                if best_idx >= 0:
+                    selected_indices.append(best_idx)
+                    remaining.remove(best_idx)
+
+            return [candidates[i] for i in selected_indices]
+
+        except Exception as e:
+            logger.warning(f"MMR 排序失敗，退回一般搜尋：{e}")
+            return candidates[:n_results]
+
     @staticmethod
     def _split_text(text: str, chunk_size: int, overlap: int) -> list[str]:
-        """將文字分割為重疊的 chunks。"""
+        """段落感知的智慧文字分割。
+
+        優先在段落邊界切割，避免在句子中間斷開。
+        """
         if len(text) <= chunk_size:
             return [text]
 
+        # 先嘗試按段落分割
+        paragraphs = text.split("\n\n")
         chunks: list[str] = []
-        start = 0
-        while start < len(text):
-            end = start + chunk_size
-            chunk = text[start:end]
-            if chunk.strip():
-                chunks.append(chunk.strip())
-            start = end - overlap
+        current_chunk = ""
+
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
+                continue
+
+            # 如果段落本身超過 chunk_size，用句子分割
+            if len(para) > chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = ""
+                # 句子層級分割
+                sentences = _split_into_sentences(para)
+                for sent in sentences:
+                    if len(current_chunk) + len(sent) + 1 > chunk_size:
+                        if current_chunk:
+                            chunks.append(current_chunk.strip())
+                        current_chunk = sent
+                    else:
+                        current_chunk = current_chunk + " " + sent if current_chunk else sent
+                continue
+
+            # 段落可放入 current_chunk
+            if len(current_chunk) + len(para) + 2 > chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = para
+            else:
+                current_chunk = current_chunk + "\n\n" + para if current_chunk else para
+
+        if current_chunk.strip():
+            chunks.append(current_chunk.strip())
+
+        # 硬性保證：任何超過 chunk_size 的 chunk 用字元切割
+        final_chunks: list[str] = []
+        for chunk in chunks:
+            if len(chunk) <= chunk_size:
+                final_chunks.append(chunk)
+            else:
+                start = 0
+                while start < len(chunk):
+                    final_chunks.append(chunk[start : start + chunk_size].strip())
+                    start += chunk_size - overlap
+        chunks = [c for c in final_chunks if c]
+
+        # 加入重疊（取前一個 chunk 的尾部，但不超過 chunk_size）
+        if overlap > 0 and len(chunks) > 1:
+            overlapped: list[str] = [chunks[0]]
+            for i in range(1, len(chunks)):
+                prev_tail = chunks[i - 1][-overlap:]
+                merged = prev_tail + "\n" + chunks[i]
+                # 保證不超過 chunk_size
+                overlapped.append(
+                    merged[:chunk_size].strip() if len(merged) > chunk_size else merged
+                )
+            return overlapped
 
         return chunks

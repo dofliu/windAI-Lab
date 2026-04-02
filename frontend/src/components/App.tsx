@@ -406,6 +406,7 @@ export default function App() {
               onClose={handleCloseMission}
               onViewFullRecord={handleViewFullRecord}
               currentTaskDescription={lastCommandDescription}
+              workflowEvents={ws.workflowEvents ?? []}
             />
           )}
 

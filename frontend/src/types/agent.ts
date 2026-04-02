@@ -49,6 +49,34 @@ export interface AnalysisResultPayload {
   metadata?: Record<string, number | string>
 }
 
+/** Workflow 重試事件 */
+export interface WorkflowRetryEvent {
+  step_name: string
+  attempt: number
+  max_retries: number
+  delay_seconds: number
+}
+
+/** Workflow 降級事件 */
+export interface WorkflowDegradationEvent {
+  step_name: string
+  strategy: 'skip' | 'fallback' | 'abort'
+  reason?: string
+  fallback_agents?: string[]
+}
+
+/** Workflow Checkpoint 事件 */
+export interface WorkflowCheckpointEvent {
+  step_name: string
+  status: 'evaluating' | 'passed' | 'passed_after_rerun' | 'rerunning' | 'failed'
+  description?: string
+  quality_rules?: Record<string, number>
+  rerun?: number
+  max_reruns?: number
+  adjusted_params?: Record<string, unknown>
+  violations?: Array<{ metric: string; value: number; threshold: number }>
+}
+
 /** 已完成任務的歷史記錄 */
 export interface TaskRecord {
   id: string

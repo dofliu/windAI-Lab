@@ -5,8 +5,14 @@ tier: "ai-ml"
 color: "#8b5cf6"
 icon: "🔍"
 core: true
-description: "使用統計方法與機器學習偵測風機運行異常"
-skills: ["scada_ingestion", "scada_cleaning"]
+description: "使用統計方法與機器學習偵測風機運行異常，計算健康分數"
+skills:
+  - "scada_ingestion"
+  - "scada_cleaning"
+  - "turbine_profiler"
+  - "anomaly_detection"
 task_routing:
-  - match: ["anomaly", "異常", "偵測"]
-    pipeline: ["scada_ingestion", "scada_cleaning"]
+  - match: ["anomaly", "異常", "偵測", "health", "健康"]
+    pipeline: ["scada_ingestion", "scada_cleaning", "turbine_profiler", "anomaly_detection"]
+  - match: ["temperature", "溫度"]
+    pipeline: ["scada_ingestion", "scada_cleaning", "anomaly_detection"]

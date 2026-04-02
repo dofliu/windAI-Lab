@@ -7,7 +7,7 @@
 
 import { useMemo, useRef, useEffect, useState } from 'react'
 import { useTheme, getStatusColor, getTierColor } from '../themes'
-import type { Agent, WorkLog, AnalysisResultPayload } from '../types/agent'
+import type { Agent, WorkLog, AnalysisResultPayload, WorkflowRetryEvent, WorkflowDegradationEvent, WorkflowCheckpointEvent } from '../types/agent'
 import { AnalysisChart } from './AnalysisCharts'
 
 interface WorkflowProgressProps {
@@ -19,6 +19,7 @@ interface WorkflowProgressProps {
   onClose: () => void
   onViewFullRecord?: () => void
   currentTaskDescription?: string
+  workflowEvents?: Array<WorkflowRetryEvent | WorkflowDegradationEvent | WorkflowCheckpointEvent>
 }
 
 export default function WorkflowProgress({
@@ -30,6 +31,7 @@ export default function WorkflowProgress({
   onClose,
   onViewFullRecord,
   currentTaskDescription,
+  workflowEvents = [],
 }: WorkflowProgressProps) {
   const { theme } = useTheme()
   const logEndRef = useRef<HTMLDivElement>(null)
@@ -217,6 +219,81 @@ export default function WorkflowProgress({
           })}
         </div>
       )}
+
+      {/* ── Checkpoint / Retry 狀態 ── */}
+      {workflowEvents.length > 0 && (() => {
+        const latestEvent = workflowEvents[workflowEvents.length - 1]
+
+        // Checkpoint 事件
+        if ('status' in latestEvent && 'description' in latestEvent) {
+          const cp = latestEvent as WorkflowCheckpointEvent
+          const isEval = cp.status === 'evaluating'
+          const isPassed = cp.status === 'passed' || cp.status === 'passed_after_rerun'
+          const isFailed = cp.status === 'failed'
+          const isRerun = cp.status === 'rerunning'
+          const bgColor = isPassed ? '#10b98120' : isFailed ? '#ef444420' : isRerun ? '#f59e0b20' : '#6366f120'
+          const fgColor = isPassed ? '#10b981' : isFailed ? '#ef4444' : isRerun ? '#f59e0b' : '#6366f1'
+          const icon = isPassed ? '✅' : isFailed ? '❌' : isRerun ? '🔄' : '🔍'
+          const label = isPassed
+            ? `品質合格${cp.status === 'passed_after_rerun' ? '（重跑後）' : ''}`
+            : isFailed
+              ? `品質未達標${cp.violations ? ' — ' + cp.violations.map(v => `${v.metric}: ${v.value.toFixed(3)} < ${v.threshold}`).join(', ') : ''}`
+              : isRerun
+                ? `調參重跑中 (${cp.rerun}/${cp.max_reruns})`
+                : `總監評估中：${cp.description || ''}`
+
+          return (
+            <div
+              className="mx-4 my-1 flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px]"
+              style={{ backgroundColor: bgColor, color: fgColor }}
+            >
+              <span>{icon}</span>
+              <span className="font-medium">Checkpoint</span>
+              <span style={{ color: fgColor + 'cc' }}>{cp.step_name}</span>
+              <span className="flex-1 truncate">{label}</span>
+              {isEval && <span className="animate-pulse">●</span>}
+            </div>
+          )
+        }
+
+        // Retry 事件
+        if ('attempt' in latestEvent && 'max_retries' in latestEvent) {
+          const rt = latestEvent as WorkflowRetryEvent
+          return (
+            <div
+              className="mx-4 my-1 flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px]"
+              style={{ backgroundColor: '#f59e0b20', color: '#f59e0b' }}
+            >
+              <span>🔄</span>
+              <span className="font-medium">重試</span>
+              <span>{rt.step_name}</span>
+              <span>第 {rt.attempt}/{rt.max_retries} 次</span>
+              <span style={{ color: '#f59e0baa' }}>({rt.delay_seconds}s 後)</span>
+            </div>
+          )
+        }
+
+        // Degradation 事件
+        if ('strategy' in latestEvent) {
+          const dg = latestEvent as WorkflowDegradationEvent
+          const icon = dg.strategy === 'skip' ? '⏭️' : dg.strategy === 'fallback' ? '🔀' : '⛔'
+          const label = dg.strategy === 'skip' ? '已跳過' : dg.strategy === 'fallback' ? '降級至備用代理' : '工作流程中止'
+          const fgColor = dg.strategy === 'abort' ? '#ef4444' : '#f59e0b'
+          return (
+            <div
+              className="mx-4 my-1 flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px]"
+              style={{ backgroundColor: fgColor + '20', color: fgColor }}
+            >
+              <span>{icon}</span>
+              <span className="font-medium">{label}</span>
+              <span>{dg.step_name}</span>
+              {dg.reason && <span className="truncate" style={{ color: fgColor + 'aa' }}>{dg.reason}</span>}
+            </div>
+          )
+        }
+
+        return null
+      })()}
 
       {/* ── 最新動態（一行） ── */}
       {latestLog && !showLogs && (

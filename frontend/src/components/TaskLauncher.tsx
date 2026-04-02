@@ -25,6 +25,7 @@ interface TaskDef {
 const TASKS: TaskDef[] = [
   { id: 'diagnose', label: '故障診斷', icon: '🔧', description: '完整故障分析流程', category: 'diagnose', paramType: 'turbine' },
   { id: 'monthly-review', label: '月度健康評估', icon: '📋', description: 'SCADA + 警報 + 運維月報', category: 'diagnose', paramType: 'turbine' },
+  { id: 'health-check', label: '健康檢查', icon: '🩺', description: '異常偵測 + 健康分數 + 報告', category: 'diagnose', paramType: 'turbine' },
   { id: 'train-nbm', label: 'NBM 訓練', icon: '📈', description: '功率曲線模型訓練', category: 'ai', paramType: 'turbine' },
   { id: 'predict-rul', label: 'RUL 預測', icon: '⏱️', description: '剩餘壽命預測', category: 'ai', paramType: 'turbine' },
   { id: 'data:load', label: '資料載入', icon: '📂', description: '載入 + 品質檢查', category: 'data', paramType: 'turbine' },
@@ -81,7 +82,7 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
     const cmd = parts[0].replace(/^\//, '')
     const paramValue = parts.slice(1).join(' ')
     const params: Record<string, string> = {}
-    const turbineCmds = ['diagnose', 'monthly-review', 'train-nbm', 'predict-rul', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
+    const turbineCmds = ['diagnose', 'monthly-review', 'health-check', 'train-nbm', 'predict-rul', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
     if (turbineCmds.includes(cmd)) params.turbine_id = paramValue || selectedTurbine
     else if (cmd === 'lit-search') params.topic = paramValue || 'wind turbine fault diagnosis'
     else if (cmd === 'data:folder' || cmd === 'rag:ingest' || cmd === 'project:onboard') params.folder_path = paramValue
