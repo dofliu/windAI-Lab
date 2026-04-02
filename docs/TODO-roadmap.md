@@ -19,7 +19,7 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
 | 核心代理 | 12 | 0 |
 | 可聘用代理 | 10 (YAML 定義) | 按需新增 |
 | 技能模組 | 12 | 0-1 |
-| ML 模型 | 3 | 3+ |
+| ML 模型 | 5 | 1+ |
 | API 端點 | 30+ | 5+ |
 | 前端元件 | 28 | 3+ |
 | Office Renderer | 3（pixel / modern / minimal） | 可擴充 |
@@ -65,13 +65,13 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
 | ~~總監 Checkpoint 機制~~ | CheckpointConfig + 品質規則 + 自動調參重跑 | ✅ |
 | ~~錯誤重試/降級~~ | RetryConfig + 指數退避 + SKIP/FALLBACK/ABORT 三策略 | ✅ |
 
-### 🔴 高優先 — RAG 知識庫
+### ✅ 已完成 — RAG 知識庫強化
 
-| 項目 | 說明 | 預估 |
+| 項目 | 說明 | 狀態 |
 |------|------|------|
-| **RAG 文件向量嵌入** | BGE-3 本地嵌入模型 + ChromaDB | 3-4h |
-| **文件 chunking 策略** | PDF → 段落分割 → 嵌入 → 存儲 | 2h |
-| **檢索 API 端點** | 查詢介面 + 結果格式化 | 2h |
+| ~~RAG 文件向量嵌入~~ | BGE-3 (bge-small-en-v1.5) + 自動降級 + ChromaDB | ✅ |
+| ~~文件 chunking 策略~~ | 段落感知分割 + 句子感知 fallback + 可配置重疊 | ✅ |
+| ~~MMR 檢索~~ | 最大邊際相關性搜尋，平衡相關性與多樣性 | ✅ |
 
 ### 🔴 高優先 — 前端戰情中心
 
@@ -88,8 +88,8 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
 |------|------|------|
 | ~~統計異常偵測技能~~ | AnomalyDetectionSkill — Z-score + 功率曲線偏差 + 健康分數 | ✅ |
 | ~~報告生成技能~~ | ReportGeneratorSkill — 三種 Markdown 報告（診斷/月度/模型評估） | ✅ |
-| Weibull 風速分佈擬合 | 風資源評估基礎 | 2h |
-| LSTM 時序預測 | 風速/功率短期預測 | 4-6h |
+| ~~Weibull 風速分佈擬合~~ | WeibullDistributionModel — MLE/矩量法 + AEP 估算 | ✅ |
+| ~~LSTM 時序預測~~ | LSTMForecaster — PyTorch LSTM + Ridge AR 降級 | ✅ |
 
 ### 🟢 低優先 — 工程基礎
 

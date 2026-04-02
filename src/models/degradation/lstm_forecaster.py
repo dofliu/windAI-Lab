@@ -1,0 +1,270 @@
+"""LSTM 時序預測模型 — 風速與功率短期預測。
+
+使用 PyTorch LSTM 進行單步或多步時序預測：
+- 風速短期預測（1~48 步，每步 10 分鐘 → 最多 8 小時）
+- 功率短期預測
+- 健康指標趨勢預測
+
+若 PyTorch 不可用，自動降級至基於 scikit-learn 的 Ridge 回歸 AR 模型。
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
+
+
+@dataclass
+class LSTMForecastResult:
+    """LSTM 預測結果。
+
+    Attributes:
+        predictions: 預測值序列。
+        horizon_steps: 預測步數。
+        train_loss: 訓練損失（MSE）。
+        val_loss: 驗證損失（MSE）。
+        rmse: 預測 RMSE。
+        mae: 預測 MAE。
+        model_type: 模型類型（"lstm" / "ridge_ar"）。
+        feature_name: 預測目標欄位名稱。
+        sequence_length: 輸入序列長度。
+    """
+
+    predictions: list[float] = field(default_factory=list)
+    horizon_steps: int = 0
+    train_loss: float = 0.0
+    val_loss: float = 0.0
+    rmse: float = 0.0
+    mae: float = 0.0
+    model_type: str = "lstm"
+    feature_name: str = ""
+    sequence_length: int = 48
+
+
+class LSTMForecaster:
+    """LSTM 時序預測器。
+
+    支援兩種後端：
+    1. PyTorch LSTM（首選，需 torch 可用）
+    2. Ridge AR（降級，純 scikit-learn）
+    """
+
+    def __init__(
+        self,
+        sequence_length: int = 48,
+        hidden_dim: int = 64,
+        num_layers: int = 2,
+        dropout: float = 0.2,
+        forecast_horizon: int = 12,
+    ) -> None:
+        self._seq_len = sequence_length
+        self._hidden_dim = hidden_dim
+        self._num_layers = num_layers
+        self._dropout = dropout
+        self._horizon = forecast_horizon
+        self._model: Any = None
+        self._scaler: Any = None
+        self._model_type = "lstm"
+
+    def fit_and_predict(
+        self,
+        series: np.ndarray,
+        epochs: int = 50,
+        learning_rate: float = 0.001,
+        val_ratio: float = 0.2,
+    ) -> LSTMForecastResult:
+        """訓練並預測。
+
+        Parameters
+        ----------
+        series : np.ndarray
+            一維時間序列（如風速、功率），至少需要 seq_len + horizon 筆。
+        epochs : int
+            訓練 epoch 數。
+        learning_rate : float
+            學習率。
+        val_ratio : float
+            驗證集比例。
+
+        Returns
+        -------
+        LSTMForecastResult
+            預測結果。
+        """
+        series = np.asarray(series, dtype=np.float32)
+        series = series[np.isfinite(series)]
+
+        if len(series) < self._seq_len + self._horizon + 10:
+            return LSTMForecastResult(
+                model_type="insufficient_data",
+                sequence_length=self._seq_len,
+                horizon_steps=self._horizon,
+            )
+
+        # 正規化
+        from sklearn.preprocessing import MinMaxScaler
+
+        self._scaler = MinMaxScaler()
+        scaled = self._scaler.fit_transform(series.reshape(-1, 1)).flatten()
+
+        # 建立序列
+        X, y = self._create_sequences(scaled)
+
+        # 訓練/驗證分割
+        val_size = max(1, int(len(X) * val_ratio))
+        X_train, X_val = X[:-val_size], X[-val_size:]
+        y_train, y_val = y[:-val_size], y[-val_size:]
+
+        # 嘗試 PyTorch LSTM
+        try:
+            return self._train_lstm(
+                X_train, y_train, X_val, y_val, scaled, epochs, learning_rate
+            )
+        except Exception:
+            # 降級至 Ridge AR
+            return self._train_ridge_ar(X_train, y_train, X_val, y_val, scaled)
+
+    def _create_sequences(
+        self, data: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """建立滑動窗口序列。"""
+        X, y = [], []
+        for i in range(len(data) - self._seq_len - self._horizon + 1):
+            X.append(data[i : i + self._seq_len])
+            y.append(data[i + self._seq_len : i + self._seq_len + self._horizon])
+        return np.array(X), np.array(y)
+
+    def _train_lstm(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+        full_scaled: np.ndarray,
+        epochs: int,
+        lr: float,
+    ) -> LSTMForecastResult:
+        """PyTorch LSTM 訓練。"""
+        import torch
+        import torch.nn as nn
+
+        class _LSTMModel(nn.Module):
+            def __init__(self, input_dim: int, hidden: int, layers: int, out: int, drop: float):
+                super().__init__()
+                self.lstm = nn.LSTM(input_dim, hidden, layers, batch_first=True, dropout=drop)
+                self.fc = nn.Linear(hidden, out)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                out, _ = self.lstm(x)
+                return self.fc(out[:, -1, :])
+
+        device = torch.device("cpu")
+        model = _LSTMModel(1, self._hidden_dim, self._num_layers, self._horizon, self._dropout)
+        model.to(device)
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        criterion = nn.MSELoss()
+
+        # 轉 tensor
+        X_t = torch.FloatTensor(X_train).unsqueeze(-1).to(device)
+        y_t = torch.FloatTensor(y_train).to(device)
+        X_v = torch.FloatTensor(X_val).unsqueeze(-1).to(device)
+        y_v = torch.FloatTensor(y_val).to(device)
+
+        # 訓練
+        train_loss = 0.0
+        for _epoch in range(epochs):
+            model.train()
+            optimizer.zero_grad()
+            pred = model(X_t)
+            loss = criterion(pred, y_t)
+            loss.backward()
+            optimizer.step()
+            train_loss = loss.item()
+
+        # 驗證
+        model.eval()
+        with torch.no_grad():
+            val_pred = model(X_v)
+            val_loss = criterion(val_pred, y_v).item()
+
+        # 預測未來
+        last_seq = torch.FloatTensor(full_scaled[-self._seq_len :]).unsqueeze(0).unsqueeze(-1)
+        with torch.no_grad():
+            future_scaled = model(last_seq.to(device)).cpu().numpy().flatten()
+
+        # 反正規化
+        future = self._scaler.inverse_transform(future_scaled.reshape(-1, 1)).flatten()
+
+        # 計算驗證集上的 RMSE / MAE
+        val_pred_np = val_pred.cpu().numpy()
+        y_val_inv = self._scaler.inverse_transform(y_val.reshape(-1, 1)[:, :1]).flatten()
+        pred_inv = self._scaler.inverse_transform(val_pred_np.reshape(-1, 1)[:, :1]).flatten()
+        rmse = float(np.sqrt(np.mean((y_val_inv - pred_inv) ** 2)))
+        mae = float(np.mean(np.abs(y_val_inv - pred_inv)))
+
+        self._model = model
+        self._model_type = "lstm"
+
+        return LSTMForecastResult(
+            predictions=[round(float(v), 3) for v in future],
+            horizon_steps=self._horizon,
+            train_loss=round(train_loss, 6),
+            val_loss=round(val_loss, 6),
+            rmse=round(rmse, 3),
+            mae=round(mae, 3),
+            model_type="lstm",
+            sequence_length=self._seq_len,
+        )
+
+    def _train_ridge_ar(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+        full_scaled: np.ndarray,
+    ) -> LSTMForecastResult:
+        """Ridge 自回歸降級方案。"""
+        from sklearn.linear_model import Ridge
+        from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+        # 多輸出 Ridge 回歸
+        model = Ridge(alpha=1.0)
+        model.fit(X_train, y_train)
+
+        # 驗證
+        val_pred = model.predict(X_val)
+        val_loss = float(mean_squared_error(y_val, val_pred))
+
+        train_pred = model.predict(X_train)
+        train_loss = float(mean_squared_error(y_train, train_pred))
+
+        # 預測未來
+        last_seq = full_scaled[-self._seq_len :].reshape(1, -1)
+        future_scaled = model.predict(last_seq).flatten()
+
+        # 反正規化
+        future = self._scaler.inverse_transform(future_scaled.reshape(-1, 1)).flatten()
+
+        # 計算真實尺度的誤差
+        y_val_first = self._scaler.inverse_transform(y_val[:, :1]).flatten()
+        pred_first = self._scaler.inverse_transform(val_pred[:, :1]).flatten()
+        rmse = float(np.sqrt(mean_squared_error(y_val_first, pred_first)))
+        mae = float(mean_absolute_error(y_val_first, pred_first))
+
+        self._model = model
+        self._model_type = "ridge_ar"
+
+        return LSTMForecastResult(
+            predictions=[round(float(v), 3) for v in future],
+            horizon_steps=self._horizon,
+            train_loss=round(train_loss, 6),
+            val_loss=round(val_loss, 6),
+            rmse=round(rmse, 3),
+            mae=round(mae, 3),
+            model_type="ridge_ar",
+            sequence_length=self._seq_len,
+        )
