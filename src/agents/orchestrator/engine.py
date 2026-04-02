@@ -8,6 +8,10 @@
 每個 WorkflowStep 同時攜帶真實執行參數（task_template / task_parameters）
 與模擬 fallback 設定（sub_messages / progress_messages / duration），
 引擎自動根據代理是否有實例來決定走哪條路徑。
+
+進階功能：
+- 總監 Checkpoint 機制：步驟完成後由總監代理評估品質，決定是否需要調參重跑
+- 錯誤重試/降級策略：skill 執行失敗時自動重試，持續失敗則降級或跳過
 """
 
 from __future__ import annotations
@@ -31,6 +35,83 @@ class StepType(StrEnum):
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
     DECISION = "decision"
+
+
+# ── 重試與降級設定 ───────────────────────────────────────────
+
+
+class DegradationStrategy(StrEnum):
+    """步驟失敗時的降級策略。"""
+
+    ABORT = "abort"
+    """中止整個工作流程（預設行為）。"""
+
+    SKIP = "skip"
+    """跳過失敗步驟，繼續下一步。"""
+
+    FALLBACK = "fallback"
+    """使用 fallback_agent_ids 或簡化參數重新執行。"""
+
+
+@dataclass
+class RetryConfig:
+    """步驟錯誤重試設定。
+
+    Attributes:
+        max_retries: 最大重試次數（不含首次執行），0 表示不重試。
+        retry_delay: 重試間隔秒數，支援指數退避。
+        exponential_backoff: 是否啟用指數退避（delay × 2^attempt）。
+        degradation: 所有重試耗盡後的降級策略。
+        fallback_agent_ids: 降級策略為 FALLBACK 時，使用的替代代理 ID。
+    """
+
+    max_retries: int = 0
+    retry_delay: float = 1.0
+    exponential_backoff: bool = True
+    degradation: DegradationStrategy = DegradationStrategy.ABORT
+    fallback_agent_ids: list[str] = field(default_factory=list)
+
+
+# ── 總監 Checkpoint 設定 ─────────────────────────────────────
+
+
+class CheckpointAction(StrEnum):
+    """Checkpoint 評估結果對應的動作。"""
+
+    PASS = "pass"
+    """品質合格，繼續下一步。"""
+
+    RETRY = "retry"
+    """品質不足，用調整後的參數重跑此步驟。"""
+
+    ABORT = "abort"
+    """品質嚴重不足，中止工作流程。"""
+
+
+@dataclass
+class CheckpointConfig:
+    """總監品質檢查點設定。
+
+    在步驟完成後，由總監代理（或自動規則）評估該步驟的產出品質。
+    若品質未達門檻，可自動調參重跑或中止。
+
+    Attributes:
+        enabled: 是否啟用此 checkpoint。
+        evaluator_agent_id: 執行品質評估的代理 ID（預設 project-director）。
+        quality_rules: 品質規則，鍵為指標名稱，值為最低門檻。
+            例如 {"r2_score": 0.8, "f1_macro": 0.6}。
+        max_reruns: 最多重跑次數。
+        param_adjustments: 重跑時的參數調整，鍵為參數名稱，值為調整規則。
+            例如 {"n_estimators": "increase_50pct"}。
+        description: checkpoint 描述（顯示在前端）。
+    """
+
+    enabled: bool = True
+    evaluator_agent_id: str = "project-director"
+    quality_rules: dict[str, float] = field(default_factory=dict)
+    max_reruns: int = 1
+    param_adjustments: dict[str, str] = field(default_factory=dict)
+    description: str = "品質檢查"
 
 
 @dataclass
@@ -62,6 +143,14 @@ class WorkflowStep:
     collaborator_ids: list[str] = field(default_factory=list)
     """明確指定的協作代理 ID，注入 TaskContext.collaborators。
     若為空，自動使用同步驟的其他代理。"""
+
+    # ── 重試與降級 ──
+    retry: RetryConfig = field(default_factory=RetryConfig)
+    """步驟錯誤重試設定。預設不重試。"""
+
+    # ── 總監 Checkpoint ──
+    checkpoint: CheckpointConfig | None = None
+    """步驟完成後的品質檢查點設定。None 表示不檢查。"""
 
 
 @dataclass
@@ -240,6 +329,422 @@ class OrchestrationEngine:
                 step_results.update(result)
         return step_results
 
+    # ── 重試機制 ─────────────────────────────────────────────
+
+    async def _run_step_with_retry(
+        self,
+        step: WorkflowStep,
+        step_index: int,
+        total_steps: int,
+        accumulated_results: dict[str, Any],
+    ) -> tuple[dict[str, Any], bool]:
+        """執行步驟，含重試與降級邏輯。
+
+        Returns:
+            (step_results, should_continue) — 步驟結果與是否繼續工作流程。
+        """
+        retry_cfg = step.retry
+        last_error: Exception | None = None
+
+        for attempt in range(1 + retry_cfg.max_retries):
+            try:
+                step_results = await self._run_step(step, accumulated_results)
+
+                # 檢查步驟結果是否包含錯誤
+                has_error = self._step_has_error(step_results)
+                if not has_error:
+                    return step_results, True
+
+                # 步驟內部回報了錯誤，視同失敗
+                if attempt < retry_cfg.max_retries:
+                    delay = self._calc_retry_delay(retry_cfg, attempt)
+                    await self._broadcast_retry(step, attempt + 1, retry_cfg.max_retries, delay)
+                    await asyncio.sleep(delay)
+                    continue
+
+                # 所有重試耗盡
+                last_error = None
+                break
+
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"步驟 [{step_index+1}/{total_steps}] {step.name} "
+                    f"第 {attempt+1} 次執行失敗：{e}"
+                )
+
+                if attempt < retry_cfg.max_retries:
+                    delay = self._calc_retry_delay(retry_cfg, attempt)
+                    await self._broadcast_retry(step, attempt + 1, retry_cfg.max_retries, delay)
+                    await asyncio.sleep(delay)
+                else:
+                    break
+
+        # ── 所有重試耗盡，執行降級策略 ──
+        return await self._handle_degradation(
+            step, step_index, total_steps, accumulated_results, last_error
+        )
+
+    @staticmethod
+    def _step_has_error(step_results: dict[str, Any]) -> bool:
+        """檢查步驟結果中是否任一代理回報錯誤。"""
+        for agent_id, data in step_results.items():
+            if isinstance(data, dict) and data.get("status") == "error":
+                return True
+        return False
+
+    @staticmethod
+    def _calc_retry_delay(cfg: RetryConfig, attempt: int) -> float:
+        """計算重試等待時間（支援指數退避）。"""
+        if cfg.exponential_backoff:
+            return cfg.retry_delay * (2**attempt)
+        return cfg.retry_delay
+
+    async def _broadcast_retry(
+        self, step: WorkflowStep, attempt: int, max_retries: int, delay: float
+    ) -> None:
+        """廣播重試事件至前端。"""
+        log = self._create_log(
+            "system",
+            "系統",
+            f"🔄 步驟「{step.name}」執行失敗，{delay:.0f}s 後第 {attempt}/{max_retries} 次重試",
+            "warning",
+        )
+        await ws_manager.broadcast_work_log(log)
+        await ws_manager.broadcast(
+            {
+                "type": "workflow_retry",
+                "payload": {
+                    "step_name": step.name,
+                    "attempt": attempt,
+                    "max_retries": max_retries,
+                    "delay_seconds": delay,
+                },
+            }
+        )
+
+    async def _handle_degradation(
+        self,
+        step: WorkflowStep,
+        step_index: int,
+        total_steps: int,
+        accumulated_results: dict[str, Any],
+        last_error: Exception | None,
+    ) -> tuple[dict[str, Any], bool]:
+        """重試耗盡後執行降級策略。
+
+        Returns:
+            (step_results, should_continue)
+        """
+        strategy = step.retry.degradation
+        step_label = f"[{step_index+1}/{total_steps}]"
+        error_msg = str(last_error) if last_error else "步驟內部回報錯誤"
+
+        if strategy == DegradationStrategy.SKIP:
+            log = self._create_log(
+                "system",
+                "系統",
+                f"⏭️ {step_label} 步驟「{step.name}」重試耗盡，已跳過 — {error_msg}",
+                "warning",
+            )
+            await ws_manager.broadcast_work_log(log)
+            await ws_manager.broadcast(
+                {
+                    "type": "workflow_degradation",
+                    "payload": {
+                        "step_name": step.name,
+                        "strategy": "skip",
+                        "reason": error_msg,
+                    },
+                }
+            )
+            return {}, True
+
+        if strategy == DegradationStrategy.FALLBACK and step.retry.fallback_agent_ids:
+            log = self._create_log(
+                "system",
+                "系統",
+                f"🔀 {step_label} 步驟「{step.name}」降級至備用代理",
+                "warning",
+            )
+            await ws_manager.broadcast_work_log(log)
+
+            # 建立降級步驟：使用 fallback agents，清除 checkpoint 避免無限迴圈
+            fallback_step = WorkflowStep(
+                name=f"{step.name}（降級）",
+                agent_ids=step.retry.fallback_agent_ids,
+                description=f"（降級）{step.description}",
+                duration=step.duration,
+                step_type=step.step_type,
+                sub_messages=step.sub_messages,
+                progress_messages=step.progress_messages,
+                task_template=step.task_template,
+                task_parameters=step.task_parameters,
+                collaborator_ids=step.collaborator_ids,
+            )
+            await ws_manager.broadcast(
+                {
+                    "type": "workflow_degradation",
+                    "payload": {
+                        "step_name": step.name,
+                        "strategy": "fallback",
+                        "fallback_agents": step.retry.fallback_agent_ids,
+                    },
+                }
+            )
+            try:
+                fallback_results = await self._run_step(fallback_step, accumulated_results)
+                return fallback_results, True
+            except Exception as fb_err:
+                logger.error(f"降級步驟也失敗：{fb_err}")
+                log = self._create_log(
+                    "system", "系統", f"❌ 降級步驟也失敗：{fb_err}", "error"
+                )
+                await ws_manager.broadcast_work_log(log)
+                return {}, False
+
+        # ABORT（預設）
+        log = self._create_log(
+            "system",
+            "系統",
+            f"❌ {step_label} 步驟「{step.name}」重試耗盡，中止工作流程 — {error_msg}",
+            "error",
+        )
+        await ws_manager.broadcast_work_log(log)
+        await ws_manager.broadcast(
+            {
+                "type": "workflow_degradation",
+                "payload": {
+                    "step_name": step.name,
+                    "strategy": "abort",
+                    "reason": error_msg,
+                },
+            }
+        )
+        return {}, False
+
+    # ── 總監 Checkpoint 機制 ─────────────────────────────────
+
+    async def _run_checkpoint(
+        self,
+        step: WorkflowStep,
+        step_index: int,
+        total_steps: int,
+        step_results: dict[str, Any],
+        accumulated_results: dict[str, Any],
+    ) -> tuple[dict[str, Any], CheckpointAction]:
+        """執行總監品質檢查點。
+
+        評估步驟產出是否達到品質門檻。若未達標，嘗試調參重跑。
+
+        Returns:
+            (final_step_results, action_taken)
+        """
+        cp = step.checkpoint
+        if cp is None or not cp.enabled:
+            return step_results, CheckpointAction.PASS
+
+        step_label = f"[{step_index+1}/{total_steps}]"
+
+        # 廣播 checkpoint 開始
+        log = self._create_log(
+            cp.evaluator_agent_id,
+            "總監",
+            f"🔍 {step_label} 品質檢查：{cp.description}",
+            "info",
+        )
+        await ws_manager.broadcast_work_log(log)
+        await ws_manager.broadcast(
+            {
+                "type": "workflow_checkpoint",
+                "payload": {
+                    "step_name": step.name,
+                    "status": "evaluating",
+                    "description": cp.description,
+                    "quality_rules": cp.quality_rules,
+                },
+            }
+        )
+
+        # 評估品質
+        action, violations = self._evaluate_quality(step_results, cp)
+
+        if action == CheckpointAction.PASS:
+            log = self._create_log(
+                cp.evaluator_agent_id,
+                "總監",
+                f"✅ {step_label} 品質合格 — {cp.description}",
+                "success",
+            )
+            await ws_manager.broadcast_work_log(log)
+            await ws_manager.broadcast(
+                {
+                    "type": "workflow_checkpoint",
+                    "payload": {
+                        "step_name": step.name,
+                        "status": "passed",
+                        "description": cp.description,
+                    },
+                }
+            )
+            return step_results, CheckpointAction.PASS
+
+        # 品質未達標，嘗試重跑
+        violation_msg = "; ".join(
+            f"{metric}: {value:.4f} < {threshold:.4f}"
+            for metric, value, threshold in violations
+        )
+        log = self._create_log(
+            cp.evaluator_agent_id,
+            "總監",
+            f"⚠️ {step_label} 品質未達標 — {violation_msg}",
+            "warning",
+        )
+        await ws_manager.broadcast_work_log(log)
+
+        # 調參重跑迴圈
+        for rerun in range(1, cp.max_reruns + 1):
+            adjusted_params = self._apply_param_adjustments(
+                step.task_parameters, cp.param_adjustments
+            )
+            step.task_parameters = adjusted_params
+
+            log = self._create_log(
+                cp.evaluator_agent_id,
+                "總監",
+                f"🔄 {step_label} 調參重跑 ({rerun}/{cp.max_reruns})：{cp.description}",
+                "warning",
+            )
+            await ws_manager.broadcast_work_log(log)
+            await ws_manager.broadcast(
+                {
+                    "type": "workflow_checkpoint",
+                    "payload": {
+                        "step_name": step.name,
+                        "status": "rerunning",
+                        "rerun": rerun,
+                        "max_reruns": cp.max_reruns,
+                        "adjusted_params": adjusted_params,
+                    },
+                }
+            )
+
+            # 重跑步驟
+            step_results = await self._run_step(step, accumulated_results)
+
+            # 再次評估
+            action, violations = self._evaluate_quality(step_results, cp)
+            if action == CheckpointAction.PASS:
+                log = self._create_log(
+                    cp.evaluator_agent_id,
+                    "總監",
+                    f"✅ {step_label} 重跑後品質合格 — {cp.description}",
+                    "success",
+                )
+                await ws_manager.broadcast_work_log(log)
+                await ws_manager.broadcast(
+                    {
+                        "type": "workflow_checkpoint",
+                        "payload": {
+                            "step_name": step.name,
+                            "status": "passed_after_rerun",
+                            "rerun": rerun,
+                        },
+                    }
+                )
+                return step_results, CheckpointAction.PASS
+
+        # 所有重跑都未達標
+        violation_msg = "; ".join(
+            f"{metric}: {value:.4f} < {threshold:.4f}"
+            for metric, value, threshold in violations
+        )
+        log = self._create_log(
+            cp.evaluator_agent_id,
+            "總監",
+            f"❌ {step_label} {cp.max_reruns} 次重跑後仍未達標 — {violation_msg}",
+            "error",
+        )
+        await ws_manager.broadcast_work_log(log)
+        await ws_manager.broadcast(
+            {
+                "type": "workflow_checkpoint",
+                "payload": {
+                    "step_name": step.name,
+                    "status": "failed",
+                    "violations": [
+                        {"metric": m, "value": v, "threshold": t} for m, v, t in violations
+                    ],
+                },
+            }
+        )
+        return step_results, CheckpointAction.RETRY  # 表示耗盡但未通過
+
+    @staticmethod
+    def _evaluate_quality(
+        step_results: dict[str, Any],
+        cp: CheckpointConfig,
+    ) -> tuple[CheckpointAction, list[tuple[str, float, float]]]:
+        """根據品質規則評估步驟結果。
+
+        從 step_results 各代理的 data dict 中深度搜索指標值，
+        與 quality_rules 門檻比對。
+
+        Returns:
+            (action, violations) — violations 為 (metric, actual_value, threshold) 列表。
+        """
+        if not cp.quality_rules:
+            return CheckpointAction.PASS, []
+
+        violations: list[tuple[str, float, float]] = []
+
+        for metric, threshold in cp.quality_rules.items():
+            # 在所有代理結果中搜索指標
+            found_value = _deep_search_metric(step_results, metric)
+            if found_value is not None and found_value < threshold:
+                violations.append((metric, found_value, threshold))
+
+        if violations:
+            return CheckpointAction.RETRY, violations
+        return CheckpointAction.PASS, []
+
+    @staticmethod
+    def _apply_param_adjustments(
+        params: dict[str, Any],
+        adjustments: dict[str, str],
+    ) -> dict[str, Any]:
+        """根據調整規則修改參數。
+
+        支援的調整規則：
+        - "increase_50pct": 增加 50%
+        - "increase_100pct": 增加 100%（翻倍）
+        - "decrease_50pct": 減少 50%
+        - "double": 翻倍
+        - "halve": 減半
+        """
+        adjusted = dict(params)
+        for param_name, rule in adjustments.items():
+            if param_name not in adjusted:
+                continue
+
+            value = adjusted[param_name]
+            if not isinstance(value, int | float):
+                continue
+
+            if rule == "increase_50pct":
+                adjusted[param_name] = value * 1.5
+            elif rule == "increase_100pct" or rule == "double":
+                adjusted[param_name] = value * 2
+            elif rule == "decrease_50pct" or rule == "halve":
+                adjusted[param_name] = value * 0.5
+            # 整數參數保持整數
+            if isinstance(value, int):
+                adjusted[param_name] = int(adjusted[param_name])
+
+        return adjusted
+
+    # ── 工作流程主迴圈 ──────────────────────────────────────
+
     async def execute_workflow(self, workflow: Workflow) -> str:
         """執行完整工作流程。"""
         task_id = str(uuid.uuid4())
@@ -252,6 +757,7 @@ class OrchestrationEngine:
         await ws_manager.broadcast_work_log(log)
 
         accumulated_results: dict[str, Any] = {}
+        total_steps = len(workflow.steps)
 
         try:
             for i, step in enumerate(workflow.steps):
@@ -259,21 +765,41 @@ class OrchestrationEngine:
                 merged_params = {**workflow.parameters, **step.task_parameters}
                 step.task_parameters = merged_params
 
-                step_label = f"[{i+1}/{len(workflow.steps)}]"
+                step_label = f"[{i+1}/{total_steps}]"
                 log = self._create_log("system", "系統", f"📋 {step_label} {step.name}", "info")
                 await ws_manager.broadcast_work_log(log)
 
-                step_results = await self._run_step(step, accumulated_results)
+                # 使用帶重試的步驟執行
+                step_results, should_continue = await self._run_step_with_retry(
+                    step, i, total_steps, accumulated_results
+                )
+
+                if not should_continue:
+                    # 降級策略判斷為中止
+                    log = self._create_log(
+                        "system", "系統", f"⛔ 工作流程因步驟失敗而中止", "error"
+                    )
+                    await ws_manager.broadcast_work_log(log)
+                    break
+
                 accumulated_results.update(step_results)
+
+                # ── 總監 Checkpoint ──
+                if step.checkpoint and step.checkpoint.enabled:
+                    step_results, cp_action = await self._run_checkpoint(
+                        step, i, total_steps, step_results, accumulated_results
+                    )
+                    # 重跑後更新累積結果
+                    accumulated_results.update(step_results)
 
                 # 步驟間短暫停頓
                 await asyncio.sleep(0.5)
-
-            # 工作流程完成
-            log = self._create_log(
-                "system", "系統", f"✅ 工作流程完成：{workflow.name}", "success"
-            )
-            await ws_manager.broadcast_work_log(log)
+            else:
+                # for-else: 所有步驟正常完成（未 break）
+                log = self._create_log(
+                    "system", "系統", f"✅ 工作流程完成：{workflow.name}", "success"
+                )
+                await ws_manager.broadcast_work_log(log)
 
             # 重設所有參與代理為待命
             all_agent_ids = set()
@@ -369,6 +895,31 @@ class OrchestrationEngine:
             "summary": result.summary,
             "errors": result.errors,
         }
+
+
+# ── 工具函式 ────────────────────────────────────────────────
+
+
+def _deep_search_metric(data: Any, metric: str) -> float | None:
+    """在巢狀 dict 中深度搜索指標值。
+
+    遞迴搜索所有層級的 dict，找到第一個匹配 metric 鍵的數值。
+    """
+    if isinstance(data, dict):
+        if metric in data:
+            val = data[metric]
+            if isinstance(val, int | float):
+                return float(val)
+        for v in data.values():
+            found = _deep_search_metric(v, metric)
+            if found is not None:
+                return found
+    elif isinstance(data, list):
+        for item in data:
+            found = _deep_search_metric(item, metric)
+            if found is not None:
+                return found
+    return None
 
 
 # 全域單例

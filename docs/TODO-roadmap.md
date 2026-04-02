@@ -1,17 +1,17 @@
 # WindAI Lab — TODO 路線圖與下一步工作規劃
 
-> 最後更新：2026-03-28
-> 目前進度：Phase 10 進行中 — UI 抽象層 + 可插拔 Renderer 架構（88%）
+> 最後更新：2026-04-02
+> 目前���度：Phase 10 完成 — Checkpoint 機制 + 錯誤重試/降級（92%）
 
 ---
 
 ## 1. 當前狀態摘要
 
 ```
-已完成 ██████████████████░░ 88%
+已完成 ██████████████████░░ 92%
                                       ↑ 我們在這裡
-Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10 ←→ 11  12
-        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  🔧      ⬜   ⬜
+Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
+        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  ✅  ←→  ⬜   ⬜
 ```
 
 | 類別 | 已完成 | 剩餘 |
@@ -62,8 +62,8 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10 ←→ 11  12
 | ~~train-nbm / predict-rul~~ | 新增為獨立 Workflow，走統一路由 | ✅ |
 | ~~real_workflows.py 棄用~~ | 標記 deprecated，不再被 import | ✅ |
 | 更多 Renderer 風格 | 等距 3D / 賽博龐克 / 日系手繪 等（未來擴展） | ⬜ |
-| 總監 Checkpoint 機制 | pipeline 中間插入品質檢查點，決定是否調參重跑 | ⬜ |
-| 錯誤重試/降級 | skill 失敗重試 + 降級策略 + 總監介入 | ⬜ |
+| ~~總監 Checkpoint 機制~~ | CheckpointConfig + 品質規則 + 自動調參重跑 | ✅ |
+| ~~錯誤重試/降級~~ | RetryConfig + 指數退避 + SKIP/FALLBACK/ABORT 三策略 | ✅ |
 
 ### 🔴 高優先 — RAG 知識庫
 
@@ -145,8 +145,8 @@ class MySkill(BaseSkill):
 
 1. ~~**主題系統**~~ → ✅ 已完成（Phase 10 Renderer 架構）
 2. ~~**Workflow 統一架構**~~ → ✅ 已完成（Phase 10 指令路由統一）
-3. **總監 Checkpoint 機制**（pipeline 中間品質檢查，決定是否調參/重跑）
-4. **錯誤重試/降級**（skill 失敗重試 + 降級策略）
+3. ~~**總監 Checkpoint 機制**~~ → ✅ 已完成（CheckpointConfig + 品質規則 + 自動調參重跑）
+4. ~~**錯誤重試/降級**~~ → ✅ 已完成（RetryConfig + 指數退避 + 三種降級策略 + 前端即時顯示）
 5. **RAG 知識庫**（BGE-3 嵌入 + ChromaDB + 風機手冊）
 6. **戰情中心介面**（MissionView + AnalysisDashboard + ViewSwitcher）
 7. **擴展更多 Renderer**（等距 3D / 賽博龐克 / 自定義風格）
