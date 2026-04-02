@@ -7,11 +7,12 @@ interface CommandBarProps {
 }
 
 /** 需要帶 turbine_id 參數的指令 */
-const TURBINE_COMMANDS = ['diagnose', 'train-nbm', 'predict-rul', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
+const TURBINE_COMMANDS = ['diagnose', 'health-check', 'train-nbm', 'predict-rul', 'data:load', 'data:clean', 'ai:train', 'ai:evaluate']
 
 const COMMANDS = [
   // ── 後端 Workflow 指令（統一路由） ──
   { name: 'diagnose', label: '/diagnose', description: '故障診斷（完整流程）', paramHint: '風機 ID', category: 'diagnose' },
+  { name: 'health-check', label: '/health-check', description: '異常偵測 + 健康分數 + 報告', paramHint: '風機 ID', category: 'diagnose' },
   { name: 'train-nbm', label: '/train-nbm', description: 'NBM 功率曲線訓練', paramHint: '風機 ID', category: 'ai' },
   { name: 'predict-rul', label: '/predict-rul', description: 'RUL 壽命預測', paramHint: '風機 ID', category: 'ai' },
   { name: 'data:load', label: '/data:load', description: '資料載入 + 品質檢查', paramHint: '風機 ID', category: 'data' },

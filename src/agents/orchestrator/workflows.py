@@ -653,6 +653,74 @@ def create_ai_evaluate_workflow(turbine_id: str = "WT-01") -> Workflow:
     )
 
 
+# ═══════════════════════════════════════════════════════════════
+# 健康檢查 + 報告（新）
+# ═══════════════════════════════════════════════════════════════
+
+
+def create_health_check_workflow(turbine_id: str = "WT-01") -> Workflow:
+    """建立 /health-check 健康檢查與報告工作流程。
+
+    使用統計異常偵測技能分析風機健康狀況，並自動生成診斷報告。
+    """
+    return Workflow(
+        id="health-check",
+        name=f"健康檢查 — {turbine_id}",
+        description=f"對 {turbine_id} 執行統計異常偵測分析並生成報告",
+        parameters={"turbine_id": turbine_id},
+        steps=[
+            _director_dispatch("健康檢查", turbine_id),
+            WorkflowStep(
+                name="載入 SCADA 資料",
+                agent_ids=["scada-processor"],
+                description=f"載入 {turbine_id} 的 SCADA 資料並清洗",
+                duration=3.0,
+                task_template="load {turbine_id}",
+                sub_messages=["SCADA 資料已載入並清洗"],
+                progress_messages={
+                    30: "載入資料...",
+                    70: "資料清洗...",
+                },
+            ),
+            WorkflowStep(
+                name="異常偵測分析",
+                agent_ids=["anomaly-detector"],
+                description=f"對 {turbine_id} 執行溫度異常與功率曲線偏差分析",
+                duration=5.0,
+                task_template="anomaly {turbine_id}",
+                sub_messages=[
+                    "溫度異常偵測完成",
+                    "功率曲線偏差分析完成",
+                    "健康分數已計算",
+                ],
+                progress_messages={
+                    20: "Z-score 溫度異常偵測...",
+                    50: "功率曲線分箱比較...",
+                    80: "計算健康分數...",
+                },
+                retry=RetryConfig(
+                    max_retries=1,
+                    retry_delay=2.0,
+                    degradation=DegradationStrategy.SKIP,
+                ),
+            ),
+            WorkflowStep(
+                name="生成診斷報告",
+                agent_ids=["report-generator"],
+                description="彙整異常偵測結果，自動生成結構化報告",
+                duration=2.0,
+                task_template="report {turbine_id}",
+                task_parameters={"report_type": "diagnosis"},
+                sub_messages=["診斷報告已自動生成"],
+                progress_messages={
+                    50: "整理分析結果並生成報告...",
+                },
+            ),
+            _director_review("健康檢查"),
+        ],
+    )
+
+
 # ── 工作流程參數萃取 ─────────────────────────────────────────
 
 
@@ -667,6 +735,7 @@ def extract_workflow_params(command_name: str, parameters: dict) -> dict:
         "data:clean",
         "ai:train",
         "ai:evaluate",
+        "health-check",
     ):
         return {"turbine_id": parameters.get("turbine_id", "WT-01")}
     elif command_name == "lit-search":
@@ -686,4 +755,5 @@ AVAILABLE_WORKFLOWS: dict[str, callable] = {
     "data:clean": create_data_clean_workflow,
     "ai:train": create_ai_train_workflow,
     "ai:evaluate": create_ai_evaluate_workflow,
+    "health-check": create_health_check_workflow,
 }

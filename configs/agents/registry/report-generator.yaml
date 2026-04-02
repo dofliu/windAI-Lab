@@ -5,10 +5,16 @@ tier: "research"
 color: "#06b6d4"
 icon: "📄"
 core: false
-description: "自動產出分析報告"
+description: "自動產出結構化 Markdown 分析報告（故障診斷、月度評估、模型效能）"
 skills:
   - "scada_ingestion"
+  - "scada_cleaning"
+  - "turbine_profiler"
   - "domain_feature_extraction"
+  - "anomaly_detection"
+  - "report_generator"
 task_routing:
-  - match: ["report", "報告", "產出"]
-    pipeline: ["scada_ingestion", "domain_feature_extraction"]
+  - match: ["report", "報告", "產出", "生成"]
+    pipeline: ["scada_ingestion", "scada_cleaning", "turbine_profiler", "domain_feature_extraction", "anomaly_detection", "report_generator"]
+  - match: ["diagnosis report", "診斷報告"]
+    pipeline: ["scada_ingestion", "scada_cleaning", "turbine_profiler", "anomaly_detection", "report_generator"]
