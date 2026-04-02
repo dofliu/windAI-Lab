@@ -765,12 +765,28 @@ class RAGService:
         if current_chunk.strip():
             chunks.append(current_chunk.strip())
 
-        # 加入重疊（取前一個 chunk 的尾部）
+        # 硬性保證：任何超過 chunk_size 的 chunk 用字元切割
+        final_chunks: list[str] = []
+        for chunk in chunks:
+            if len(chunk) <= chunk_size:
+                final_chunks.append(chunk)
+            else:
+                start = 0
+                while start < len(chunk):
+                    final_chunks.append(chunk[start : start + chunk_size].strip())
+                    start += chunk_size - overlap
+        chunks = [c for c in final_chunks if c]
+
+        # 加入重疊（取前一個 chunk 的尾部，但不超過 chunk_size）
         if overlap > 0 and len(chunks) > 1:
             overlapped: list[str] = [chunks[0]]
             for i in range(1, len(chunks)):
                 prev_tail = chunks[i - 1][-overlap:]
-                overlapped.append(prev_tail + "\n" + chunks[i])
+                merged = prev_tail + "\n" + chunks[i]
+                # 保證不超過 chunk_size
+                overlapped.append(
+                    merged[:chunk_size].strip() if len(merged) > chunk_size else merged
+                )
             return overlapped
 
         return chunks
