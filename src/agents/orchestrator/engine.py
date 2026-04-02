@@ -388,7 +388,7 @@ class OrchestrationEngine:
     @staticmethod
     def _step_has_error(step_results: dict[str, Any]) -> bool:
         """檢查步驟結果中是否任一代理回報錯誤。"""
-        for agent_id, data in step_results.items():
+        for _agent_id, data in step_results.items():
             if isinstance(data, dict) and data.get("status") == "error":
                 return True
         return False
@@ -497,9 +497,7 @@ class OrchestrationEngine:
                 return fallback_results, True
             except Exception as fb_err:
                 logger.error(f"降級步驟也失敗：{fb_err}")
-                log = self._create_log(
-                    "system", "系統", f"❌ 降級步驟也失敗：{fb_err}", "error"
-                )
+                log = self._create_log("system", "系統", f"❌ 降級步驟也失敗：{fb_err}", "error")
                 await ws_manager.broadcast_work_log(log)
                 return {}, False
 
@@ -591,8 +589,7 @@ class OrchestrationEngine:
 
         # 品質未達標，嘗試重跑
         violation_msg = "; ".join(
-            f"{metric}: {value:.4f} < {threshold:.4f}"
-            for metric, value, threshold in violations
+            f"{metric}: {value:.4f} < {threshold:.4f}" for metric, value, threshold in violations
         )
         log = self._create_log(
             cp.evaluator_agent_id,
@@ -656,8 +653,7 @@ class OrchestrationEngine:
 
         # 所有重跑都未達標
         violation_msg = "; ".join(
-            f"{metric}: {value:.4f} < {threshold:.4f}"
-            for metric, value, threshold in violations
+            f"{metric}: {value:.4f} < {threshold:.4f}" for metric, value, threshold in violations
         )
         log = self._create_log(
             cp.evaluator_agent_id,
@@ -777,7 +773,7 @@ class OrchestrationEngine:
                 if not should_continue:
                     # 降級策略判斷為中止
                     log = self._create_log(
-                        "system", "系統", f"⛔ 工作流程因步驟失敗而中止", "error"
+                        "system", "系統", "⛔ 工作流程因步驟失敗而中止", "error"
                     )
                     await ws_manager.broadcast_work_log(log)
                     break

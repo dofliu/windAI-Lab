@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from src.skills.base import BaseSkill, ProgressCallback, SkillInput, SkillOutput, SkillStatus
 
@@ -76,9 +77,7 @@ class WeibullAnalysisSkill(BaseSkill):
                 else None
             )
 
-            aep = await loop.run_in_executor(
-                None, lambda: model.estimate_aep(profile=profile)
-            )
+            aep = await loop.run_in_executor(None, lambda: model.estimate_aep(profile=profile))
 
             if progress_cb:
                 await progress_cb(0.85, "產出頻率表...")
@@ -122,7 +121,7 @@ class WeibullAnalysisSkill(BaseSkill):
             )
 
 
-def _find_wind_speed_col(df: "pd.DataFrame") -> str | None:
+def _find_wind_speed_col(df: Any) -> str | None:
     """搜尋風速欄位。"""
     keywords = ["wind speed", "windspeed", "ws"]
     for kw in keywords:

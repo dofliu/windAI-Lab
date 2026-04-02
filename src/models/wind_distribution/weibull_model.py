@@ -248,11 +248,13 @@ class WeibullDistributionModel:
         table: list[dict[str, Any]] = []
         for v in bins:
             prob = float(stats.weibull_min.pdf(v, k, loc=0, scale=c))
-            table.append({
-                "wind_speed": round(float(v), 1),
-                "probability": round(prob, 6),
-                "frequency_pct": round(prob * bin_width * 100, 2),
-            })
+            table.append(
+                {
+                    "wind_speed": round(float(v), 1),
+                    "probability": round(prob, 6),
+                    "frequency_pct": round(prob * bin_width * 100, 2),
+                }
+            )
 
         return table
 

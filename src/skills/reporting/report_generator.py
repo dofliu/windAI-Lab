@@ -153,7 +153,11 @@ class ReportGeneratorSkill(BaseSkill):
             lines.append("## 4. 故障分類結果")
             lines.append("")
             f1 = fault.get("f1_macro", "N/A")
-            lines.append(f"- F1 Macro Score：**{f1:.4f}**" if isinstance(f1, float) else f"- F1 Macro Score：{f1}")
+            lines.append(
+                f"- F1 Macro Score：**{f1:.4f}**"
+                if isinstance(f1, float)
+                else f"- F1 Macro Score：{f1}"
+            )
             f1_per_class = fault.get("f1_per_class", {})
             if f1_per_class:
                 lines.append("")
@@ -303,7 +307,9 @@ class ReportGeneratorSkill(BaseSkill):
             lines.append("## 故障分類器")
             lines.append("")
             lines.append(f"- F1 Macro：**{fault.get('f1_macro', 'N/A')}**")
-            lines.append(f"- 訓練 / 測試：{fault.get('n_train', '?')} / {fault.get('n_test', '?')}")
+            lines.append(
+                f"- 訓練 / 測試：{fault.get('n_train', '?')} / {fault.get('n_test', '?')}"
+            )
             lines.append("")
 
         if rul:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from src.skills.base import BaseSkill, ProgressCallback, SkillInput, SkillOutput, SkillStatus
 
@@ -121,7 +122,7 @@ class LSTMForecastSkill(BaseSkill):
             )
 
 
-def _find_target_col(df: "pd.DataFrame", target: str) -> str | None:
+def _find_target_col(df: Any, target: str) -> str | None:
     """搜尋目標欄位。"""
     target_keywords: dict[str, list[str]] = {
         "wind_speed": ["wind speed", "windspeed", "ws"],

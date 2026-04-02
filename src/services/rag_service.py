@@ -99,12 +99,12 @@ class BGE3EmbeddingFunction:
         self._load_model()
         return self._model_name
 
-    def __call__(self, input: list[str]) -> list[list[float]]:
+    def __call__(self, texts: list[str]) -> list[list[float]]:
         """ChromaDB EmbeddingFunction 介面。"""
         self._load_model()
         # BGE 模型建議在查詢前加 "Represent this sentence: " prefix
         # 但為保持與文件嵌入的一致性，此處不加 prefix
-        embeddings = self._model.encode(input, normalize_embeddings=True)
+        embeddings = self._model.encode(texts, normalize_embeddings=True)
         return embeddings.tolist()
 
 

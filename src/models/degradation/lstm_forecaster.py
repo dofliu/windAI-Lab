@@ -110,37 +110,33 @@ class LSTMForecaster:
         scaled = self._scaler.fit_transform(series.reshape(-1, 1)).flatten()
 
         # 建立序列
-        X, y = self._create_sequences(scaled)
+        x_seqs, y_seqs = self._create_sequences(scaled)
 
         # 訓練/驗證分割
-        val_size = max(1, int(len(X) * val_ratio))
-        X_train, X_val = X[:-val_size], X[-val_size:]
-        y_train, y_val = y[:-val_size], y[-val_size:]
+        val_size = max(1, int(len(x_seqs) * val_ratio))
+        x_train, x_val = x_seqs[:-val_size], x_seqs[-val_size:]
+        y_train, y_val = y_seqs[:-val_size], y_seqs[-val_size:]
 
         # 嘗試 PyTorch LSTM
         try:
-            return self._train_lstm(
-                X_train, y_train, X_val, y_val, scaled, epochs, learning_rate
-            )
+            return self._train_lstm(x_train, y_train, x_val, y_val, scaled, epochs, learning_rate)
         except Exception:
             # 降級至 Ridge AR
-            return self._train_ridge_ar(X_train, y_train, X_val, y_val, scaled)
+            return self._train_ridge_ar(x_train, y_train, x_val, y_val, scaled)
 
-    def _create_sequences(
-        self, data: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _create_sequences(self, data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """建立滑動窗口序列。"""
-        X, y = [], []
+        x_list, y_list = [], []
         for i in range(len(data) - self._seq_len - self._horizon + 1):
-            X.append(data[i : i + self._seq_len])
-            y.append(data[i + self._seq_len : i + self._seq_len + self._horizon])
-        return np.array(X), np.array(y)
+            x_list.append(data[i : i + self._seq_len])
+            y_list.append(data[i + self._seq_len : i + self._seq_len + self._horizon])
+        return np.array(x_list), np.array(y_list)
 
     def _train_lstm(
         self,
-        X_train: np.ndarray,
+        x_train: np.ndarray,
         y_train: np.ndarray,
-        X_val: np.ndarray,
+        x_val: np.ndarray,
         y_val: np.ndarray,
         full_scaled: np.ndarray,
         epochs: int,
@@ -168,9 +164,9 @@ class LSTMForecaster:
         criterion = nn.MSELoss()
 
         # 轉 tensor
-        X_t = torch.FloatTensor(X_train).unsqueeze(-1).to(device)
+        x_t = torch.FloatTensor(x_train).unsqueeze(-1).to(device)
         y_t = torch.FloatTensor(y_train).to(device)
-        X_v = torch.FloatTensor(X_val).unsqueeze(-1).to(device)
+        x_v = torch.FloatTensor(x_val).unsqueeze(-1).to(device)
         y_v = torch.FloatTensor(y_val).to(device)
 
         # 訓練
@@ -178,7 +174,7 @@ class LSTMForecaster:
         for _epoch in range(epochs):
             model.train()
             optimizer.zero_grad()
-            pred = model(X_t)
+            pred = model(x_t)
             loss = criterion(pred, y_t)
             loss.backward()
             optimizer.step()
@@ -187,7 +183,7 @@ class LSTMForecaster:
         # 驗證
         model.eval()
         with torch.no_grad():
-            val_pred = model(X_v)
+            val_pred = model(x_v)
             val_loss = criterion(val_pred, y_v).item()
 
         # 預測未來
@@ -221,9 +217,9 @@ class LSTMForecaster:
 
     def _train_ridge_ar(
         self,
-        X_train: np.ndarray,
+        x_train: np.ndarray,
         y_train: np.ndarray,
-        X_val: np.ndarray,
+        x_val: np.ndarray,
         y_val: np.ndarray,
         full_scaled: np.ndarray,
     ) -> LSTMForecastResult:
@@ -233,13 +229,13 @@ class LSTMForecaster:
 
         # 多輸出 Ridge 回歸
         model = Ridge(alpha=1.0)
-        model.fit(X_train, y_train)
+        model.fit(x_train, y_train)
 
         # 驗證
-        val_pred = model.predict(X_val)
+        val_pred = model.predict(x_val)
         val_loss = float(mean_squared_error(y_val, val_pred))
 
-        train_pred = model.predict(X_train)
+        train_pred = model.predict(x_train)
         train_loss = float(mean_squared_error(y_train, train_pred))
 
         # 預測未來
