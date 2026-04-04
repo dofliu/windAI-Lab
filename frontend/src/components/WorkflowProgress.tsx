@@ -258,7 +258,7 @@ export default function WorkflowProgress({
       )}
 
       {/* ── Checkpoint / Retry 狀態 ── */}
-      {workflowEvents.length > 0 && <WorkflowEventBadge event={workflowEvents[workflowEvents.length - 1]} theme={theme} />}
+      {workflowEvents.length > 0 && <WorkflowEventBadge event={workflowEvents[workflowEvents.length - 1]} />}
 
       {/* ── 主內容區：代理面板 + 日誌/結果 ── */}
       <div className="flex flex-1 overflow-hidden border-t" style={{ borderColor: theme.global.border + '60' }}>
@@ -371,10 +371,8 @@ export default function WorkflowProgress({
 
 function WorkflowEventBadge({
   event,
-  theme,
 }: {
   event: WorkflowRetryEvent | WorkflowDegradationEvent | WorkflowCheckpointEvent
-  theme: ReturnType<typeof useTheme>['theme']
 }) {
   // Checkpoint
   if ('status' in event && 'description' in event) {
