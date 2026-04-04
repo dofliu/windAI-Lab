@@ -1,6 +1,7 @@
 # WindAI Lab — 專案現況總覽
 
-> 最後更新：2026-04-04 | Phase 10 完成
+> 最後更新：2026-04-04 | Phase 12 完成（Step 1 進行中）
+> **核心願景：打造一間真實的風場運維 AI 服務公司**
 
 ---
 
@@ -8,27 +9,55 @@
 
 **WindAI Lab** 是一個風力發電 AI 研究協作平台，採用「技能拆分 + 聘用制」多代理架構，搭配虛擬辦公室 UI，讓研究人員可以丟入任意格式的風場資料，由 AI 代理自動執行清洗、特徵工程、模型訓練與報告生成。
 
+系統正從「研究平台」演進為「風場運維服務公司」，目前已進入 Step 1（打地基），Phase 11-12 已完成。
+
 ---
 
 ## 完成度一覽
 
 ```
-已完成 ██████████████████░░ 92%
+研究平台階段 ██████████████████░░ 92%（Phase 1-10）
+運維服務演進 ████░░░░░░░░░░░░░░░░ 22%（Phase 11-12 / 11-19）
 
-Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
-        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  ✅  ←→  ⬜   ⬜
+Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  │  13  14  15  16  17  18  19
+        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  ✅  │  ✅   ✅  │  ⬜   ⬜   ⬜   ⬜   ⬜   ⬜   ⬜
+        ─────── 研究平台（已完成）──────────────────── │ Step1-a  │ ──── Step1-b → Step2 → Step3 ────
 ```
 
-| 模組 | 已完成 | 目標 | 完成率 |
-|------|--------|------|--------|
-| 核心代理 | 12 (core) | 12 | 100% |
-| 可聘用代理 | 10 (hirable YAML) | 10+ | 100% |
-| 技能模組 | 12 | 12+ | 100% |
-| ML 模型 | 5（KNN-NBM, XGBoost, RUL, Weibull, LSTM） | 6+ | 83% |
-| REST API 端點 | 30+ | 35+ | 86% |
-| 前端元件 | 28 | 30+ | 93% |
-| Office Renderer | 3（pixel / modern / minimal） | 3+ | 100% |
+| 模組 | 已完成 | 新增 (Phase 11-12) | 完成率 |
+|------|--------|-------------------|--------|
+| 核心代理 | 12 (core) | — | 100% |
+| 可聘用代理 | 10 (hirable YAML) | — | 100% |
+| 技能模組 | 12 | — | 100% |
+| ML 模型 | 5 | — | 83% |
+| REST API 端點 | 30+ | **+3**（任務歷史） | 90% |
+| 前端元件 | 28 | **+1**（MissionAgentPanel） | 97% |
+| Office Renderer | 3 | — | 100% |
 | 測試 | 17 檔案 / 368 測試 | — | 良好 |
+| **持久化儲存** | — | **SQLite 資料庫** | ✅ 新增 |
+| **戰情中心 UI** | — | **三欄佈局升級** | ✅ 新增 |
+
+---
+
+## 最新完成 — Phase 11-12
+
+### Phase 11：戰情中心升級 ✅
+
+| 項目 | 說明 |
+|------|------|
+| MissionAgentPanel | 參與代理即時狀態面板（進度條、tier 標籤、最新日誌） |
+| WorkflowProgress 三欄佈局 | 左：代理面板 / 中：進度+日誌 / 右：即時分析圖表 |
+| ViewSwitcher | Header 任務狀態標籤 + 「返回辦公室」按鈕 |
+| 即時分析顯示 | 分析結果在任務進行中即時顯示（不再等完成才看到） |
+
+### Phase 12：持久化儲存 ✅
+
+| 項目 | 說明 |
+|------|------|
+| SQLite 資料庫模組 | 3 張表（tasks / work_logs / analysis_results）+ WAL 模式 |
+| 引擎整合 | Workflow 執行自動 create_task → complete_task |
+| 歷史查詢 API | `GET /api/tasks/history` + `/api/tasks/{id}` + `/api/tasks/stats/summary` |
+| 前端雙層儲存 | localStorage + 後端 API 合併去重（30 秒輪詢） |
 
 ---
 
@@ -54,20 +83,18 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
 | Workflow 統一架構 | 10 | 所有指令走 AVAILABLE_WORKFLOWS 單一路徑 |
 | 總監 Checkpoint 機制 | 10 | 品質規則 + 自動調參重跑 |
 | 錯誤重試/降級 | 10 | RetryConfig + SKIP/FALLBACK/ABORT 三策略 |
-| Weibull 風速分佈 | PR#23 | MLE/矩量法 + AEP 估算 |
-| LSTM 時序預測 | PR#23 | PyTorch LSTM + Ridge AR 降級 |
-| 統計異常偵測技能 | PR#23 | Z-score + 功率曲線偏差 + 健康分數 |
-| 報告生成技能 | PR#23 | 三種 Markdown 報告模板 |
+| **戰情中心三欄佈局** | **11** | **代理面板 + 進度日誌 + 即時分析圖表** |
+| **SQLite 持久化儲存** | **12** | **任務記錄 + 工作日誌 + 分析結果不再消失** |
+| **歷史查詢 API** | **12** | **分頁查詢 + 單筆詳情 + 統計摘要** |
 
-### 待完成 (⬜)
+### 下一步 — Phase 13：告警系統 + 工單管理
 
 | 功能 | 優先級 | 說明 |
 |------|--------|------|
-| MissionView 戰情中心 | 高 | 任務進行時自動切換，只顯示參與代理 |
-| AnalysisDashboard 分析面板 | 高 | 右側即時圖表 + 報告清單 |
-| ViewSwitcher 自動切換 | 高 | office ↔ mission 模式自動切換 |
-| SQLite/PostgreSQL 持久化 | 低 | 任務記錄 + 工作日誌 |
-| 更多 Renderer 風格 | 低 | 等距 3D / 賽博龐克等 |
+| 告警規則引擎 | 🔴 高 | 可配置閾值規則 + 複合條件 + 靜默期 |
+| 通知渠道 | 🔴 高 | Email / Webhook / LINE Notify |
+| 工單系統 | 🔴 高 | 診斷 → 自動產生工單 → 狀態追蹤 |
+| 工單 Kanban 面板 | 🔴 高 | 待處理/進行中/完成 三欄拖拉 |
 
 ---
 
@@ -79,25 +106,6 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
 | 功率曲線 NBM (train-nbm) | Kelmarsh 52,416 筆 | R² = 0.9964, MAE = 15.3 kW |
 | RUL 退化預測 (predict-rul) | Kelmarsh 52,416 筆 | 退化趨勢分析通過 |
 | 自動實驗循環 | 合成 3,000 筆 | 4 輪, 最佳 R² = 0.9978 |
-
----
-
-## 技能模組清單
-
-| 技能 ID | 顯示名稱 | 類別 |
-|---------|----------|------|
-| `scada_ingestion` | SCADA 資料載入 | data |
-| `scada_cleaning` | SCADA 資料清洗 | data |
-| `turbine_profiler` | 風機參數推斷 | data |
-| `data_inspector` | 資料檢視員 | data |
-| `batch_load` | 批次載入器 | data |
-| `alarm_processor` | 警報事件處理 | data |
-| `domain_feature_extraction` | 領域特徵工程 | features |
-| `fault_classification` | 故障分類 | ml |
-| `nbm_training` | NBM 功率曲線訓練 | ml |
-| `rul_prediction` | RUL 退化預測 | ml |
-| `anomaly_detection` | 統計異常偵測 | ml |
-| `report_generator` | 報告生成 | reporting |
 
 ---
 
@@ -114,6 +122,20 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10    11  12
 | 7 | 2026-03-25 | 架構重構 | 技能拆分、聘用制、YAML 驅動 |
 | 8 | 2026-03-26 | 系統切換 | 舊→新架構、端到端驗證 |
 | 9 | 2026-03-26 | 資料泛化 | TurbineProfile、BatchLoad、AutoExperiment |
-| 10 | 2026-03-26~28 | UI 抽象 | 3 Renderers、統一 Workflow、Checkpoint |
+| 10 | 2026-03-26~28 | UI 抽象+品控 | 3 Renderers、統一 Workflow、Checkpoint |
+| **11** | **2026-04-04** | **戰情中心** | **MissionAgentPanel、三欄佈局、即時分析** |
+| **12** | **2026-04-04** | **持久化儲存** | **SQLite 資料庫、歷史 API、前後端整合** |
+
+---
+
+## 相關文件
+
+| 文件 | 說明 |
+|------|------|
+| [FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) | 願景定位 + Phase 11-19 三步走路線圖 |
+| [EVOLUTION-PLAN.md](EVOLUTION-PLAN.md) | 詳細執行計畫（70+ 工作項目） |
+| [TODO-roadmap.md](TODO-roadmap.md) | 總覽路線圖 + 待辦清單 |
+| [progress-report.md](progress-report.md) | Phase 1-10 開發歷程 |
+| [architecture-design.md](architecture-design.md) | 系統架構設計 |
 
 詳細開發記錄見 [progress-report.md](progress-report.md)。
