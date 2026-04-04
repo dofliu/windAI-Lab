@@ -1,11 +1,11 @@
 /**
- * TaskLauncher — 任務啟動面板。
+ * TaskLauncher — 任務啟動面板（精簡版）。
  *
- * 取代裸指令輸入，提供視覺化的任務選擇 + 風機選擇 + 一鍵執行。
- * 進階使用者可展開指令輸入框手動操作。
+ * 預設為單行精簡模式：顯示當前選中的任務 + 參數 + 執行按鈕。
+ * 點擊展開按鈕後，向上滑出完整的任務選擇面板。
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../themes'
 
 interface TaskLauncherProps {
@@ -46,12 +46,14 @@ const FALLBACK_TURBINES = ['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4
 
 export default function TaskLauncher({ onExecute, disabled = false }: TaskLauncherProps) {
   const { theme } = useTheme()
-  const [selectedTask, setSelectedTask] = useState<string | null>(null)
+  const [selectedTask, setSelectedTask] = useState<string>('data:clean')
   const [turbines, setTurbines] = useState<string[]>(FALLBACK_TURBINES)
   const [selectedTurbine, setSelectedTurbine] = useState(FALLBACK_TURBINES[0])
   const [topicInput, setTopicInput] = useState('')
+  const [expanded, setExpanded] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [advancedInput, setAdvancedInput] = useState('')
+  const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetch('http://localhost:8000/api/scada/turbines')
@@ -65,6 +67,18 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
       .catch(() => { /* fallback */ })
   }, [])
 
+  // 點擊外部時收合面板
+  useEffect(() => {
+    if (!expanded) return
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setExpanded(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [expanded])
+
   const task = TASKS.find((t) => t.id === selectedTask)
 
   const handleExecute = () => {
@@ -73,6 +87,7 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
     if (task.paramType === 'turbine') params.turbine_id = selectedTurbine
     if (task.paramType === 'topic') params.topic = topicInput || 'wind turbine fault diagnosis'
     onExecute(task.id, params)
+    setExpanded(false)
   }
 
   const handleAdvancedSubmit = (e: React.FormEvent) => {
@@ -90,6 +105,12 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
     else if (cmd === 'bosscall') params.target = paramValue
     onExecute(cmd, params)
     setAdvancedInput('')
+    setExpanded(false)
+  }
+
+  const handleSelectTask = (taskId: string) => {
+    setSelectedTask(taskId)
+    setExpanded(false)
   }
 
   const categoryColor = (cat: string) => {
@@ -102,140 +123,188 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
     return map[cat] ?? theme.global.accent
   }
 
-  // 按類別分組
   const grouped = ['diagnose', 'data', 'ai', 'research'].map((cat) => ({
     category: cat,
     label: CATEGORY_LABELS[cat],
     tasks: TASKS.filter((t) => t.category === cat),
   }))
 
+  const accentColor = task ? categoryColor(task.category) : theme.global.accent
+
   return (
-    <div className="space-y-3">
-      {/* ── 任務選擇 Grid ── */}
-      <div className="space-y-2">
-        {grouped.map(({ category, label, tasks }) => (
-          <div key={category}>
-            <div
-              className="text-[9px] uppercase tracking-wider font-medium mb-1 px-1"
-              style={{ color: categoryColor(category) + 'aa' }}
-            >
-              {label}
-            </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {tasks.map((t) => {
-                const isSelected = selectedTask === t.id
-                const color = categoryColor(t.category)
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTask(isSelected ? null : t.id)}
-                    disabled={disabled}
-                    className="flex flex-col items-center gap-1 rounded-lg border p-2 transition-all duration-200 hover:brightness-110 disabled:opacity-40"
-                    style={{
-                      borderColor: isSelected ? color : theme.global.border + '60',
-                      backgroundColor: isSelected ? color + '15' : 'transparent',
-                    }}
-                  >
-                    <span className="text-base">{t.icon}</span>
-                    <span
-                      className="text-[10px] font-medium leading-tight"
-                      style={{ color: isSelected ? color : theme.global.textSecondary }}
-                    >
-                      {t.label}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── 參數 + 執行 ── */}
-      {task && (
+    <div ref={panelRef} className="relative">
+      {/* ── 展開的任務選擇面板（向上滑出） ── */}
+      <div
+        className="absolute bottom-full left-0 right-0 overflow-hidden transition-all duration-300 ease-out"
+        style={{
+          maxHeight: expanded ? 420 : 0,
+          opacity: expanded ? 1 : 0,
+        }}
+      >
         <div
-          className="flex items-center gap-2 rounded-lg border p-2"
-          style={{ borderColor: categoryColor(task.category) + '40', backgroundColor: categoryColor(task.category) + '08' }}
+          className="rounded-t-xl border border-b-0 p-3 shadow-lg backdrop-blur-md space-y-2.5"
+          style={{
+            borderColor: theme.global.border,
+            backgroundColor: theme.global.panelBg + 'f0',
+          }}
         >
-          <span className="text-sm">{task.icon}</span>
-          <span className="text-xs font-medium" style={{ color: categoryColor(task.category) }}>{task.label}</span>
-          <span className="text-[10px]" style={{ color: theme.global.textMuted }}>{task.description}</span>
-
-          <div className="ml-auto flex items-center gap-2">
-            {task.paramType === 'turbine' && (
-              <select
-                value={selectedTurbine}
-                onChange={(e) => setSelectedTurbine(e.target.value)}
-                className="rounded border px-2 py-1 text-xs outline-none"
-                style={{
-                  borderColor: theme.global.border,
-                  backgroundColor: theme.global.panelBg,
-                  color: theme.global.textPrimary,
-                }}
+          {/* 任務 Grid */}
+          {grouped.map(({ category, label, tasks }) => (
+            <div key={category}>
+              <div
+                className="text-[9px] uppercase tracking-wider font-medium mb-1 px-0.5"
+                style={{ color: categoryColor(category) + 'aa' }}
               >
-                {turbines.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
-            {task.paramType === 'topic' && (
-              <input
-                value={topicInput}
-                onChange={(e) => setTopicInput(e.target.value)}
-                placeholder="搜索主題..."
-                className="rounded border px-2 py-1 text-xs outline-none w-40"
-                style={{
-                  borderColor: theme.global.border,
-                  backgroundColor: theme.global.panelBg,
-                  color: theme.global.textPrimary,
-                }}
-              />
-            )}
+                {label}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {tasks.map((t) => {
+                  const isSelected = selectedTask === t.id
+                  const color = categoryColor(t.category)
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => handleSelectTask(t.id)}
+                      disabled={disabled}
+                      className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-all duration-200 hover:brightness-110 disabled:opacity-40"
+                      style={{
+                        borderColor: isSelected ? color : theme.global.border + '60',
+                        backgroundColor: isSelected ? color + '18' : 'transparent',
+                      }}
+                    >
+                      <span className="text-sm">{t.icon}</span>
+                      <div className="text-left">
+                        <div
+                          className="text-[10px] font-medium leading-tight"
+                          style={{ color: isSelected ? color : theme.global.textSecondary }}
+                        >
+                          {t.label}
+                        </div>
+                        <div className="text-[8px]" style={{ color: theme.global.textMuted }}>
+                          {t.description}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* 進階指令 */}
+          <div className="pt-1 border-t" style={{ borderColor: theme.global.border + '40' }}>
             <button
-              onClick={handleExecute}
-              disabled={disabled}
-              className="rounded-lg px-4 py-1.5 text-xs font-medium text-white transition-colors hover:brightness-110 disabled:opacity-40"
-              style={{ backgroundColor: categoryColor(task.category) }}
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1 text-[10px] transition-colors hover:brightness-125"
+              style={{ color: theme.global.textMuted }}
             >
-              ▶ 執行
+              <svg className={`h-3 w-3 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              進階指令輸入
             </button>
+            {showAdvanced && (
+              <form onSubmit={handleAdvancedSubmit} className="flex items-center gap-2 mt-1.5">
+                <input
+                  value={advancedInput}
+                  onChange={(e) => setAdvancedInput(e.target.value)}
+                  placeholder="/diagnose Kelmarsh_1 或 /bosscall 故障診斷師"
+                  className="flex-1 rounded border px-3 py-1.5 text-xs outline-none"
+                  style={{
+                    borderColor: theme.global.border,
+                    backgroundColor: theme.global.pageBg,
+                    color: theme.global.textPrimary,
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={disabled || !advancedInput.trim()}
+                  className="rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                  style={{ backgroundColor: theme.global.accent }}
+                >
+                  送出
+                </button>
+              </form>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── 進階指令（收合） ── */}
-      <div>
+      {/* ── 精簡底部列 ── */}
+      <div className="flex items-center gap-2">
+        {/* 展開/收合按鈕 */}
         <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1 text-[10px] transition-colors hover:brightness-125"
-          style={{ color: theme.global.textMuted }}
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 rounded-lg border px-2 py-1.5 transition-all hover:brightness-110"
+          style={{
+            borderColor: expanded ? accentColor + '60' : theme.global.border + '60',
+            backgroundColor: expanded ? accentColor + '10' : 'transparent',
+            color: expanded ? accentColor : theme.global.textMuted,
+          }}
+          title={expanded ? '收合任務面板' : '選擇任務'}
         >
-          <svg className={`h-3 w-3 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          <svg
+            className={`h-3.5 w-3.5 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
-          進階指令輸入
         </button>
-        {showAdvanced && (
-          <form onSubmit={handleAdvancedSubmit} className="flex items-center gap-2 mt-1">
+
+        {/* 當前任務資訊 */}
+        {task && (
+          <>
+            <span className="text-sm">{task.icon}</span>
+            <span className="text-xs font-medium" style={{ color: accentColor }}>
+              {task.label}
+            </span>
+            <span className="text-[10px] hidden sm:inline" style={{ color: theme.global.textMuted }}>
+              {task.description}
+            </span>
+          </>
+        )}
+
+        {/* 參數選擇 + 執行 */}
+        <div className="ml-auto flex items-center gap-2">
+          {task?.paramType === 'turbine' && (
+            <select
+              value={selectedTurbine}
+              onChange={(e) => setSelectedTurbine(e.target.value)}
+              className="rounded border px-2 py-1 text-xs outline-none"
+              style={{
+                borderColor: theme.global.border,
+                backgroundColor: theme.global.panelBg,
+                color: theme.global.textPrimary,
+              }}
+            >
+              {turbines.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+          {task?.paramType === 'topic' && (
             <input
-              value={advancedInput}
-              onChange={(e) => setAdvancedInput(e.target.value)}
-              placeholder="/diagnose Kelmarsh_1 或 /bosscall 故障診斷師"
-              className="flex-1 rounded border px-3 py-1.5 text-xs outline-none"
+              value={topicInput}
+              onChange={(e) => setTopicInput(e.target.value)}
+              placeholder="搜索主題..."
+              className="rounded border px-2 py-1 text-xs outline-none w-40"
               style={{
                 borderColor: theme.global.border,
                 backgroundColor: theme.global.panelBg,
                 color: theme.global.textPrimary,
               }}
             />
-            <button
-              type="submit"
-              disabled={disabled || !advancedInput.trim()}
-              className="rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
-              style={{ backgroundColor: theme.global.accent }}
-            >
-              送出
-            </button>
-          </form>
-        )}
+          )}
+          <button
+            onClick={handleExecute}
+            disabled={disabled || !task}
+            className="rounded-lg px-4 py-1.5 text-xs font-medium text-white transition-colors hover:brightness-110 disabled:opacity-40"
+            style={{ backgroundColor: accentColor }}
+          >
+            ▶ 執行
+          </button>
+        </div>
       </div>
     </div>
   )
