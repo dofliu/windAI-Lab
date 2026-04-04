@@ -45,16 +45,12 @@
 
 | WI# | 工作項目 | 檔案/位置 | 驗收標準 | 狀態 |
 |-----|---------|-----------|----------|------|
-| 12-1 | 資料庫 Schema 設計 | `src/core/database.py` | Task / WorkLog / AnalysisResult / AgentStatus 四張表 | ⬜ |
-| 12-2 | SQLAlchemy ORM 層 | `src/models/db/` | 四個 ORM Model + CRUD 操作 | ⬜ |
-| 12-3 | 任務記錄持久化 | `src/agents/orchestrator/engine.py` | 每次 workflow 執行完自動寫入 Task 表 | ⬜ |
-| 12-4 | 工作日誌持久化 | `src/agents/base.py` | `_log_work()` 同步寫入 WorkLog 表 | ⬜ |
-| 12-5 | 歷史查詢 API | `src/api/main.py` | `GET /api/tasks/history` 分頁查詢 + 篩選 | ⬜ |
-| 12-6 | 前端歷史面板 | `frontend/src/components/TaskHistory.tsx` | 列表顯示歷史任務，可點擊展開詳情 | ⬜ |
-| 12-7 | 資料庫遷移工具 | `scripts/db_migrate.py` | Alembic 或手動 migration 腳本 | ⬜ |
+| 12-1 | 資料庫模組 | `src/core/database.py` | SQLite 3 張表 + 完整 CRUD + WAL 模式 | ✅ |
+| 12-2 | 引擎整合 | `src/agents/orchestrator/engine.py` | workflow 自動 create_task/complete_task | ✅ |
+| 12-3 | 歷史查詢 API | `src/api/main.py` | history / detail / stats 三個端點 | ✅ |
+| 12-4 | 前端歷史合併 | `frontend/src/hooks/useTaskHistory.ts` | localStorage + 後端 API 雙層合併去重 | ✅ |
 
-**依賴**：無，可與 Phase 11 平行
-**技術選型**：SQLite（開發）/ PostgreSQL（部署）
+**技術選型**：Python 內建 sqlite3（零新依賴）
 
 ---
 

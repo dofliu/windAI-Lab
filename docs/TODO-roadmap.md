@@ -56,10 +56,10 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  14  15  16
 
 | 項目 | 說明 | 狀態 |
 |------|------|------|
-| SQLite/PostgreSQL 資料庫 | Task / WorkLog / AnalysisResult / AgentStatus | ⬜ |
-| 歷史查詢 API | `GET /api/tasks/history` 分頁查詢 | ⬜ |
-| 前端歷史面板 | 可回溯過去的任務結果與報告 | ⬜ |
-| 分析結果快照 | 完整輸入/輸出/參數存檔 | ⬜ |
+| SQLite 資料庫模組 | 3 張表 + CRUD + WAL 模式（零新依賴） | ✅ |
+| 引擎整合持久化 | workflow 自動寫入/更新任務記錄 | ✅ |
+| 歷史查詢 API | history / detail / stats 三個端點 | ✅ |
+| 前端歷史合併 | localStorage + 後端 API 雙層去重 | ✅ |
 
 #### Phase 13 — 告警系統 + 工單管理
 
