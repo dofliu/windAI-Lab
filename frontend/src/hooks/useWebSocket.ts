@@ -117,6 +117,15 @@ export function useWebSocket() {
             break
           }
 
+          case 'wind_farm_alert':
+          case 'auto_dispatch': {
+            setWorkflowEvents(prev => {
+              const next = [...prev, msg.payload]
+              return next.length > 50 ? next.slice(-50) : next
+            })
+            break
+          }
+
           case 'file_detected':
           case 'file_processed':
           case 'file_error': {

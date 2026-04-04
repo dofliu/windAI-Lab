@@ -639,6 +639,218 @@ async def _run_project_onboard(folder_path: str, ws_mgr: Any) -> None:
             await _set_agent_status(aid, "idle", "", 0.0)
 
 
+# ── 風場運維服務 API ────────────────────────────────────────────
+
+
+@app.get("/api/wind-farms")
+async def list_wind_farms() -> JSONResponse:
+    """列出所有風場客戶。"""
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    return JSONResponse(wind_farm_registry.to_dict_list())
+
+
+@app.get("/api/wind-farms/summary")
+async def wind_farm_summary() -> JSONResponse:
+    """取得全系統摘要（風場數、風機數、健康分佈）。"""
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    return JSONResponse(wind_farm_registry.get_summary())
+
+
+@app.post("/api/wind-farms/register")
+async def register_wind_farm(body: dict[str, Any]) -> JSONResponse:
+    """註冊新風場。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    farm = wind_farm_registry.register(
+        name=body.get("name", "未命名風場"),
+        location=body.get("location", ""),
+        turbine_count=body.get("turbine_count", 0),
+        rated_power_mw=body.get("rated_power_mw", 0.0),
+        source_type=body.get("source_type", "local_file"),
+        source_path=body.get("source_path", ""),
+        poll_interval_min=body.get("poll_interval_min", 60),
+        auto_diagnose=body.get("auto_diagnose", True),
+        tags=body.get("tags", []),
+        notes=body.get("notes", ""),
+    )
+    d = asdict(farm)
+    d["data_source"].pop("auth_token", None)
+    d["data_source"].pop("password", None)
+    return JSONResponse(d, status_code=201)
+
+
+@app.get("/api/wind-farms/{farm_id}")
+async def get_wind_farm(farm_id: str) -> JSONResponse:
+    """取得風場詳情。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    farm = wind_farm_registry.get(farm_id)
+    if farm is None:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    d = asdict(farm)
+    d["data_source"].pop("auth_token", None)
+    d["data_source"].pop("password", None)
+    return JSONResponse(d)
+
+
+@app.post("/api/wind-farms/{farm_id}/activate")
+async def activate_wind_farm(farm_id: str) -> JSONResponse:
+    """啟用風場監控。"""
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    farm = wind_farm_registry.activate(farm_id)
+    if farm is None:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    return JSONResponse({"status": "active", "farm_id": farm_id})
+
+
+@app.post("/api/wind-farms/{farm_id}/pause")
+async def pause_wind_farm(farm_id: str) -> JSONResponse:
+    """暫停風場監控。"""
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    farm = wind_farm_registry.pause(farm_id)
+    if farm is None:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    return JSONResponse({"status": "paused", "farm_id": farm_id})
+
+
+@app.post("/api/wind-farms/{farm_id}/check-now")
+async def check_farm_now(farm_id: str) -> JSONResponse:
+    """手動觸發單次健康檢查。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.monitor import monitor_service
+
+    records = await monitor_service.check_farm_now(farm_id)
+    return JSONResponse({"records": [asdict(r) for r in records], "count": len(records)})
+
+
+@app.get("/api/wind-farms/{farm_id}/history")
+async def get_farm_history(farm_id: str, limit: int = 50) -> JSONResponse:
+    """取得風場監控歷史。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.monitor import monitor_service
+
+    records = monitor_service.get_farm_history(farm_id, limit=limit)
+    return JSONResponse([asdict(r) for r in records])
+
+
+@app.delete("/api/wind-farms/{farm_id}")
+async def remove_wind_farm(farm_id: str) -> JSONResponse:
+    """移除風場。"""
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    if not wind_farm_registry.remove(farm_id):
+        raise HTTPException(status_code=404, detail="風場不存在")
+    return JSONResponse({"removed": farm_id})
+
+
+# ── 監控服務控制 ──
+
+
+@app.post("/api/monitor/start")
+async def start_monitor() -> JSONResponse:
+    """啟動全域監控服務。"""
+    from src.services.wind_farm.monitor import monitor_service
+
+    await monitor_service.start()
+    return JSONResponse({"status": "running"})
+
+
+@app.post("/api/monitor/stop")
+async def stop_monitor() -> JSONResponse:
+    """停止全域監控服務。"""
+    from src.services.wind_farm.monitor import monitor_service
+
+    await monitor_service.stop()
+    return JSONResponse({"status": "stopped"})
+
+
+@app.get("/api/monitor/status")
+async def monitor_status() -> JSONResponse:
+    """取得監控服務狀態。"""
+    from src.services.wind_farm.monitor import monitor_service
+    from src.services.wind_farm.registry import wind_farm_registry
+
+    return JSONResponse(
+        {
+            "running": monitor_service.is_running,
+            "open_tickets": len(monitor_service.get_open_tickets()),
+            "total_records": len(monitor_service.records),
+            **wind_farm_registry.get_summary(),
+        }
+    )
+
+
+# ── 服務工單 API ──
+
+
+@app.get("/api/tickets")
+async def list_tickets(status: str = "all") -> JSONResponse:
+    """列出工單。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.monitor import monitor_service
+
+    tickets = monitor_service.get_open_tickets() if status == "open" else monitor_service.tickets
+    return JSONResponse([asdict(t) for t in tickets])
+
+
+@app.post("/api/tickets")
+async def create_ticket(body: dict[str, Any]) -> JSONResponse:
+    """手動建立服務工單。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.monitor import monitor_service
+
+    ticket = monitor_service.create_ticket(
+        wind_farm_id=body.get("wind_farm_id", ""),
+        turbine_id=body.get("turbine_id", ""),
+        title=body.get("title", ""),
+        description=body.get("description", ""),
+        priority=body.get("priority", "medium"),
+    )
+    return JSONResponse(asdict(ticket), status_code=201)
+
+
+@app.get("/api/tickets/{ticket_id}")
+async def get_ticket(ticket_id: str) -> JSONResponse:
+    """取得工單詳情。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.monitor import monitor_service
+
+    ticket = monitor_service.get_ticket(ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="工單不存在")
+    return JSONResponse(asdict(ticket))
+
+
+@app.patch("/api/tickets/{ticket_id}")
+async def update_ticket(ticket_id: str, body: dict[str, Any]) -> JSONResponse:
+    """更新工單狀態。"""
+    from dataclasses import asdict
+
+    from src.services.wind_farm.monitor import monitor_service
+
+    ticket = monitor_service.update_ticket_status(
+        ticket_id=ticket_id,
+        status=body.get("status", ""),
+        resolution=body.get("resolution", ""),
+    )
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="工單不存在")
+    return JSONResponse(asdict(ticket))
+
+
 # ── WebSocket 端點 ──────────────────────────────────────────────
 
 

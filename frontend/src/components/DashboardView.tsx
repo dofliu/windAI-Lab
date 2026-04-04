@@ -8,10 +8,11 @@ import MLDashboard from './MLDashboard'
 import ScadaDashboard from './ScadaDashboard'
 import TaskHistoryList from './TaskHistoryList'
 import WorkflowDAG from './WorkflowDAG'
+import WindFarmPanel from './WindFarmPanel'
 import WorkLogPanel from './WorkLogPanel'
 
-export type DashTab = 'team' | 'analysis' | 'knowledge' | 'records'
-type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history'
+export type DashTab = 'clients' | 'team' | 'analysis' | 'knowledge' | 'records'
+type SubView = 'farms' | 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history'
 
 interface FileEventPayload {
   filename: string
@@ -44,6 +45,14 @@ interface DashboardViewProps {
 }
 
 const TABS: { id: DashTab; label: string; icon: string; subViews: { id: SubView; label: string }[] }[] = [
+  {
+    id: 'clients',
+    label: '客戶',
+    icon: '🏗️',
+    subViews: [
+      { id: 'farms', label: '風場管理' },
+    ],
+  },
   {
     id: 'team',
     label: '團隊',
@@ -178,7 +187,9 @@ export default function DashboardView({
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto p-4">
-        {activeSubView === 'detail' ? (
+        {activeSubView === 'farms' ? (
+          <WindFarmPanel />
+        ) : activeSubView === 'detail' ? (
           <AgentDetail agent={selectedAgent ?? null} allAgents={allAgents} workLogs={workLogs} />
         ) : activeSubView === 'hr' ? (
           <AgentManagement allAgents={allAgents} onHire={onHireAgent} onFire={onFireAgent} />
