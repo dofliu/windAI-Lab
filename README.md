@@ -265,11 +265,12 @@ curl -X POST http://localhost:8000/api/knowledge-base/search \
 | [CLAUDE.md](CLAUDE.md) | Claude Code 系統行為規範（代理命名、工作流程、程式碼規範） |
 | [docs/architecture-design.md](docs/architecture-design.md) | 系統架構設計（技能→代理→管線、聘用制度、API 一覽） |
 | [docs/progress-report.md](docs/progress-report.md) | 開發歷程 Phase 1-10 詳細記錄 |
-| [docs/TODO-roadmap.md](docs/TODO-roadmap.md) | 路線圖與待辦事項 |
+| [docs/TODO-roadmap.md](docs/TODO-roadmap.md) | 路線圖與待辦事項（Phase 11-19 三步走） |
+| [docs/FUTURE-ROADMAP.md](docs/FUTURE-ROADMAP.md) | 願景定位：從研究平台到風場運維服務公司 |
+| [docs/EVOLUTION-PLAN.md](docs/EVOLUTION-PLAN.md) | 詳細執行計畫（70+ 工作項目，含檔案位置與驗收標準） |
+| [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | 專案現況總覽（一頁式摘要） |
 | [docs/use-cases.md](docs/use-cases.md) | 6 大使用場景與操作範例 |
 | [docs/data-integration-guide.md](docs/data-integration-guide.md) | 多來源資料整合指南 |
-| [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | 專案現況總覽（一頁式摘要） |
-| [docs/FUTURE-ROADMAP.md](docs/FUTURE-ROADMAP.md) | 未來發展規劃與討論 |
 
 ---
 
