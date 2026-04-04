@@ -821,6 +821,7 @@ class OrchestrationEngine:
         db_task_id: str | None = None
         try:
             from src.core.database import get_database
+
             db = get_database()
             db_task_id = db.create_task(
                 command=workflow.name,

@@ -84,9 +84,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ═══ 持久化資料庫初始化 ═══
     try:
         from src.core.database import get_database
+
         db = get_database()
         db.initialize()
-        logger.info(f"資料庫已就緒")
+        logger.info("資料庫已就緒")
     except Exception as exc:
         logger.warning(f"資料庫初始化失敗（將以記憶體模式運行）：{exc}")
 
@@ -1000,6 +1001,7 @@ async def get_task_history(
     """查詢任務歷史記錄（含分頁）。"""
     try:
         from src.core.database import get_database
+
         db = get_database()
         tasks = db.list_tasks(limit=limit, offset=offset, status=status)
         total = db.count_tasks(status=status)
@@ -1019,6 +1021,7 @@ async def get_task_detail(task_id: str) -> dict:
     """取得指定任務的詳細資訊（含工作日誌與分析結果）。"""
     try:
         from src.core.database import get_database
+
         db = get_database()
         task = db.get_task(task_id)
         if task is None:
@@ -1037,12 +1040,18 @@ async def get_task_stats() -> dict:
     """取得任務統計資訊。"""
     try:
         from src.core.database import get_database
+
         db = get_database()
         return db.get_stats()
     except Exception as e:
         logger.warning(f"查詢統計失敗：{e}")
-        return {"tasks_total": 0, "tasks_completed": 0, "tasks_error": 0,
-                "work_logs_total": 0, "analysis_results_total": 0}
+        return {
+            "tasks_total": 0,
+            "tasks_completed": 0,
+            "tasks_error": 0,
+            "work_logs_total": 0,
+            "analysis_results_total": 0,
+        }
 
 
 @app.post("/api/commands/{command_name}", tags=["指令執行"])
