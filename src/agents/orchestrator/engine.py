@@ -817,10 +817,54 @@ class OrchestrationEngine:
         """在背景執行工作流程，立即回傳 task_id。"""
         task_id = str(uuid.uuid4())
 
+        # 持久化：建立任務記錄
+        db_task_id: str | None = None
+        try:
+            from src.core.database import get_database
+            db = get_database()
+            db_task_id = db.create_task(
+                command=workflow.name,
+                parameters=workflow.parameters,
+                description=workflow.description,
+            )
+        except Exception as exc:
+            logger.warning(f"資料庫寫入失敗（不影響執行）：{exc}")
+
         async def _run():
-            await self.execute_workflow(workflow)
-            if task_id in self._running_tasks:
-                del self._running_tasks[task_id]
+            try:
+                await self.execute_workflow(workflow)
+                # 持久化：標記完成 + 儲存分析結果
+                if db_task_id:
+                    try:
+                        db = get_database()
+                        # 收集參與代理
+                        agent_ids: list[str] = []
+                        agent_names: list[str] = []
+                        seen: set[str] = set()
+                        for log in self._work_logs[-200:]:
+                            if log.agent_id != "system" and log.agent_id not in seen:
+                                seen.add(log.agent_id)
+                                agent_ids.append(log.agent_id)
+                                agent_names.append(log.agent_name)
+                        db.complete_task(
+                            db_task_id,
+                            status="completed",
+                            agent_ids=agent_ids,
+                            agent_names=agent_names,
+                        )
+                    except Exception as exc:
+                        logger.warning(f"任務完成記錄失敗：{exc}")
+            except Exception as exc:
+                if db_task_id:
+                    try:
+                        db = get_database()
+                        db.complete_task(db_task_id, status="error", error_message=str(exc))
+                    except Exception:
+                        pass
+                logger.error(f"工作流程執行失敗：{exc}")
+            finally:
+                if task_id in self._running_tasks:
+                    del self._running_tasks[task_id]
 
         task = asyncio.create_task(_run())
         self._running_tasks[task_id] = task
