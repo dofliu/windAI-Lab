@@ -288,8 +288,19 @@ export default function App() {
               className="rounded-full px-2 py-0.5 text-[9px] animate-pulse-slow"
               style={{ backgroundColor: theme.statuses.working.bg, color: theme.statuses.working.dot }}
             >
-              任務進行中
+              {isActivelyWorking ? '任務進行中' : '任務已完成'}
             </span>
+          )}
+          {/* 手動切換 office ↔ mission 模式 */}
+          {missionSticky && !isActivelyWorking && (
+            <button
+              onClick={handleCloseMission}
+              className="rounded-full px-2 py-0.5 text-[9px] hover:brightness-125 transition-all"
+              style={{ backgroundColor: theme.global.border, color: theme.global.textSecondary }}
+              title="返回辦公室模式"
+            >
+              ← 返回辦公室
+            </button>
           )}
         </div>
 
