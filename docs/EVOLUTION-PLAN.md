@@ -28,11 +28,11 @@
 
 | WI# | 工作項目 | 檔案/位置 | 驗收標準 | 狀態 |
 |-----|---------|-----------|----------|------|
-| 11-1 | MissionView 元件 | `frontend/src/components/MissionView.tsx` | 任務啟動時自動切換為戰情模式，只顯示參與代理 | ⬜ |
-| 11-2 | AnalysisDashboard 元件 | `frontend/src/components/AnalysisDashboard.tsx` | 右側面板顯示即時圖表（功率曲線、殘差、趨勢） | ⬜ |
-| 11-3 | ViewSwitcher 邏輯 | `frontend/src/components/App.tsx` | 偵測 WebSocket 任務狀態，自動切換 office ↔ mission | ⬜ |
-| 11-4 | 技能管線進度條 | `frontend/src/components/WorkflowProgress.tsx` | 每個 skill 顯示獨立狀態圖示 + 進度條 | ⬜ |
-| 11-5 | 圖表資料 API | `src/api/main.py` | 新增 `/api/analysis/charts` 端點回傳圖表資料 | ⬜ |
+| 11-1 | MissionAgentPanel 代理面板 | `frontend/src/components/MissionAgentPanel.tsx` | 任務中只顯示參與代理，含即時進度、tier 標籤、最新日誌 | ✅ |
+| 11-2 | WorkflowProgress 三欄佈局 | `frontend/src/components/WorkflowProgress.tsx` | 左：代理面板 / 中：進度+日誌 / 右：即時分析圖表 | ✅ |
+| 11-3 | ViewSwitcher 邏輯 | `frontend/src/components/App.tsx` | header 顯示任務狀態 + 「返回辦公室」按鈕 | ✅ |
+| 11-4 | 技能管線進度條 | `frontend/src/components/WorkflowProgress.tsx` | 步驟條已含 ✓/●/○ 狀態 + 代理個別進度條 | ✅ |
+| 11-5 | 即時分析推播 | `src/api/main.py` (已有) | 後端已透過 WebSocket 推播 analysis_result，無需新增 API | ✅ |
 
 **依賴**：無，可立即開始
 **前置條件**：現有 WebSocket 推播機制

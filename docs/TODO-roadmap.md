@@ -47,10 +47,10 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  14  15  16
 
 | 項目 | 說明 | 狀態 |
 |------|------|------|
-| MissionView 戰情中心 | 任務進行時自動切換，只顯示參與代理 | ⬜ |
-| AnalysisDashboard 分析面板 | 右側即時圖表 + 報告清單 | ⬜ |
-| ViewSwitcher 自動切換 | office ↔ mission 自動切換 | ⬜ |
-| 技能管線進度條 | 每個 skill 獨立進度 | ⬜ |
+| MissionAgentPanel 代理面板 | 任務中只顯示參與代理 + 即時進度 | ✅ |
+| WorkflowProgress 三欄佈局 | 代理面板 / 進度+日誌 / 即時分析圖表 | ✅ |
+| ViewSwitcher 自動切換 | header 狀態標籤 + 「返回辦公室」按鈕 | ✅ |
+| 技能管線進度條 | 步驟條 + 代理個別進度條 | ✅ |
 
 #### Phase 12 — 持久化儲存
 
