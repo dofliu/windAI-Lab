@@ -31,6 +31,10 @@ models/anomaly/
 models/registry/
 models/baselines/
 
+# Database
+*.db
+*.sqlite3
+
 # Environment
 .env
 *.log

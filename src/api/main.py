@@ -81,6 +81,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("WindAI Lab API 啟動中...")
 
+    # ═══ 持久化資料庫初始化 ═══
+    try:
+        from src.core.database import get_database
+
+        db = get_database()
+        db.initialize()
+        logger.info("資料庫已就緒")
+    except Exception as exc:
+        logger.warning(f"資料庫初始化失敗（將以記憶體模式運行）：{exc}")
+
     # ═══ 新架構：YAML + 技能 + 聘用制 ═══
     spec_count = dynamic_registry.load_specs()
     core_count = dynamic_registry.bootstrap_core()
@@ -977,6 +987,71 @@ async def get_work_logs(limit: int = 50, agent_id: str | None = None) -> list[Wo
     if agent_id:
         logs = [log for log in logs if log.agent_id == agent_id]
     return list(reversed(logs[-limit:]))
+
+
+# ── 任務歷史 API ──────────────────────────────────────────────
+
+
+@app.get("/api/tasks/history", tags=["任務歷史"])
+async def get_task_history(
+    limit: int = 20,
+    offset: int = 0,
+    status: str | None = None,
+) -> dict:
+    """查詢任務歷史記錄（含分頁）。"""
+    try:
+        from src.core.database import get_database
+
+        db = get_database()
+        tasks = db.list_tasks(limit=limit, offset=offset, status=status)
+        total = db.count_tasks(status=status)
+        return {
+            "tasks": tasks,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    except Exception as e:
+        logger.warning(f"查詢任務歷史失敗：{e}")
+        return {"tasks": [], "total": 0, "limit": limit, "offset": offset}
+
+
+@app.get("/api/tasks/{task_id}", tags=["任務歷史"])
+async def get_task_detail(task_id: str) -> dict:
+    """取得指定任務的詳細資訊（含工作日誌與分析結果）。"""
+    try:
+        from src.core.database import get_database
+
+        db = get_database()
+        task = db.get_task(task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail=f"任務 '{task_id}' 不存在")
+        task["work_logs"] = db.get_task_logs(task_id)
+        task["analysis_results"] = db.get_task_results(task_id)
+        return task
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/api/tasks/stats/summary", tags=["任務歷史"])
+async def get_task_stats() -> dict:
+    """取得任務統計資訊。"""
+    try:
+        from src.core.database import get_database
+
+        db = get_database()
+        return db.get_stats()
+    except Exception as e:
+        logger.warning(f"查詢統計失敗：{e}")
+        return {
+            "tasks_total": 0,
+            "tasks_completed": 0,
+            "tasks_error": 0,
+            "work_logs_total": 0,
+            "analysis_results_total": 0,
+        }
 
 
 @app.post("/api/commands/{command_name}", tags=["指令執行"])
