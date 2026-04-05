@@ -116,6 +116,28 @@ class WebSocketManager:
         }
         await self.broadcast(message)
 
+    async def broadcast_alert(self, alert_data: dict[str, Any], is_new: bool = True) -> None:
+        """廣播告警事件至前端。
+
+        alert_data 應為完整的告警 dict（從 database 取得）。
+        is_new=True 表示新告警，False 表示狀態更新。
+        """
+        message = {
+            "type": "alert_new" if is_new else "alert_updated",
+            "timestamp": datetime.now().isoformat(),
+            "payload": alert_data,
+        }
+        await self.broadcast(message)
+
+    async def broadcast_work_order_update(self, order_data: dict[str, Any]) -> None:
+        """廣播工單更新事件至前端。"""
+        message = {
+            "type": "work_order_updated",
+            "timestamp": datetime.now().isoformat(),
+            "payload": order_data,
+        }
+        await self.broadcast(message)
+
     async def broadcast_file_event(self, event_data: dict[str, Any]) -> None:
         """廣播檔案監控事件（偵測到新檔案 / 處理完成 / 錯誤）。
 

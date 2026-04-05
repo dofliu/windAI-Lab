@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Agent, WorkLog, OfficeRoom, AgentStatus, SpeechBubble, WorkflowRetryEvent, WorkflowDegradationEvent, WorkflowCheckpointEvent } from '../types/agent'
+import { Agent, WorkLog, OfficeRoom, AgentStatus, SpeechBubble, WorkflowRetryEvent, WorkflowDegradationEvent, WorkflowCheckpointEvent, Alert, WorkOrder } from '../types/agent'
 import { initialRooms } from '../utils/mockData'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
@@ -19,6 +19,8 @@ export function useWebSocket() {
   const [fileEvents, setFileEvents] = useState<any[]>([])
   const [analysisResults, setAnalysisResults] = useState<any[]>([])
   const [workflowEvents, setWorkflowEvents] = useState<Array<WorkflowRetryEvent | WorkflowDegradationEvent | WorkflowCheckpointEvent>>([])
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
@@ -137,6 +139,31 @@ export function useWebSocket() {
             break
           }
 
+          case 'alert_new': {
+            const alert = msg.payload as Alert
+            setAlerts(prev => {
+              const next = [alert, ...prev.filter(a => a.id !== alert.id)]
+              return next.length > 100 ? next.slice(0, 100) : next
+            })
+            break
+          }
+
+          case 'alert_updated': {
+            const updated = msg.payload as Alert
+            setAlerts(prev => prev.map(a => a.id === updated.id ? updated : a))
+            break
+          }
+
+          case 'work_order_updated': {
+            const order = msg.payload as WorkOrder
+            setWorkOrders(prev => {
+              const exists = prev.some(o => o.id === order.id)
+              if (exists) return prev.map(o => o.id === order.id ? order : o)
+              return [order, ...prev].slice(0, 100)
+            })
+            break
+          }
+
           case 'agent_hired': {
             const newAgent = mapAgent(msg.payload)
             setAgents(prev => {
@@ -206,5 +233,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults, workflowEvents, clearWorkflowEvents }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults, workflowEvents, clearWorkflowEvents, alerts, setAlerts, workOrders, setWorkOrders }
 }

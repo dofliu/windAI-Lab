@@ -436,6 +436,9 @@ export default function App() {
                 onClearTaskHistory={clearRecords}
                 initialTab={dashboardInitialTab}
                 onTabChange={setDashboardInitialTab}
+                alerts={ws.alerts}
+                onAlertsChange={ws.setAlerts}
+                workOrders={ws.workOrders}
               />
             </div>
           )}
