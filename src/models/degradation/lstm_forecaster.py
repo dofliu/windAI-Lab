@@ -11,10 +11,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass
@@ -106,7 +108,7 @@ class LSTMForecaster:
             joblib.dump(self._model, save_dir / "ridge_model.joblib")
 
     @classmethod
-    def load(cls, path: str | Path) -> "LSTMForecaster":
+    def load(cls, path: str | Path) -> LSTMForecaster:
         """從磁碟載入已訓練的模型。
 
         Args:
@@ -138,7 +140,9 @@ class LSTMForecaster:
             import torch.nn as nn
 
             class _LSTMModel(nn.Module):
-                def __init__(self, input_dim: int, hidden: int, layers: int, out: int, drop: float):
+                def __init__(
+                    self, input_dim: int, hidden: int, layers: int, out: int, drop: float
+                ):
                     super().__init__()
                     self.lstm = nn.LSTM(input_dim, hidden, layers, batch_first=True, dropout=drop)
                     self.fc = nn.Linear(hidden, out)

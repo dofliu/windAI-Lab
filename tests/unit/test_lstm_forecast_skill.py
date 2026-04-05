@@ -197,7 +197,7 @@ class TestLSTMForecasterModel:
         series = np.random.uniform(5, 15, 200).astype(np.float32)
 
         forecaster = LSTMForecaster(sequence_length=24, forecast_horizon=6)
-        original_result = forecaster.fit_and_predict(series, epochs=3)
+        forecaster.fit_and_predict(series, epochs=3)
 
         # 儲存
         save_dir = tmp_path / "test_model"

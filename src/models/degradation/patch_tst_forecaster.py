@@ -128,7 +128,7 @@ class PatchTSTForecaster:
             joblib.dump(self._model, save_dir / "ridge_model.joblib")
 
     @classmethod
-    def load(cls, path: str | Path) -> "PatchTSTForecaster":
+    def load(cls, path: str | Path) -> PatchTSTForecaster:
         """從磁碟載入已訓練的模型。
 
         Args:
@@ -170,9 +170,7 @@ class PatchTSTForecaster:
                 dropout=meta["dropout"],
                 horizon=meta["horizon"],
             )
-            model.load_state_dict(
-                torch.load(load_dir / "patch_tst_weights.pt", weights_only=True)
-            )
+            model.load_state_dict(torch.load(load_dir / "patch_tst_weights.pt", weights_only=True))
             model.eval()
             instance._model = model
         else:
@@ -248,20 +246,16 @@ class PatchTSTForecaster:
             y_list.append(data[i + self._seq_len : i + self._seq_len + self._horizon])
         return np.array(x_list), np.array(y_list)
 
-    def _create_patches(self, x: "torch.Tensor") -> "torch.Tensor":
+    def _create_patches(self, x: Any) -> Any:
         """將序列切成 patches。
 
         Args:
-            x: shape (batch, seq_len)
+            x: Tensor, shape (batch, seq_len)
 
         Returns:
-            patches: shape (batch, num_patches, patch_len)
+            patches: Tensor, shape (batch, num_patches, patch_len)
         """
-        import torch
-
-        batch_size = x.shape[0]
-        patches = x.unfold(dimension=1, size=self._patch_len, step=self._stride)
-        return patches
+        return x.unfold(dimension=1, size=self._patch_len, step=self._stride)
 
     def _train_patch_tst(
         self,
@@ -419,7 +413,7 @@ def _build_patch_tst_model(
     d_ff: int,
     dropout: float,
     horizon: int,
-) -> "torch.nn.Module":
+) -> Any:
     """建構 PatchTST 模型。"""
     import torch
     import torch.nn as nn
@@ -480,9 +474,9 @@ def _build_patch_tst_model(
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
             # x: (batch, num_patches, patch_len)
-            x = self.patch_embed(x)    # (batch, num_patches, d_model)
-            x = self.encoder(x)        # (batch, num_patches, d_model)
-            return self.head(x)        # (batch, horizon)
+            x = self.patch_embed(x)  # (batch, num_patches, d_model)
+            x = self.encoder(x)  # (batch, num_patches, d_model)
+            return self.head(x)  # (batch, horizon)
 
     return _PatchTSTModel(
         num_patches=num_patches,

@@ -125,9 +125,7 @@ class TransformerForecastSkill(BaseSkill):
             )
 
             if progress_cb:
-                await progress_cb(
-                    0.75, f"訓練完成 | {result.model_type} | RMSE={result.rmse:.3f}"
-                )
+                await progress_cb(0.75, f"訓練完成 | {result.model_type} | RMSE={result.rmse:.3f}")
 
             # ── 4. 模型持久化 ──
             model_path: str | None = None
