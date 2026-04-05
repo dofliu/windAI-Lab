@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Agent, WorkLog, TaskRecord } from '../types/agent'
+import { Agent, WorkLog, TaskRecord, Alert, WorkOrder } from '../types/agent'
 import { useTheme } from '../themes'
 import AgentDetail from './AgentDetail'
 import AgentManagement from './AgentManagement'
+import AlertPanel from './AlertPanel'
 import KnowledgeBasePanel from './KnowledgeBasePanel'
 import MLDashboard from './MLDashboard'
 import ScadaDashboard from './ScadaDashboard'
 import TaskHistoryList from './TaskHistoryList'
 import WorkflowDAG from './WorkflowDAG'
 import WorkLogPanel from './WorkLogPanel'
+import WorkOrderPanel from './WorkOrderPanel'
 
-export type DashTab = 'team' | 'analysis' | 'knowledge' | 'records'
-type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history'
+export type DashTab = 'team' | 'analysis' | 'knowledge' | 'records' | 'alerts'
+type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history' | 'alert-list' | 'work-orders'
 
 interface FileEventPayload {
   filename: string
@@ -41,6 +43,9 @@ interface DashboardViewProps {
   onClearTaskHistory?: () => void
   initialTab?: DashTab
   onTabChange?: (tab: DashTab) => void
+  alerts?: Alert[]
+  onAlertsChange?: (alerts: Alert[]) => void
+  workOrders?: WorkOrder[]
 }
 
 const TABS: { id: DashTab; label: string; icon: string; subViews: { id: SubView; label: string }[] }[] = [
@@ -80,6 +85,15 @@ const TABS: { id: DashTab; label: string; icon: string; subViews: { id: SubView;
       { id: 'history', label: '歷史記錄' },
     ],
   },
+  {
+    id: 'alerts',
+    label: '警報',
+    icon: '🚨',
+    subViews: [
+      { id: 'alert-list', label: '警報列表' },
+      { id: 'work-orders', label: '工單管理' },
+    ],
+  },
 ]
 
 export default function DashboardView({
@@ -87,6 +101,7 @@ export default function DashboardView({
   onHireAgent, onFireAgent,
   taskHistory, onDeleteTaskRecord, onClearTaskHistory,
   initialTab, onTabChange,
+  alerts = [], onAlertsChange, workOrders = [],
 }: DashboardViewProps) {
   const { theme } = useTheme()
   const [activeTab, setActiveTab] = useState<DashTab>('analysis')
@@ -143,6 +158,17 @@ export default function DashboardView({
               {tab.id === 'team' && selectedAgent && !isActive && (
                 <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: theme.global.accent }} />
               )}
+              {tab.id === 'alerts' && alerts.filter(a => a.status === 'active').length > 0 && (
+                <span
+                  className="rounded-full px-1.5 py-0.5 text-[9px]"
+                  style={{
+                    backgroundColor: alerts.some(a => a.severity === 'critical' && a.status === 'active') ? '#ef444430' : '#f59e0b30',
+                    color: alerts.some(a => a.severity === 'critical' && a.status === 'active') ? '#ef4444' : '#f59e0b',
+                  }}
+                >
+                  {alerts.filter(a => a.status === 'active').length}
+                </span>
+              )}
               {tab.id === 'records' && (taskHistory?.length ?? 0) > 0 && (
                 <span
                   className="rounded-full px-1.5 py-0.5 text-[9px]"
@@ -196,6 +222,10 @@ export default function DashboardView({
             onDeleteRecord={onDeleteTaskRecord ?? (() => {})}
             onClearAll={onClearTaskHistory ?? (() => {})}
           />
+        ) : activeSubView === 'alert-list' ? (
+          <AlertPanel alerts={alerts} onAlertsChange={onAlertsChange} />
+        ) : activeSubView === 'work-orders' ? (
+          <WorkOrderPanel workOrders={workOrders} allAgents={allAgents} />
         ) : (
           <WorkLogPanel logs={workLogs} />
         )}

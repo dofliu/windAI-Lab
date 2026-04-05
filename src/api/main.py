@@ -23,10 +23,16 @@ from src.agents.orchestrator.engine import engine as orchestration_engine
 from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
 from src.api.agent_registry import get_agent, get_all_agents, update_agent_status
 from src.api.models import (
+    AddWorkOrderNoteRequest,
     AgentModel,
     AgentStatus,
+    AlertIngestRequest,
+    CreateAlertRequest,
+    CreateWorkOrderRequest,
     InvokeRequest,
     InvokeResponse,
+    UpdateAlertRequest,
+    UpdateWorkOrderRequest,
     WorkLogEntry,
 )
 from src.api.websocket_manager import manager as ws_manager
@@ -1733,6 +1739,231 @@ async def kb_delete_source(
     except Exception as e:
         logger.exception("刪除來源失敗")
         return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+
+
+# ── Phase 13：告警系統 API ──────────────────────────────────────
+
+
+def _get_db():
+    """取得資料庫單例（lazy import 避免循環依賴）。"""
+    from src.core.database import get_database
+
+    return get_database()
+
+
+@app.get("/api/alerts", tags=["告警系統"])
+async def list_alerts(
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    severity: str | None = None,
+    turbine_id: str | None = None,
+) -> dict[str, Any]:
+    """查詢告警列表，支援依狀態、嚴重程度、風機篩選。"""
+    db = _get_db()
+    alerts = db.list_alerts(
+        limit=limit, offset=offset, status=status, severity=severity, turbine_id=turbine_id
+    )
+    return {"status": "success", "alerts": alerts, "total": len(alerts)}
+
+
+@app.get("/api/alerts/stats", tags=["告警系統"])
+async def alert_stats() -> dict[str, Any]:
+    """取得告警統計數據。"""
+    db = _get_db()
+    return {"status": "success", **db.count_alerts()}
+
+
+@app.get("/api/alerts/{alert_id}", tags=["告警系統"])
+async def get_alert(alert_id: str) -> dict[str, Any]:
+    """取得單一告警詳細資訊。"""
+    db = _get_db()
+    alert = db.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="告警不存在")
+    return {"status": "success", "alert": alert}
+
+
+@app.post("/api/alerts", tags=["告警系統"])
+async def create_alert(req: CreateAlertRequest) -> JSONResponse:
+    """手動建立告警。"""
+    db = _get_db()
+    alert_id = db.create_alert(
+        source=req.source,
+        severity=req.severity,
+        title=req.title,
+        description=req.description,
+        turbine_id=req.turbine_id,
+        tags=req.tags,
+        metrics=req.metrics,
+    )
+    alert = db.get_alert(alert_id)
+    if alert:
+        await ws_manager.broadcast_alert(alert, is_new=True)
+    return JSONResponse(
+        status_code=201,
+        content={"status": "success", "alert_id": alert_id},
+    )
+
+
+@app.post("/api/alerts/ingest", tags=["告警系統"])
+async def ingest_alert(req: AlertIngestRequest) -> JSONResponse:
+    """外部系統推送告警的標準接口。
+
+    提供統一的 JSON 格式讓外部廠商（Vestas CMS、Siemens Gamesa SCADA 等）推送告警。
+    支援 source_alert_id 自動去重：相同 source_system + source_alert_id 不會重複建立。
+    """
+    db = _get_db()
+    alert_id = db.create_alert(
+        source="external",
+        severity=req.severity,
+        title=req.title,
+        description=req.description,
+        turbine_id=req.turbine_id,
+        source_system=req.source_system,
+        source_alert_id=req.source_alert_id,
+        tags=req.tags,
+        metrics=req.metrics,
+        metadata=req.metadata,
+        occurred_at=req.occurred_at,
+    )
+    alert = db.get_alert(alert_id)
+    if alert:
+        await ws_manager.broadcast_alert(alert, is_new=True)
+    return JSONResponse(
+        status_code=201,
+        content={"status": "success", "alert_id": alert_id},
+    )
+
+
+@app.patch("/api/alerts/{alert_id}", tags=["告警系統"])
+async def update_alert(alert_id: str, req: UpdateAlertRequest) -> dict[str, Any]:
+    """更新告警狀態（確認、解決、駁回）。"""
+    db = _get_db()
+    ok = db.update_alert_status(alert_id, status=req.status, resolved_by=req.resolved_by)
+    if not ok:
+        raise HTTPException(status_code=404, detail="告警不存在")
+    alert = db.get_alert(alert_id)
+    if alert:
+        await ws_manager.broadcast_alert(alert, is_new=False)
+    return {"status": "success", "alert": alert}
+
+
+@app.post("/api/alerts/{alert_id}/create-work-order", tags=["告警系統"])
+async def create_work_order_from_alert(alert_id: str) -> JSONResponse:
+    """從告警自動建立工單（預填告警資訊）。"""
+    db = _get_db()
+    alert = db.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="告警不存在")
+    if alert.get("work_order_id"):
+        raise HTTPException(status_code=409, detail="此告警已有關聯工單")
+    # 嚴重程度對應工單優先程度
+    priority_map = {"critical": "critical", "warning": "high", "info": "medium"}
+    order_id = db.create_work_order(
+        title=f"[{alert['severity'].upper()}] {alert['title']}",
+        description=alert.get("description", ""),
+        priority=priority_map.get(alert["severity"], "medium"),
+        turbine_id=alert.get("turbine_id"),
+        alert_id=alert_id,
+    )
+    order = db.get_work_order(order_id)
+    if order:
+        await ws_manager.broadcast_work_order_update(order)
+    updated_alert = db.get_alert(alert_id)
+    if updated_alert:
+        await ws_manager.broadcast_alert(updated_alert, is_new=False)
+    return JSONResponse(
+        status_code=201,
+        content={"status": "success", "work_order_id": order_id, "alert_id": alert_id},
+    )
+
+
+# ── Phase 13：工單管理 API ──────────────────────────────────────
+
+
+@app.get("/api/work-orders", tags=["工單管理"])
+async def list_work_orders(
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    priority: str | None = None,
+    turbine_id: str | None = None,
+) -> dict[str, Any]:
+    """查詢工單列表。"""
+    db = _get_db()
+    orders = db.list_work_orders(
+        limit=limit, offset=offset, status=status, priority=priority, turbine_id=turbine_id
+    )
+    return {"status": "success", "work_orders": orders, "total": len(orders)}
+
+
+@app.get("/api/work-orders/stats", tags=["工單管理"])
+async def work_order_stats() -> dict[str, Any]:
+    """取得工單統計數據。"""
+    db = _get_db()
+    return {"status": "success", **db.count_work_orders()}
+
+
+@app.get("/api/work-orders/{order_id}", tags=["工單管理"])
+async def get_work_order(order_id: str) -> dict[str, Any]:
+    """取得單一工單詳細資訊。"""
+    db = _get_db()
+    order = db.get_work_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="工單不存在")
+    return {"status": "success", "work_order": order}
+
+
+@app.post("/api/work-orders", tags=["工單管理"])
+async def create_work_order(req: CreateWorkOrderRequest) -> JSONResponse:
+    """建立新工單。"""
+    db = _get_db()
+    order_id = db.create_work_order(
+        title=req.title,
+        description=req.description,
+        priority=req.priority,
+        turbine_id=req.turbine_id,
+        alert_id=req.alert_id,
+        assigned_agents=req.assigned_agents,
+        estimated_duration_hours=req.estimated_duration_hours,
+    )
+    order = db.get_work_order(order_id)
+    if order:
+        await ws_manager.broadcast_work_order_update(order)
+    return JSONResponse(
+        status_code=201,
+        content={"status": "success", "work_order_id": order_id},
+    )
+
+
+@app.patch("/api/work-orders/{order_id}", tags=["工單管理"])
+async def update_work_order(order_id: str, req: UpdateWorkOrderRequest) -> dict[str, Any]:
+    """更新工單狀態、優先程度或指派代理。"""
+    db = _get_db()
+    fields = {k: v for k, v in req.model_dump().items() if v is not None}
+    if not fields:
+        raise HTTPException(status_code=400, detail="未提供任何更新欄位")
+    ok = db.update_work_order(order_id, **fields)
+    if not ok:
+        raise HTTPException(status_code=404, detail="工單不存在")
+    order = db.get_work_order(order_id)
+    if order:
+        await ws_manager.broadcast_work_order_update(order)
+    return {"status": "success", "work_order": order}
+
+
+@app.post("/api/work-orders/{order_id}/notes", tags=["工單管理"])
+async def add_work_order_note(order_id: str, req: AddWorkOrderNoteRequest) -> dict[str, Any]:
+    """新增工單備註。"""
+    db = _get_db()
+    ok = db.add_work_order_note(order_id, author=req.author, text=req.text)
+    if not ok:
+        raise HTTPException(status_code=404, detail="工單不存在")
+    order = db.get_work_order(order_id)
+    if order:
+        await ws_manager.broadcast_work_order_update(order)
+    return {"status": "success", "work_order": order}
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────
