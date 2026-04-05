@@ -1,6 +1,6 @@
 # WindAI Lab — 專案現況總覽
 
-> 最後更新：2026-04-05 | Phase 13 完成（Step 1 完成）
+> 最後更新：2026-04-05 | Phase 13 完成 + Epic C (ML 模型進化) 完成
 > **核心願景：打造一間真實的風場運維 AI 服務公司**
 
 ---
@@ -29,11 +29,12 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | 核心代理 | 12 (core) | — | 100% |
 | 可聘用代理 | 10 (hirable YAML) | — | 100% |
 | 技能模組 | 12 | — | 100% |
-| ML 模型 | 5 | — | 83% |
+| ML 模型 | 5 → **7** | **+2**（LSTM pipeline 整合 + PatchTST Transformer） | 100% |
+| 技能模組 | 12 → **14** | **+2**（transformer_forecast + model_benchmark） | 100% |
 | REST API 端點 | 33+ | **+12**（告警 + 工單 + Ingest） | 95% |
 | 前端元件 | 29 | **+2**（AlertPanel + WorkOrderPanel） | 98% |
 | Office Renderer | 3 | — | 100% |
-| 測試 | 17 檔案 / 368 測試 | — | 良好 |
+| 測試 | 20 檔案 / 427 測試 | **+3 檔案 / +59 測試** | 良好 |
 | 持久化儲存 | SQLite 3 表 | **+2 表**（alerts + work_orders） | ✅ |
 | **告警系統** | — | **完整告警 CRUD + Ingest API** | ✅ 新增 |
 | **工單管理** | — | **Kanban 看板 + 備註時間線** | ✅ 新增 |
@@ -126,14 +127,38 @@ POST /api/alerts/ingest
 | **工單管理 + Kanban** | **13** | **工單 CRUD + 備註 + 告警→工單自動建立** |
 | **TaskLauncher 精簡版** | **13** | **底部列精簡化 + 滑出抽屜 — 主內容空間最大化** |
 
-### 下一步 — Phase 14：即時資料連接器
+### 最新完成 — Epic C：ML 模型進化 ✅
 
-| 功能 | 優先級 | 說明 |
-|------|--------|------|
-| DataConnector 抽象層 | 🔴 高 | 統一介面（File / REST / OPC UA / MQTT） |
-| 串流處理管線 | 🔴 高 | 定時拉取 → 清洗 → 分析 → 告警 |
-| 連線健康監控 | 🟡 中 | 斷線偵測 + 自動重連 |
-| Connector YAML 設定 | 🟡 中 | 一個資料來源一個 YAML |
+| 項目 | 說明 |
+|------|------|
+| LSTM skill pipeline 整合 (C1) | LSTM v2.0：R² 指標 + 模型持久化 + JSONL/MLflow 實驗記錄 |
+| PatchTST Transformer (C2) | 簡化版 PatchTST (ICLR 2023)：Patch embedding + Transformer Encoder |
+| 模型對比框架 (C3) | ModelBenchmark：統一 train/test 分割 + NBM vs LSTM vs PatchTST + LaTeX 表格 |
+
+### 已驗證的 ML 模型
+
+| 模型 | 架構 | 用途 | 指標 |
+|------|------|------|------|
+| PowerCurveNBM | GradientBoosting | 正常行為模型 | R²=0.9964 |
+| FaultClassifier | XGBoost | 故障分類 | F1=1.0000 |
+| RUL Prediction | 退化模型 | 剩餘壽命預測 | 趨勢驗證通過 |
+| Weibull Analysis | 統計分佈 | 風速分佈 + AEP | 統計驗證通過 |
+| LSTM Forecaster | PyTorch LSTM | 時序預測 | R², RMSE, MAE |
+| PatchTST Forecaster | Transformer | 時序預測（學術前沿） | R², RMSE, MAE |
+| Model Benchmark | 對比框架 | 多模型統一評估 | 自動化 LaTeX 報告 |
+
+### 下一步 — GitHub Issues 追蹤
+
+開發方向已調整，以 GitHub Issues 追蹤（共 6 個 Epic、15 個子 Issue）：
+
+| Epic | Issue | 優先度 | 狀態 |
+|------|-------|--------|------|
+| [Epic C] ML 模型進化 | #32 | High | ✅ 完成 |
+| [Epic E] 告警規則引擎 | #33 | High | ⬜ |
+| [Epic D] 報告與追蹤 | #34 | High | ⬜ |
+| [Epic A] 案例學習系統 | #35 | Medium | ⬜ |
+| [Epic B] 故障知識體系 | #36 | Medium | ⬜ |
+| [Epic F] 學術論文規劃 | #37 | Ongoing | ⬜ |
 
 ---
 
@@ -165,6 +190,7 @@ POST /api/alerts/ingest
 | **11** | **2026-04-04** | **戰情中心** | **MissionAgentPanel、三欄佈局、即時分析** |
 | **12** | **2026-04-04** | **持久化儲存** | **SQLite 資料庫、歷史 API、前後端整合** |
 | **13** | **2026-04-05** | **告警+工單** | **告警 Ingest API、AlertPanel、WorkOrderPanel Kanban、TaskLauncher 重構** |
+| **Epic C** | **2026-04-05** | **ML 模型進化** | **LSTM v2.0 + PatchTST Transformer + 模型對比框架 + 59 個新測試** |
 
 ---
 
