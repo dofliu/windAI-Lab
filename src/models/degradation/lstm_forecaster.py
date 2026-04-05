@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -27,9 +28,11 @@ class LSTMForecastResult:
         val_loss: 驗證損失（MSE）。
         rmse: 預測 RMSE。
         mae: 預測 MAE。
+        r2: 決定係數（R²），用於跨模型對比。
         model_type: 模型類型（"lstm" / "ridge_ar"）。
         feature_name: 預測目標欄位名稱。
         sequence_length: 輸入序列長度。
+        epochs_trained: 實際訓練 epoch 數。
     """
 
     predictions: list[float] = field(default_factory=list)
@@ -38,9 +41,11 @@ class LSTMForecastResult:
     val_loss: float = 0.0
     rmse: float = 0.0
     mae: float = 0.0
+    r2: float = 0.0
     model_type: str = "lstm"
     feature_name: str = ""
     sequence_length: int = 48
+    epochs_trained: int = 0
 
 
 class LSTMForecaster:
@@ -67,6 +72,91 @@ class LSTMForecaster:
         self._model: Any = None
         self._scaler: Any = None
         self._model_type = "lstm"
+
+    def save(self, path: str | Path) -> None:
+        """儲存已訓練的模型至磁碟。
+
+        Args:
+            path: 儲存目錄路徑。
+        """
+        from pathlib import Path as _Path
+
+        save_dir = _Path(path)
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        import joblib
+
+        # 儲存 scaler 與超參數
+        meta = {
+            "seq_len": self._seq_len,
+            "hidden_dim": self._hidden_dim,
+            "num_layers": self._num_layers,
+            "dropout": self._dropout,
+            "horizon": self._horizon,
+            "model_type": self._model_type,
+        }
+        joblib.dump({"meta": meta, "scaler": self._scaler}, save_dir / "meta.joblib")
+
+        # 儲存模型
+        if self._model_type == "lstm":
+            import torch
+
+            torch.save(self._model.state_dict(), save_dir / "lstm_weights.pt")
+        elif self._model is not None:
+            joblib.dump(self._model, save_dir / "ridge_model.joblib")
+
+    @classmethod
+    def load(cls, path: str | Path) -> "LSTMForecaster":
+        """從磁碟載入已訓練的模型。
+
+        Args:
+            path: 儲存目錄路徑。
+
+        Returns:
+            已載入的 LSTMForecaster 實例。
+        """
+        from pathlib import Path as _Path
+
+        import joblib
+
+        load_dir = _Path(path)
+        saved = joblib.load(load_dir / "meta.joblib")
+        meta = saved["meta"]
+
+        instance = cls(
+            sequence_length=meta["seq_len"],
+            hidden_dim=meta["hidden_dim"],
+            num_layers=meta["num_layers"],
+            dropout=meta["dropout"],
+            forecast_horizon=meta["horizon"],
+        )
+        instance._scaler = saved["scaler"]
+        instance._model_type = meta["model_type"]
+
+        if meta["model_type"] == "lstm":
+            import torch
+            import torch.nn as nn
+
+            class _LSTMModel(nn.Module):
+                def __init__(self, input_dim: int, hidden: int, layers: int, out: int, drop: float):
+                    super().__init__()
+                    self.lstm = nn.LSTM(input_dim, hidden, layers, batch_first=True, dropout=drop)
+                    self.fc = nn.Linear(hidden, out)
+
+                def forward(self, x: torch.Tensor) -> torch.Tensor:
+                    o, _ = self.lstm(x)
+                    return self.fc(o[:, -1, :])
+
+            model = _LSTMModel(
+                1, meta["hidden_dim"], meta["num_layers"], meta["horizon"], meta["dropout"]
+            )
+            model.load_state_dict(torch.load(load_dir / "lstm_weights.pt", weights_only=True))
+            model.eval()
+            instance._model = model
+        else:
+            instance._model = joblib.load(load_dir / "ridge_model.joblib")
+
+        return instance
 
     def fit_and_predict(
         self,
@@ -194,12 +284,15 @@ class LSTMForecaster:
         # 反正規化
         future = self._scaler.inverse_transform(future_scaled.reshape(-1, 1)).flatten()
 
-        # 計算驗證集上的 RMSE / MAE
+        # 計算驗證集上的 RMSE / MAE / R²
         val_pred_np = val_pred.cpu().numpy()
         y_val_inv = self._scaler.inverse_transform(y_val.reshape(-1, 1)[:, :1]).flatten()
         pred_inv = self._scaler.inverse_transform(val_pred_np.reshape(-1, 1)[:, :1]).flatten()
         rmse = float(np.sqrt(np.mean((y_val_inv - pred_inv) ** 2)))
         mae = float(np.mean(np.abs(y_val_inv - pred_inv)))
+        ss_res = float(np.sum((y_val_inv - pred_inv) ** 2))
+        ss_tot = float(np.sum((y_val_inv - np.mean(y_val_inv)) ** 2))
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
 
         self._model = model
         self._model_type = "lstm"
@@ -211,8 +304,10 @@ class LSTMForecaster:
             val_loss=round(val_loss, 6),
             rmse=round(rmse, 3),
             mae=round(mae, 3),
+            r2=round(r2, 4),
             model_type="lstm",
             sequence_length=self._seq_len,
+            epochs_trained=epochs,
         )
 
     def _train_ridge_ar(
@@ -250,6 +345,9 @@ class LSTMForecaster:
         pred_first = self._scaler.inverse_transform(val_pred[:, :1]).flatten()
         rmse = float(np.sqrt(mean_squared_error(y_val_first, pred_first)))
         mae = float(mean_absolute_error(y_val_first, pred_first))
+        ss_res = float(np.sum((y_val_first - pred_first) ** 2))
+        ss_tot = float(np.sum((y_val_first - np.mean(y_val_first)) ** 2))
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
 
         self._model = model
         self._model_type = "ridge_ar"
@@ -261,6 +359,8 @@ class LSTMForecaster:
             val_loss=round(val_loss, 6),
             rmse=round(rmse, 3),
             mae=round(mae, 3),
+            r2=round(r2, 4),
             model_type="ridge_ar",
             sequence_length=self._seq_len,
+            epochs_trained=0,
         )
