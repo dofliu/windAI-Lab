@@ -9,14 +9,14 @@
 
 ## 現況基線
 
-| 指標 | 目前 | Step 1 後 | Step 2 後 | Step 3 後 |
-|------|------|-----------|-----------|-----------|
-| 資料來源 | 靜態檔案 | 靜態檔案 | 即時串流 + 檔案 | 即時串流 + 檔案 |
-| 儲存 | 記憶體 | 資料庫 | 資料庫 | 資料庫 |
-| 告警 | 無 | 規則告警 | 即時告警 | 即時告警 + SLA |
-| 工單 | 無 | 基本工單 | 工單 + 案例庫 | 工單 + 派工 + 備品 |
+| 指標 | Step 1 前 | Step 1 後 ✅ | Step 2 後 | Step 3 後 |
+|------|-----------|-------------|-----------|-----------|
+| 資料來源 | 靜態檔案 | 靜態檔案 + **外部 API 推送** | 即時串流 + 檔案 | 即時串流 + 檔案 |
+| 儲存 | 記憶體 | **SQLite 5 表** | 資料庫 | 資料庫 |
+| 告警 | 無 | **告警 CRUD + Ingest API** | 即時告警 | 即時告警 + SLA |
+| 工單 | 無 | **Kanban 工單 + 備註** | 工單 + 案例庫 | 工單 + 派工 + 備品 |
 | 風場數 | 1（Kelmarsh） | 1+ | 多風場 | 多風場 + 多客戶 |
-| 服務閉環 | 無 | 分析→告警→工單 | +案例學習 | +派工→結案→報告 |
+| 服務閉環 | 無 | **分析→告警→工單 ✅** | +案例學習 | +派工→結案→報告 |
 
 ---
 
@@ -54,30 +54,37 @@
 
 ---
 
-### Phase 13：告警系統 + 工單管理
+### Phase 13：告警系統 + 工單管理 ✅
 
 **目的**：建立服務閉環 — 異常自動觸發告警並產生可追蹤的工單
+**完成日期**：2026-04-05
 
 | WI# | 工作項目 | 檔案/位置 | 驗收標準 | 狀態 |
 |-----|---------|-----------|----------|------|
 | **告警子系統** | | | | |
-| 13-1 | 告警規則引擎 | `src/services/alert_engine.py` | 支援閾值規則、複合條件、靜默期設定 | ⬜ |
-| 13-2 | 告警規則 YAML 設定 | `configs/alerts/rules.yaml` | YAML 定義規則，支援熱更新 | ⬜ |
-| 13-3 | 通知渠道—Email | `src/services/notifiers/email.py` | SMTP 發送告警郵件 | ⬜ |
-| 13-4 | 通知渠道—Webhook | `src/services/notifiers/webhook.py` | POST JSON 至外部系統 | ⬜ |
-| 13-5 | 通知渠道—LINE Notify | `src/services/notifiers/line.py` | LINE Notify API 推播 | ⬜ |
-| 13-6 | 告警歷史記錄 | `src/models/db/alert.py` | 告警記錄存入資料庫，含確認/解除狀態 | ⬜ |
-| 13-7 | 告警 API | `src/api/main.py` | CRUD 告警規則 + 查詢告警歷史 | ⬜ |
-| 13-8 | 前端告警面板 | `frontend/src/components/AlertPanel.tsx` | 即時告警列表 + 確認按鈕 | ⬜ |
+| 13-1 | alerts 資料表 + CRUD | `src/core/database.py` | alerts 表含 severity/status/source_system/去重索引 | ✅ |
+| 13-2 | Pydantic 模型 | `src/api/models.py` | AlertIngestRequest + CreateAlertRequest + UpdateAlertRequest | ✅ |
+| 13-3 | 告警 REST API | `src/api/main.py` | 6 端點：list/get/create/ingest/update/create-work-order | ✅ |
+| 13-4 | WebSocket 推播 | `src/api/websocket_manager.py` | broadcast_alert（alert_new / alert_updated） | ✅ |
+| 13-5 | 前端告警面板 | `frontend/src/components/AlertPanel.tsx` | 篩選 + 確認/解決/駁回 + 手動建立 + 一鍵建工單 | ✅ |
+| 13-6 | 外部 Ingest API | `POST /api/alerts/ingest` | 標準化格式供外部廠商推送，source_alert_id 自動去重 | ✅ |
 | **工單子系統** | | | | |
-| 13-9 | 工單資料模型 | `src/models/db/work_order.py` | WorkOrder 表：類型、優先級、狀態、指派人、截止日 | ⬜ |
-| 13-10 | 工單自動產生 | `src/services/work_order_service.py` | 告警 → 自動建立工單（可配置觸發條件） | ⬜ |
-| 13-11 | 工單 API | `src/api/main.py` | CRUD 工單 + 狀態變更 + 留言/附件 | ⬜ |
-| 13-12 | 工單 Kanban 面板 | `frontend/src/components/WorkOrderBoard.tsx` | 待處理/進行中/完成 三欄拖拉面板 | ⬜ |
-| 13-13 | 工單與分析結果關聯 | `src/services/work_order_service.py` | 工單連結到觸發它的分析結果/告警 | ⬜ |
+| 13-7 | work_orders 資料表 + CRUD | `src/core/database.py` | work_orders 表含 priority/status/notes/assigned_agents | ✅ |
+| 13-8 | 工單 REST API | `src/api/main.py` | 6 端點：list/get/create/update/notes/stats | ✅ |
+| 13-9 | WebSocket 推播 | `src/api/websocket_manager.py` | broadcast_work_order_update | ✅ |
+| 13-10 | 告警→工單自動建立 | `POST /api/alerts/{id}/create-work-order` | 預填告警資訊 + 雙向關聯 | ✅ |
+| 13-11 | 工單 Kanban 面板 | `frontend/src/components/WorkOrderPanel.tsx` | 待處理/進行中/已完成 三欄 + 詳情 + 備註時間線 | ✅ |
+| **前端整合** | | | | |
+| 13-12 | DashboardView 整合 | `frontend/src/components/DashboardView.tsx` | 新增「警報」tab + 活躍告警數量 badge | ✅ |
+| 13-13 | useWebSocket 更新 | `frontend/src/hooks/useWebSocket.ts` | 處理 alert_new/alert_updated/work_order_updated | ✅ |
+| 13-14 | TaskLauncher 重構 | `frontend/src/components/TaskLauncher.tsx` | 精簡底部列 + 向上滑出抽屜（釋放主內容空間） | ✅ |
+| **後續增強（未來）** | | | | |
+| 13-E1 | 告警規則引擎 | `src/services/alert_engine.py` | 可配置閾值規則 + 複合條件 + 靜默期 | 🔜 |
+| 13-E2 | 通知渠道 | `src/services/notifiers/` | Email / Webhook / LINE Notify | 🔜 |
+| 13-E3 | 告警規則 YAML 設定 | `configs/alerts/rules.yaml` | YAML 定義規則，支援熱更新 | 🔜 |
 
-**依賴**：Phase 12（需要資料庫）
-**整合點**：OrchestrationEngine 完成分析後觸發告警判斷
+**依賴**：Phase 12（需要資料庫）✅ 已滿足
+**整合點**：REST API + WebSocket 雙通道，外部廠商可透過 Ingest API 推送
 
 ---
 

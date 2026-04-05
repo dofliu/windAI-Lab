@@ -1747,6 +1747,7 @@ async def kb_delete_source(
 def _get_db():
     """取得資料庫單例（lazy import 避免循環依賴）。"""
     from src.core.database import get_database
+
     return get_database()
 
 
@@ -1760,7 +1761,9 @@ async def list_alerts(
 ) -> dict[str, Any]:
     """查詢告警列表，支援依狀態、嚴重程度、風機篩選。"""
     db = _get_db()
-    alerts = db.list_alerts(limit=limit, offset=offset, status=status, severity=severity, turbine_id=turbine_id)
+    alerts = db.list_alerts(
+        limit=limit, offset=offset, status=status, severity=severity, turbine_id=turbine_id
+    )
     return {"status": "success", "alerts": alerts, "total": len(alerts)}
 
 
@@ -1889,7 +1892,9 @@ async def list_work_orders(
 ) -> dict[str, Any]:
     """查詢工單列表。"""
     db = _get_db()
-    orders = db.list_work_orders(limit=limit, offset=offset, status=status, priority=priority, turbine_id=turbine_id)
+    orders = db.list_work_orders(
+        limit=limit, offset=offset, status=status, priority=priority, turbine_id=turbine_id
+    )
     return {"status": "success", "work_orders": orders, "total": len(orders)}
 
 

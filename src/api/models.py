@@ -137,7 +137,9 @@ class AlertIngestRequest(BaseModel):
         default_factory=dict,
         description="相關量測值，如 {temperature: 87.3, threshold: 80.0, unit: '°C'}",
     )
-    tags: list[str] = Field(default_factory=list, description="分類標籤，如 ['gearbox', 'temperature']")
+    tags: list[str] = Field(
+        default_factory=list, description="分類標籤，如 ['gearbox', 'temperature']"
+    )
     metadata: dict[str, Any] = Field(default_factory=dict, description="其他自訂欄位")
 
 

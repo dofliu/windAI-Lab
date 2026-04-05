@@ -391,12 +391,21 @@ class Database:
                 "created_at, occurred_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    alert_id, turbine_id, source, severity, title, description,
-                    task_id, agent_id, source_system, source_alert_id,
+                    alert_id,
+                    turbine_id,
+                    source,
+                    severity,
+                    title,
+                    description,
+                    task_id,
+                    agent_id,
+                    source_system,
+                    source_alert_id,
                     json.dumps(tags or []),
                     json.dumps(metrics or {}, default=_json_fallback),
                     json.dumps(metadata or {}, default=_json_fallback),
-                    now, occurred_at or now,
+                    now,
+                    occurred_at or now,
                 ),
             )
         logger.debug(f"告警已建立：{alert_id} [{severity}] {title}")
@@ -425,7 +434,8 @@ class Database:
                     vals.append(resolved_by)
             vals.append(alert_id)
             cursor = conn.execute(
-                f"UPDATE alerts SET {', '.join(sets)} WHERE id = ?", vals,
+                f"UPDATE alerts SET {', '.join(sets)} WHERE id = ?",
+                vals,
             )
             return cursor.rowcount > 0
 
@@ -445,7 +455,9 @@ class Database:
             row = conn.execute("SELECT * FROM alerts WHERE id = ?", (alert_id,)).fetchone()
             return _row_to_alert(row) if row else None
 
-    def get_alert_by_source(self, source_system: str, source_alert_id: str) -> dict[str, Any] | None:
+    def get_alert_by_source(
+        self, source_system: str, source_alert_id: str
+    ) -> dict[str, Any] | None:
         """依外部來源 ID 查詢告警（用於去重）。"""
         self.initialize()
         with self._connect() as conn:
@@ -494,9 +506,15 @@ class Database:
         self.initialize()
         with self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) as c FROM alerts").fetchone()["c"]
-            active = conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status = 'active'").fetchone()["c"]
-            critical = conn.execute("SELECT COUNT(*) as c FROM alerts WHERE severity = 'critical' AND status = 'active'").fetchone()["c"]
-            warning = conn.execute("SELECT COUNT(*) as c FROM alerts WHERE severity = 'warning' AND status = 'active'").fetchone()["c"]
+            active = conn.execute(
+                "SELECT COUNT(*) as c FROM alerts WHERE status = 'active'"
+            ).fetchone()["c"]
+            critical = conn.execute(
+                "SELECT COUNT(*) as c FROM alerts WHERE severity = 'critical' AND status = 'active'"
+            ).fetchone()["c"]
+            warning = conn.execute(
+                "SELECT COUNT(*) as c FROM alerts WHERE severity = 'warning' AND status = 'active'"
+            ).fetchone()["c"]
             return {
                 "total": total,
                 "active": active,
@@ -528,7 +546,12 @@ class Database:
                 "assigned_agents, estimated_duration_hours, notes, created_at, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, '[]', ?, ?)",
                 (
-                    order_id, alert_id, turbine_id, title, description, priority,
+                    order_id,
+                    alert_id,
+                    turbine_id,
+                    title,
+                    description,
+                    priority,
                     json.dumps(assigned_agents or []),
                     estimated_duration_hours,
                     now,
@@ -544,8 +567,16 @@ class Database:
     def update_work_order(self, order_id: str, **fields: Any) -> bool:
         """更新工單欄位。"""
         self.initialize()
-        allowed = {"status", "priority", "title", "description", "assigned_agents",
-                    "estimated_duration_hours", "started_at", "completed_at"}
+        allowed = {
+            "status",
+            "priority",
+            "title",
+            "description",
+            "assigned_agents",
+            "estimated_duration_hours",
+            "started_at",
+            "completed_at",
+        }
         updates: list[str] = []
         vals: list[Any] = []
         for k, v in fields.items():
@@ -568,7 +599,8 @@ class Database:
         vals.append(order_id)
         with self._connect() as conn:
             cursor = conn.execute(
-                f"UPDATE work_orders SET {', '.join(updates)} WHERE id = ?", vals,
+                f"UPDATE work_orders SET {', '.join(updates)} WHERE id = ?",
+                vals,
             )
             return cursor.rowcount > 0
 
@@ -576,15 +608,19 @@ class Database:
         """新增工單備註。"""
         self.initialize()
         with self._connect() as conn:
-            row = conn.execute("SELECT notes FROM work_orders WHERE id = ?", (order_id,)).fetchone()
+            row = conn.execute(
+                "SELECT notes FROM work_orders WHERE id = ?", (order_id,)
+            ).fetchone()
             if not row:
                 return False
             notes = json.loads(row["notes"] or "[]")
-            notes.append({
-                "timestamp": datetime.now().isoformat(),
-                "author": author,
-                "text": text,
-            })
+            notes.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "author": author,
+                    "text": text,
+                }
+            )
             conn.execute(
                 "UPDATE work_orders SET notes = ? WHERE id = ?",
                 (json.dumps(notes), order_id),
@@ -633,9 +669,15 @@ class Database:
         self.initialize()
         with self._connect() as conn:
             total = conn.execute("SELECT COUNT(*) as c FROM work_orders").fetchone()["c"]
-            open_count = conn.execute("SELECT COUNT(*) as c FROM work_orders WHERE status = 'open'").fetchone()["c"]
-            in_progress = conn.execute("SELECT COUNT(*) as c FROM work_orders WHERE status = 'in_progress'").fetchone()["c"]
-            completed = conn.execute("SELECT COUNT(*) as c FROM work_orders WHERE status = 'completed'").fetchone()["c"]
+            open_count = conn.execute(
+                "SELECT COUNT(*) as c FROM work_orders WHERE status = 'open'"
+            ).fetchone()["c"]
+            in_progress = conn.execute(
+                "SELECT COUNT(*) as c FROM work_orders WHERE status = 'in_progress'"
+            ).fetchone()["c"]
+            completed = conn.execute(
+                "SELECT COUNT(*) as c FROM work_orders WHERE status = 'completed'"
+            ).fetchone()["c"]
             return {
                 "total": total,
                 "open": open_count,
