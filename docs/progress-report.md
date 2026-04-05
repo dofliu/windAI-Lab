@@ -1,6 +1,6 @@
 # WindAI Lab — 專案進度報告
 
-> 最後更新：2026-03-28（Phase 10 — UI 抽象層重構 + 可插拔 OfficeRenderer 架構）
+> 最後更新：2026-04-05（Phase 13 — 告警系統 + 工單管理 + UI 重構）
 
 ---
 
@@ -10,10 +10,10 @@
 |------|--------|------|--------|
 | **核心代理** | 12 (core) | 12 | 100% |
 | **可聘用代理** | 10 (hirable) | 10+ | 100% |
-| **技能模組** | 10 | 12+ | 83% |
-| **ML 模型** | 3 | 6+ | 50% |
-| **REST API 端點** | 30+ | 35+ | 86% |
-| **前端元件** | 28 | 30+ | 93% |
+| **技能模組** | 12 | 12+ | 100% |
+| **ML 模型** | 5 | 6+ | 83% |
+| **REST API 端點** | 45+ | 50+ | 90% |
+| **前端元件** | 31 | 35+ | 89% |
 | **Office Renderer** | 3（pixel / modern / minimal） | 3+ | 100% |
 | **測試覆蓋** | 17 檔案 / 368 測試 | — | 良好 |
 | **Docker 部署** | ✅ | ✅ | 100% |
@@ -28,6 +28,10 @@
 | **多檔案批次載入** | ✅ | ✅ | 100% |
 | **自動實驗循環** | ✅ | ✅ | 100% |
 | **警報事件處理** | ✅ | ✅ | 100% |
+| **戰情中心 UI** | ✅ | ✅ | 100% |
+| **持久化儲存 (SQLite)** | ✅ | ✅ | 100% |
+| **告警系統 + Ingest API** | ✅ | ✅ | 100% |
+| **工單管理 + Kanban** | ✅ | ✅ | 100% |
 | **UI 抽象層 (Renderer)** | ✅ | ✅ | 100% |
 
 **整體評估：約 88% 完成度**（UI 可插拔架構完成，3 種截然不同的辦公室風格）
@@ -521,6 +525,190 @@ frontend/src/renderers/
 - 錯誤重試/降級策略
 - 擴展更多 Renderer 風格
 
+### Phase 11 — 戰情中心升級（2026-04-04）
+
+**目標**：任務執行中的 UI 體驗升級，從單一列日誌到三欄式即時監控面板。
+
+#### 新增/修改檔案
+
+| 檔案 | 類型 | 說明 |
+|------|------|------|
+| `frontend/src/components/MissionAgentPanel.tsx` | 新增 | 參與代理即時面板，顯示 tier 標籤、進度條、最新日誌 |
+| `frontend/src/components/WorkflowProgress.tsx` | 重構 | 三欄佈局：左（代理面板）/ 中（進度+日誌）/ 右（分析圖表） |
+| `frontend/src/components/App.tsx` | 修改 | ViewSwitcher 邏輯 + header 任務狀態標籤 + 「返回辦公室」按鈕 |
+
+#### 關鍵功能
+
+- **MissionAgentPanel**：任務進行中只顯示實際參與的代理，每個代理顯示即時進度百分比、tier 色標、最新工作日誌
+- **三欄佈局**：左欄代理面板（寬度固定 w-56）、中欄進度條+日誌流（flex-1）、右欄分析結果圖表（自適應）
+- **步驟進度條**：水平可捲動步驟指示器，狀態圖示 ✓ done / ● current / ○ pending
+- **ViewSwitcher**：`isMissionMode` 自動切換，任務完成後保留結果畫面（missionSticky），「返回辦公室」按鈕手動退出
+- **即時分析推播**：後端透過 WebSocket `analysis_result` 事件推播，前端即時渲染為圖表（不再等任務完成）
+- **任務記錄自動存檔**：任務完成時自動計算耗時、提取參與代理、儲存至 localStorage（含 workLog snapshot）
+
+---
+
+### Phase 12 — 持久化儲存（2026-04-04）
+
+**目標**：所有分析結果、工作日誌、任務記錄持久化到資料庫，不再因重啟而消失。
+
+#### 新增/修改檔案
+
+| 檔案 | 類型 | 說明 |
+|------|------|------|
+| `src/core/database.py` | 新增 | SQLite 持久化模組，3 張表 + 完整 CRUD + WAL 模式 |
+| `src/agents/orchestrator/engine.py` | 修改 | Workflow 執行自動 create_task / complete_task |
+| `src/api/main.py` | 修改 | +3 端點：history / detail / stats |
+| `frontend/src/hooks/useTaskHistory.ts` | 新增 | 前後端雙層合併（localStorage + API） |
+| `frontend/src/components/TaskHistoryList.tsx` | 新增 | 歷史記錄列表元件 |
+
+#### 資料庫設計
+
+```sql
+tasks          — id, command, parameters, status, started_at, completed_at, duration_ms, agent_ids, agent_names
+work_logs      — id, task_id(FK), timestamp, agent_id, agent_name, message, type
+analysis_results — id, task_id(FK), chart_type, title, data(JSON), metadata(JSON), created_at
+```
+
+- **SQLite + WAL**：Write-Ahead Logging 提升併發效能，零額外依賴（Python 內建 sqlite3）
+- **全域單例**：`get_database()` 確保整個應用程式共用一個 Database 實例
+- **引擎整合**：OrchestrationEngine 在 workflow 開始時 `create_task()`，完成/失敗時 `complete_task()`
+- **前端合併策略**：useTaskHistory 每 30 秒輪詢 `GET /api/tasks/history?limit=50`，前端 localStorage 記錄優先（含完整 analysisResults），後端記錄補充，ID 去重
+
+#### REST API 端點
+
+| 端點 | 方法 | 說明 |
+|------|------|------|
+| `/api/tasks/history` | GET | 分頁查詢任務列表（limit/offset/status） |
+| `/api/tasks/{task_id}` | GET | 單筆任務詳情（含 work_logs + analysis_results） |
+| `/api/tasks/stats/summary` | GET | 統計摘要（total/completed/error/logs/results） |
+
+---
+
+### Phase 13 — 告警系統 + 工單管理 + UI 重構（2026-04-05）
+
+**目標**：建立服務閉環（分析 → 告警 → 工單），提供標準化外部 API 供廠商推送告警，並重構 TaskLauncher 改善介面空間配置。
+
+#### 新增/修改檔案
+
+| 檔案 | 類型 | 說明 |
+|------|------|------|
+| `src/core/database.py` | 修改 | +2 張表（alerts + work_orders）+ 14 個 CRUD 方法 |
+| `src/api/models.py` | 修改 | +10 個 Pydantic model（告警 + 工單請求/回應） |
+| `src/api/websocket_manager.py` | 修改 | +2 方法：broadcast_alert / broadcast_work_order_update |
+| `src/api/main.py` | 修改 | +12 個 REST API 端點 |
+| `frontend/src/types/agent.ts` | 修改 | +Alert / WorkOrder / AlertSeverity 等 8 個型別 |
+| `frontend/src/hooks/useWebSocket.ts` | 修改 | +3 事件處理（alert_new / alert_updated / work_order_updated） |
+| `frontend/src/components/AlertPanel.tsx` | 新增 | 告警管理面板 |
+| `frontend/src/components/WorkOrderPanel.tsx` | 新增 | 工單 Kanban 看板 |
+| `frontend/src/components/DashboardView.tsx` | 修改 | 新增「警報」tab + 活躍告警數量 badge |
+| `frontend/src/components/App.tsx` | 修改 | 傳遞 alerts / workOrders 至 DashboardView |
+| `frontend/src/components/TaskLauncher.tsx` | 重構 | 精簡底部列 + 向上滑出抽屜 |
+
+#### 資料庫擴充
+
+```sql
+alerts — id, turbine_id, source, severity, title, description, status,
+         task_id(FK), agent_id, source_system, source_alert_id, tags(JSON),
+         metrics(JSON), metadata(JSON), created_at, occurred_at,
+         acknowledged_at, resolved_at, resolved_by, work_order_id
+
+work_orders — id, alert_id, turbine_id, title, description, priority,
+              status, assigned_agents(JSON), estimated_duration_hours,
+              notes(JSON), created_at, started_at, completed_at, metadata(JSON)
+```
+
+**索引策略**：alerts 上建 status / severity / turbine_id / created_at / source_alert_id 五個索引；work_orders 上建 status / priority / turbine_id / alert_id 四個索引。
+
+**外部去重機制**：`source_system` + `source_alert_id` 組合唯一，同一外部告警不會重複建立。
+
+#### REST API 端點
+
+| 端點 | 方法 | 說明 |
+|------|------|------|
+| `/api/alerts` | GET | 告警列表（支援 status/severity/turbine_id 篩選） |
+| `/api/alerts/stats` | GET | 告警統計（total/active/critical_active/warning_active） |
+| `/api/alerts/{id}` | GET | 單筆告警詳情 |
+| `/api/alerts` | POST | 手動建立告警 |
+| `/api/alerts/ingest` | POST | **外部系統標準推送接口**（含去重） |
+| `/api/alerts/{id}` | PATCH | 更新狀態（acknowledged/resolved/dismissed） |
+| `/api/alerts/{id}/create-work-order` | POST | 從告警自動建立工單（預填資訊 + 雙向關聯） |
+| `/api/work-orders` | GET | 工單列表（支援 status/priority/turbine_id 篩選） |
+| `/api/work-orders/stats` | GET | 工單統計（total/open/in_progress/completed） |
+| `/api/work-orders/{id}` | GET | 單筆工單詳情 |
+| `/api/work-orders` | POST | 建立新工單 |
+| `/api/work-orders/{id}` | PATCH | 更新工單（狀態/優先程度/指派代理） |
+| `/api/work-orders/{id}/notes` | POST | 新增工單備註 |
+
+#### 外部 Ingest API 規格
+
+提供給外部廠商（Vestas CMS、Siemens Gamesa 等）的統一推送格式：
+
+```json
+POST /api/alerts/ingest
+{
+  "source_system": "vestas_cms",
+  "source_alert_id": "CMS-2024-00123",
+  "turbine_id": "Kelmarsh_1",
+  "severity": "warning",
+  "title": "齒輪箱溫度異常",
+  "description": "主軸承溫度連續 2 小時超過 85°C",
+  "occurred_at": "2026-04-05T08:30:00Z",
+  "metrics": { "temperature": 87.3, "threshold": 80.0, "unit": "°C" },
+  "tags": ["gearbox", "temperature"],
+  "metadata": {}
+}
+```
+
+**三種告警來源**：
+1. **內部產生**（自動）：SCADA 異常偵測、任務失敗、代理錯誤
+2. **外部推送**（Ingest API）：廠商 CMS/SCADA 系統主動呼叫
+3. **手動輸入**（前端 + REST API）：巡檢人員手動建立
+
+#### WebSocket 事件
+
+| 事件類型 | 觸發時機 | Payload |
+|----------|----------|---------|
+| `alert_new` | 新告警建立 | 完整 alert dict |
+| `alert_updated` | 告警狀態變更 | 更新後的 alert dict |
+| `work_order_updated` | 工單建立或更新 | 完整 work_order dict |
+
+#### 前端元件詳述
+
+**AlertPanel（告警管理面板）**：
+- 雙層資料來源：API 輪詢 + WebSocket 即時推送，自動合併去重
+- 篩選器：狀態（全部/待處理/已確認/已解決）+ 嚴重程度（全部/嚴重/警告/資訊）
+- 每條告警顯示：嚴重程度圖示、標題、狀態 badge、風機 ID、來源系統、時間戳
+- 操作按鈕：確認、解決、駁回、建工單（根據狀態動態顯示）
+- 手動建立表單：嵌入面板頂部，可摺疊
+- 活躍告警數量 badge：整合到 DashboardView tab 上，嚴重告警時紅色脈動
+
+**WorkOrderPanel（工單 Kanban 看板）**：
+- 三欄 Kanban 佈局：待處理 / 進行中 / 已完成
+- 工單卡片：優先程度圖示、標題、風機 ID、時間、指派代理 tags
+- 詳情面板：點擊卡片展開，顯示描述、關聯告警、狀態操作按鈕
+- 備註時間線：按時間排列的備註列表 + 即時輸入框（Enter 送出）
+- 手動建立表單：標題/優先程度/風機 ID/描述
+
+#### TaskLauncher UI 重構
+
+**問題**：原先任務卡片 4 欄 grid 永遠展開，占據右側面板 ~60% 垂直空間，主內容區（圖表/日誌）被擠壓。
+
+**解法**：改為精簡底部列 + 向上滑出抽屜：
+- **收合（預設）**：單行顯示 `[▲] icon 任務名稱 描述 [參數選擇] [▶ 執行]`
+- **展開（點擊 ▲）**：任務面板從底部向上滑出（absolute bottom-full + transition），任務改為水平 pill 佈局
+- **自動收合**：點擊外部或選擇任務後自動收合
+- 主內容區獲得最大垂直空間
+
+#### 後續增強項目（留待未來 Phase）
+
+| 項目 | 說明 |
+|------|------|
+| 告警規則引擎 | 可配置閾值規則 + 複合條件 + 靜默期（YAML 驅動） |
+| 通知渠道 | Email (SMTP) / Webhook (POST JSON) / LINE Notify |
+| DataConnector 抽象層 | 統一外部資料拉取介面，不同廠商寫不同 adapter |
+| 工單拖拉排序 | Kanban 欄間拖拉更新狀態 |
+
 ---
 
 ## 3. 代理架構（新制）
@@ -649,19 +837,20 @@ frontend/src/renderers/
 
 | 指標 | 數值 |
 |------|------|
-| Python 原始碼檔案 | 90+ |
-| 前端元件 (TSX/TS) | 28 |
+| Python 原始碼檔案 | 95+ |
+| 前端元件 (TSX/TS) | 31 |
 | Office Renderer | 3（pixel / modern / minimal） |
 | 測試檔案 / 測試數 | 17 / 368 |
-| 技能模組 | 10 (scada_ingestion, scada_cleaning, turbine_profiler, domain_feature_extraction, fault_classification, nbm_training, rul_prediction, data_inspector, batch_load, auto_experiment, alarm_processor) |
+| 技能模組 | 12 |
 | YAML 代理定義 | 22 (12 core + 10 hirable) |
-| ML 模型 | 3 (NBM, FaultClassifier, RUL) |
-| REST API 端點 | 30+ |
+| ML 模型 | 5 (NBM, FaultClassifier, RUL, AnomalyDetector, WakeAnalyzer) |
+| REST API 端點 | 45+ |
+| SQLite 資料表 | 5 (tasks, work_logs, analysis_results, alerts, work_orders) |
 | Docker 服務 | 4 (backend, frontend, Redis, MLflow) |
 | 型別覆蓋率 | 100% (type hints) |
 | Linter | ruff (strict) |
 | Formatter | black (99 chars) |
-| 預估總程式碼行數 | ~18,000+ 行 |
+| 預估總程式碼行數 | ~20,000+ 行 |
 
 ---
 
@@ -690,3 +879,10 @@ frontend/src/renderers/
 | ADR-19 | AlarmProcessor 事件→時間序列 | 離散警報轉為固定頻率 DataFrame，可與 SCADA 合併 |
 | ADR-20 | OfficeRenderer 可插拔架構 | 主題不只換色要換風格，renderer 與業務邏輯完全解耦 |
 | ADR-21 | Workflow 統一架構 | 三條平行路徑合一，WorkflowStep 攜帶 task_template 支援真實/模擬雙模式 |
+| ADR-22 | MissionAgentPanel 分離元件 | 戰情中心代理面板獨立於 WorkflowProgress，便於單獨重用與測試 |
+| ADR-23 | missionSticky 保留結果畫面 | 任務完成後不立即退出戰情中心，讓使用者查看分析結果再手動返回 |
+| ADR-24 | SQLite + WAL（零依賴） | 不引入 SQLAlchemy，用 Python 內建 sqlite3 + WAL 模式，保持系統輕量 |
+| ADR-25 | 前後端雙層儲存合併 | localStorage 即時可用（離線也能看），API 提供持久化，去重合併確保一致性 |
+| ADR-26 | AlertIngestRequest 標準化 | 統一外部推送格式，source_alert_id 去重避免重複告警，降低廠商對接門檻 |
+| ADR-27 | 告警→工單雙向關聯 | alerts.work_order_id + work_orders.alert_id 雙向連結，任一方向可查詢 |
+| ADR-28 | TaskLauncher 抽屜式設計 | 精簡底部列 + 向上滑出面板，主內容區空間最大化，用 absolute 定位不影響佈局流 |
