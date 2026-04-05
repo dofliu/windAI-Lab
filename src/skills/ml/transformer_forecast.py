@@ -1,7 +1,7 @@
-"""LSTM 時序預測技能 — 包裝 LSTMForecaster 為可重用技能。
+"""PatchTST 時序預測技能 — 包裝 PatchTSTForecaster 為可重用技能。
 
 支援：
-- 風速/功率/溫度時序預測
+- 風速/功率/溫度時序預測（Transformer 架構）
 - 自動降級至 Ridge AR（PyTorch 不可用時）
 - MLflow + JSONL 實驗記錄
 - 模型持久化（儲存/載入）
@@ -19,32 +19,37 @@ from typing import Any
 from src.skills.base import BaseSkill, ProgressCallback, SkillInput, SkillOutput, SkillStatus
 
 _EXPERIMENT_LOG_DIR = Path(__file__).resolve().parents[3] / "data" / "experiments"
-_MODEL_SAVE_DIR = Path(__file__).resolve().parents[3] / "models" / "lstm"
+_MODEL_SAVE_DIR = Path(__file__).resolve().parents[3] / "models" / "patch_tst"
 
 
-class LSTMForecastSkill(BaseSkill):
-    """LSTM 風速/功率短期時序預測。"""
+class TransformerForecastSkill(BaseSkill):
+    """PatchTST 風速/功率短期時序預測。"""
 
-    skill_id = "lstm_forecast"
-    display_name = "LSTM 時序預測"
-    description = "使用 LSTM 進行風速或功率短期預測，支援降級至 Ridge AR，含實驗追蹤與模型持久化"
-    version = "2.0.0"
+    skill_id = "transformer_forecast"
+    display_name = "PatchTST 時序預測"
+    description = "使用 PatchTST (Transformer) 進行風速或功率短期預測，支援降級至 Ridge AR"
+    version = "1.0.0"
 
     async def execute(
         self,
         inp: SkillInput,
         progress_cb: ProgressCallback = None,
     ) -> SkillOutput:
-        """執行 LSTM 時序預測。
+        """執行 PatchTST 時序預測。
 
         Parameters（透過 inp.parameters）:
             turbine_id: 風機 ID
             target: 預測目標（"wind_speed" / "power" / "temperature"），預設 "wind_speed"
             sequence_length: 輸入序列長度（預設 48）
             forecast_horizon: 預測步數（預設 12）
+            patch_length: patch 長度（預設 8）
+            stride: patch 步進（預設 8，即不重疊）
+            d_model: Transformer 隱藏維度（預設 64）
+            n_heads: 注意力頭數（預設 4）
+            n_layers: Transformer 層數（預設 2）
             epochs: 訓練 epoch 數（預設 50）
             save_model: 是否儲存模型（預設 True）
-            experiment_name: 實驗名稱（預設 "lstm_forecast"）
+            experiment_name: 實驗名稱（預設 "transformer_forecast"）
         """
         df = inp.dataframe if inp.dataframe is not None else inp.data
         if df is None:
@@ -60,9 +65,14 @@ class LSTMForecastSkill(BaseSkill):
         target = inp.parameters.get("target", "wind_speed")
         seq_len = inp.parameters.get("sequence_length", 48)
         horizon = inp.parameters.get("forecast_horizon", 12)
+        patch_len = inp.parameters.get("patch_length", 8)
+        stride = inp.parameters.get("stride", 8)
+        d_model = inp.parameters.get("d_model", 64)
+        n_heads = inp.parameters.get("n_heads", 4)
+        n_layers = inp.parameters.get("n_layers", 2)
         epochs = inp.parameters.get("epochs", 50)
         save_model = inp.parameters.get("save_model", True)
-        experiment_name = inp.parameters.get("experiment_name", "lstm_forecast")
+        experiment_name = inp.parameters.get("experiment_name", "transformer_forecast")
 
         if progress_cb:
             await progress_cb(0.05, f"準備 {target} 時序資料...")
@@ -70,7 +80,7 @@ class LSTMForecastSkill(BaseSkill):
         loop = asyncio.get_event_loop()
 
         try:
-            from src.models.degradation.lstm_forecaster import LSTMForecaster
+            from src.models.degradation.patch_tst_forecaster import PatchTSTForecaster
 
             # ── 1. 找目標欄位 ──
             target_col = _find_target_col(df, target)
@@ -93,16 +103,21 @@ class LSTMForecastSkill(BaseSkill):
 
             # ── 2. 初始化模型 ──
             if progress_cb:
-                await progress_cb(0.15, "初始化 LSTMForecaster...")
+                await progress_cb(0.15, "初始化 PatchTST 模型...")
 
-            forecaster = LSTMForecaster(
+            forecaster = PatchTSTForecaster(
                 sequence_length=seq_len,
                 forecast_horizon=horizon,
+                patch_length=patch_len,
+                stride=stride,
+                d_model=d_model,
+                n_heads=n_heads,
+                n_layers=n_layers,
             )
 
             # ── 3. 訓練與預測 ──
             if progress_cb:
-                await progress_cb(0.20, f"開始訓練（{epochs} epochs）...")
+                await progress_cb(0.20, f"開始訓練 PatchTST（{epochs} epochs）...")
 
             result = await loop.run_in_executor(
                 None,
@@ -129,10 +144,12 @@ class LSTMForecastSkill(BaseSkill):
             hyperparams = {
                 "sequence_length": seq_len,
                 "forecast_horizon": horizon,
+                "patch_length": patch_len,
+                "stride": stride,
+                "d_model": d_model,
+                "n_heads": n_heads,
+                "n_layers": n_layers,
                 "epochs": epochs,
-                "hidden_dim": forecaster._hidden_dim,
-                "num_layers": forecaster._num_layers,
-                "dropout": forecaster._dropout,
             }
             metrics = {
                 "rmse": result.rmse,
@@ -178,15 +195,18 @@ class LSTMForecastSkill(BaseSkill):
                     "mae": result.mae,
                     "r2": result.r2,
                     "sequence_length": result.sequence_length,
+                    "patch_length": result.patch_length,
+                    "num_patches": result.num_patches,
                     "epochs_trained": result.epochs_trained,
                     "data_points_used": len(series),
                     "model_path": model_path,
                     "experiment_name": experiment_name,
                 },
                 summary=(
-                    f"{target} LSTM 預測 | "
+                    f"{target} PatchTST 預測 | "
                     f"model={result.model_type} | "
                     f"RMSE={result.rmse:.3f} | MAE={result.mae:.3f} | R²={result.r2:.4f} | "
+                    f"patches={result.num_patches}x{result.patch_length} | "
                     f"預測 {forecast_minutes} 分鐘"
                 ),
                 dataframe=df,
@@ -195,7 +215,7 @@ class LSTMForecastSkill(BaseSkill):
         except Exception as e:
             return SkillOutput(
                 status=SkillStatus.ERROR,
-                errors=[f"LSTM 預測失敗：{e}"],
+                errors=[f"PatchTST 預測失敗：{e}"],
             )
 
 
@@ -225,7 +245,6 @@ def _log_experiment(
     model_path: str | None,
 ) -> None:
     """記錄實驗至 JSONL + 可選 MLflow。"""
-    # MLflow（可選）
     mlflow_logged = False
     try:
         import mlflow
@@ -245,7 +264,6 @@ def _log_experiment(
     except Exception:
         pass
 
-    # JSONL 本地記錄（始終執行）
     _EXPERIMENT_LOG_DIR.mkdir(parents=True, exist_ok=True)
     record = {
         "experiment_name": experiment_name,

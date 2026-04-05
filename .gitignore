@@ -30,6 +30,10 @@ models/llm/
 models/anomaly/
 models/registry/
 models/baselines/
+models/lstm/
+
+# Experiment logs (generated at runtime)
+data/experiments/
 
 # Database
 *.db
