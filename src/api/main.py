@@ -1012,6 +1012,9 @@ async def get_task_history(
         db = get_database()
         tasks = db.list_tasks(limit=limit, offset=offset, status=status)
         total = db.count_tasks(status=status)
+        # 附帶每個任務的分析結果（圖表資料），讓前端 refresh 後仍可顯示
+        for task in tasks:
+            task["analysis_results"] = db.get_task_results(task["id"])
         return {
             "tasks": tasks,
             "total": total,
