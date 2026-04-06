@@ -8,9 +8,11 @@
 
 from __future__ import annotations
 
-import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from src.utils.logger import get_logger
 
@@ -70,9 +72,7 @@ def _scan_single_turbine(
             "health_score": report.get("health_score", 0),
             "power_deviation_pct": pc.get("mean_deviation_pct", 0),
             "efficiency_loss_pct": pc.get("efficiency_loss_pct", 0),
-            "availability_pct": report.get("operational_summary", {}).get(
-                "availability", 0
-            ),
+            "availability_pct": report.get("operational_summary", {}).get("availability", 0),
             "warnings_count": len(report.get("warnings", [])),
             "warnings": report.get("warnings", []),
         }
@@ -120,8 +120,7 @@ class FleetScanner:
 
         with ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             futures = {
-                executor.submit(_scan_single_turbine, tid, loader): tid
-                for tid in turbine_ids
+                executor.submit(_scan_single_turbine, tid, loader): tid for tid in turbine_ids
             }
 
             for future in as_completed(futures):
@@ -130,13 +129,15 @@ class FleetScanner:
                     result = future.result()
                     results.append(result)
                 except Exception as e:
-                    results.append({
-                        "turbine_id": tid,
-                        "status": "error",
-                        "error": str(e),
-                        "health_score": 0,
-                        "anomaly_rate_pct": 0,
-                    })
+                    results.append(
+                        {
+                            "turbine_id": tid,
+                            "status": "error",
+                            "error": str(e),
+                            "health_score": 0,
+                            "anomaly_rate_pct": 0,
+                        }
+                    )
 
                 completed += 1
                 if progress_cb:
@@ -172,20 +173,12 @@ class FleetScanner:
             "total_turbines": total,
             "scanned_ok": len(successful),
             "scan_failed": len(failed),
-            "avg_health_score": round(
-                sum(health_scores) / max(len(health_scores), 1), 1
-            ),
+            "avg_health_score": round(sum(health_scores) / max(len(health_scores), 1), 1),
             "min_health_score": min(health_scores) if health_scores else 0,
             "max_health_score": max(health_scores) if health_scores else 0,
-            "avg_anomaly_rate_pct": round(
-                sum(anomaly_rates) / max(len(anomaly_rates), 1), 2
-            ),
-            "critical_count": sum(
-                1 for r in risk_ranking if r.get("risk_level") == "Critical"
-            ),
-            "high_count": sum(
-                1 for r in risk_ranking if r.get("risk_level") == "High"
-            ),
+            "avg_anomaly_rate_pct": round(sum(anomaly_rates) / max(len(anomaly_rates), 1), 2),
+            "critical_count": sum(1 for r in risk_ranking if r.get("risk_level") == "Critical"),
+            "high_count": sum(1 for r in risk_ranking if r.get("risk_level") == "High"),
         }
 
         logger.info(

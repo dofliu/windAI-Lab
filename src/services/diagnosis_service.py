@@ -132,8 +132,7 @@ def run_windguard_diagnosis(
         fault_type = llm_result.get("fault_type_zh", "未判定")
         severity = llm_result.get("severity", "未判定")
         logger.info(
-            f"{turbine_id} WindGuard 診斷完成 — "
-            f"故障：{fault_type}, 嚴重度：{severity}"
+            f"{turbine_id} WindGuard 診斷完成 — " f"故障：{fault_type}, 嚴重度：{severity}"
         )
 
     except Exception as e:

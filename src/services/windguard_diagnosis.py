@@ -187,9 +187,7 @@ class WindGuardDiagnosis:
         """
         prompt = self._build_diagnosis_prompt(diagnosis_report, rag_contexts)
 
-        logger.info(
-            f"開始 LLM 診斷推理 — 風機：{diagnosis_report.get('turbine_id', '未知')}"
-        )
+        logger.info(f"開始 LLM 診斷推理 — 風機：{diagnosis_report.get('turbine_id', '未知')}")
 
         raw_response = self.llm.generate(
             prompt=prompt,
@@ -247,7 +245,7 @@ class WindGuardDiagnosis:
         recommendations = report.get("recommendations", [])
 
         prompt_parts: list[str] = [
-            f"## 風機 SCADA 數據分析報告\n",
+            "## 風機 SCADA 數據分析報告\n",
             f"- **風機 ID**：{turbine_id}",
             f"- **分析期間**：{period.get('start', 'N/A')} ~ {period.get('end', 'N/A')}",
             f"- **總記錄數**：{total_records:,} 筆（10 分鐘間隔）",
@@ -276,27 +274,31 @@ class WindGuardDiagnosis:
                     f"偏差 {a.get('deviation', '?')}σ"
                 )
 
-        prompt_parts.extend([
-            "",
-            "### 功率曲線分析",
-            f"- 平均偏差：{pc.get('mean_deviation_pct', 'N/A')}%",
-            f"- 最嚴重風速區間：{pc.get('worst_wind_speed_bin', 'N/A')}",
-            f"- 估算效率損失：{pc.get('efficiency_loss_pct', 'N/A')}%",
-            "",
-            "### 運行概況",
-            f"- 運行小時：{ops.get('operating_hours', 'N/A')} 小時",
-            f"- 可用率：{ops.get('availability', 'N/A')}%",
-            f"- 容量因數：{ops.get('capacity_factor', 'N/A')}%",
-        ])
+        prompt_parts.extend(
+            [
+                "",
+                "### 功率曲線分析",
+                f"- 平均偏差：{pc.get('mean_deviation_pct', 'N/A')}%",
+                f"- 最嚴重風速區間：{pc.get('worst_wind_speed_bin', 'N/A')}",
+                f"- 估算效率損失：{pc.get('efficiency_loss_pct', 'N/A')}%",
+                "",
+                "### 運行概況",
+                f"- 運行小時：{ops.get('operating_hours', 'N/A')} 小時",
+                f"- 可用率：{ops.get('availability', 'N/A')}%",
+                f"- 容量因數：{ops.get('capacity_factor', 'N/A')}%",
+            ]
+        )
 
         if ml:
-            prompt_parts.extend([
-                "",
-                "### ML 故障分類結果",
-                f"- 模型 F1 macro：{ml.get('model_f1_macro', 'N/A')}",
-                f"- 故障比例：{json.dumps(ml.get('fault_ratios', {}), ensure_ascii=False)}",
-                f"- 嚴重度分布：{json.dumps(ml.get('severity_distribution', {}), ensure_ascii=False)}",
-            ])
+            prompt_parts.extend(
+                [
+                    "",
+                    "### ML 故障分類結果",
+                    f"- 模型 F1 macro：{ml.get('model_f1_macro', 'N/A')}",
+                    f"- 故障比例：{json.dumps(ml.get('fault_ratios', {}), ensure_ascii=False)}",
+                    f"- 嚴重度分布：{json.dumps(ml.get('severity_distribution', {}), ensure_ascii=False)}",
+                ]
+            )
             top_faults = ml.get("top_faults", [])
             if top_faults:
                 prompt_parts.append("- 最嚴重故障事件：")
@@ -308,14 +310,16 @@ class WindGuardDiagnosis:
                     )
 
         if nbm:
-            prompt_parts.extend([
-                "",
-                "### NBM 功率曲線模型分析",
-                f"- 模型 R²：{nbm.get('model_r2', 'N/A')}",
-                f"- 模型 MAE：{nbm.get('model_mae', 'N/A')} kW",
-                f"- 異常筆數：{nbm.get('anomaly_count', 'N/A')}",
-                f"- 異常比率：{nbm.get('anomaly_ratio', 'N/A')}",
-            ])
+            prompt_parts.extend(
+                [
+                    "",
+                    "### NBM 功率曲線模型分析",
+                    f"- 模型 R²：{nbm.get('model_r2', 'N/A')}",
+                    f"- 模型 MAE：{nbm.get('model_mae', 'N/A')} kW",
+                    f"- 異常筆數：{nbm.get('anomaly_count', 'N/A')}",
+                    f"- 異常比率：{nbm.get('anomaly_ratio', 'N/A')}",
+                ]
+            )
 
         if warnings:
             prompt_parts.extend(["", "### 系統警告"])
@@ -335,19 +339,21 @@ class WindGuardDiagnosis:
                 content = ctx.get("content", "")[:500]
                 prompt_parts.append(f"[案例 {i}] 來源：{source}\n{content}")
 
-        prompt_parts.extend([
-            "",
-            "---",
-            "",
-            "請根據以上分析結果，以你的專業知識進行深層故障推理。",
-            "特別注意：",
-            "1. 從統計指標推斷最可能的具體故障類型",
-            "2. 說明故障的物理機制",
-            "3. 評估嚴重程度並給出置信度",
-            "4. 提供具體、可行的維護行動建議",
-            "",
-            "請以 JSON 格式回覆。",
-        ])
+        prompt_parts.extend(
+            [
+                "",
+                "---",
+                "",
+                "請根據以上分析結果，以你的專業知識進行深層故障推理。",
+                "特別注意：",
+                "1. 從統計指標推斷最可能的具體故障類型",
+                "2. 說明故障的物理機制",
+                "3. 評估嚴重程度並給出置信度",
+                "4. 提供具體、可行的維護行動建議",
+                "",
+                "請以 JSON 格式回覆。",
+            ]
+        )
 
         return "\n".join(prompt_parts)
 
@@ -452,9 +458,7 @@ class WindGuardDiagnosis:
                         f"```json\n{json.dumps(tool_result, ensure_ascii=False, indent=2)}\n```"
                     )
                 except Exception as e:
-                    conversation.append(
-                        f"\n### 工具執行失敗：{tool_name}\n錯誤：{str(e)}"
-                    )
+                    conversation.append(f"\n### 工具執行失敗：{tool_name}\n錯誤：{str(e)}")
 
             conversation.append(
                 "\n請根據工具結果繼續分析。若已有足夠資訊，請直接給出最終結論（JSON 格式）。"
@@ -475,7 +479,7 @@ class WindGuardDiagnosis:
 
         支援格式：TOOL_CALL: tool_name(param1="value1", param2="value2")
         """
-        pattern = r'TOOL_CALL:\s*(\w+)\(([^)]*)\)'
+        pattern = r"TOOL_CALL:\s*(\w+)\(([^)]*)\)"
         matches = re.findall(pattern, response)
 
         tool_calls: list[dict[str, Any]] = []
@@ -490,9 +494,7 @@ class WindGuardDiagnosis:
 
         return tool_calls
 
-    def _default_tool_executor(
-        self, tool_name: str, params: dict[str, str]
-    ) -> dict[str, Any]:
+    def _default_tool_executor(self, tool_name: str, params: dict[str, str]) -> dict[str, Any]:
         """預設工具執行器 — 呼叫 windAI-Lab 內建的診斷模組。"""
         turbine_id = params.get("turbine_id", "WT-01")
 
@@ -505,10 +507,7 @@ class WindGuardDiagnosis:
         elif tool_name == "get_turbine_health_score":
             return self._exec_health_score(turbine_id)
         elif tool_name == "compare_turbines":
-            ids = [
-                t.strip()
-                for t in params.get("turbine_ids", turbine_id).split(",")
-            ]
+            ids = [t.strip() for t in params.get("turbine_ids", turbine_id).split(",")]
             return self._exec_compare_turbines(ids)
         else:
             return {"error": f"未知工具：{tool_name}"}
@@ -516,8 +515,8 @@ class WindGuardDiagnosis:
     def _exec_detect_anomalies(self, turbine_id: str) -> dict[str, Any]:
         """執行異常偵測工具。"""
         try:
-            from src.services.diagnosis_service import run_full_diagnosis
             from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
+            from src.services.diagnosis_service import run_full_diagnosis
 
             df = load_turbine_data(turbine_id)
             report = run_full_diagnosis(df, turbine_id)
@@ -551,8 +550,8 @@ class WindGuardDiagnosis:
     def _exec_classify_faults(self, turbine_id: str) -> dict[str, Any]:
         """執行故障分類工具。"""
         try:
-            from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
             from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
+            from src.data_pipeline.ingestion.kelmarsh_loader import load_turbine_data
             from src.features.domain_features.wind_features import (
                 compute_power_curve_features,
                 compute_temperature_features,

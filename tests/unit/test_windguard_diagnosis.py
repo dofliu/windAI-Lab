@@ -10,9 +10,6 @@ import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-
 # ── WindGuardDiagnosis 測試 ──────────────────────────────────
 
 
@@ -128,7 +125,7 @@ class TestWindGuardDiagnosis:
 
         wg = WindGuardDiagnosis.__new__(WindGuardDiagnosis)
         response = (
-            'Let me investigate both turbines.\n'
+            "Let me investigate both turbines.\n"
             'TOOL_CALL: detect_anomalies(turbine_id="WT-01")\n'
             'TOOL_CALL: detect_anomalies(turbine_id="WT-02")\n'
         )
@@ -151,16 +148,18 @@ class TestWindGuardDiagnosis:
         from src.services.windguard_diagnosis import WindGuardDiagnosis
 
         mock_llm = MagicMock()
-        mock_llm.generate.return_value = json.dumps({
-            "fault_type": "generator_bearing_failure",
-            "fault_type_zh": "發電機軸承故障",
-            "severity": "High",
-            "confidence": 0.85,
-            "reasoning_chain": ["溫度異常集中在發電機軸承"],
-            "physical_mechanism": "軸承磨損導致摩擦熱增加",
-            "maintenance_actions": [{"action": "更換軸承", "priority": "immediate"}],
-            "risk_if_ignored": "可能導致發電機永久損壞",
-        })
+        mock_llm.generate.return_value = json.dumps(
+            {
+                "fault_type": "generator_bearing_failure",
+                "fault_type_zh": "發電機軸承故障",
+                "severity": "High",
+                "confidence": 0.85,
+                "reasoning_chain": ["溫度異常集中在發電機軸承"],
+                "physical_mechanism": "軸承磨損導致摩擦熱增加",
+                "maintenance_actions": [{"action": "更換軸承", "priority": "immediate"}],
+                "risk_if_ignored": "可能導致發電機永久損壞",
+            }
+        )
 
         wg = WindGuardDiagnosis()
         wg._llm = mock_llm
@@ -290,24 +289,31 @@ class TestDiagnosisServiceWindGuard:
             index=dates,
         )
 
-        mock_llm_response = json.dumps({
-            "fault_type": "gearbox_oil_degradation",
-            "fault_type_zh": "齒輪箱油品劣化",
-            "severity": "Medium",
-            "confidence": 0.72,
-            "reasoning_chain": ["油溫偏高"],
-            "physical_mechanism": "潤滑油劣化導致散熱效率下降",
-            "maintenance_actions": [{"action": "油品更換", "priority": "scheduled"}],
-            "risk_if_ignored": "齒輪箱加速磨損",
-        })
+        mock_llm_response = json.dumps(
+            {
+                "fault_type": "gearbox_oil_degradation",
+                "fault_type_zh": "齒輪箱油品劣化",
+                "severity": "Medium",
+                "confidence": 0.72,
+                "reasoning_chain": ["油溫偏高"],
+                "physical_mechanism": "潤滑油劣化導致散熱效率下降",
+                "maintenance_actions": [{"action": "油品更換", "priority": "scheduled"}],
+                "risk_if_ignored": "齒輪箱加速磨損",
+            }
+        )
 
-        with patch("src.services.windguard_diagnosis.WindGuardDiagnosis.llm", new_callable=lambda: property(lambda self: MagicMock())) as _:
+        with patch(
+            "src.services.windguard_diagnosis.WindGuardDiagnosis.llm",
+            new_callable=lambda: property(lambda self: MagicMock()),
+        ) as _:
             from src.services.windguard_diagnosis import WindGuardDiagnosis
 
             mock_llm = MagicMock()
             mock_llm.generate.return_value = mock_llm_response
 
-            with patch.object(WindGuardDiagnosis, "llm", new_callable=lambda: property(lambda self: mock_llm)):
+            with patch.object(
+                WindGuardDiagnosis, "llm", new_callable=lambda: property(lambda self: mock_llm)
+            ):
                 from src.services.diagnosis_service import run_windguard_diagnosis
 
                 result = run_windguard_diagnosis(df, "WT-TEST", enable_rag=False)

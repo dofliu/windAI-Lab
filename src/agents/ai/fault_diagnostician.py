@@ -363,10 +363,7 @@ class FaultDiagnostician(BaseAgent):
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 data=result,
-                summary=(
-                    f"Agentic 調查完成：{rounds} 輪對話, "
-                    f"{len(tool_calls)} 次工具呼叫"
-                ),
+                summary=(f"Agentic 調查完成：{rounds} 輪對話, " f"{len(tool_calls)} 次工具呼叫"),
             )
 
         except Exception as e:
