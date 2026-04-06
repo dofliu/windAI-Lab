@@ -502,7 +502,7 @@ export function useAgentSimulation() {
         } else {
           const progUpdates: Record<string, Partial<Agent>> = {}
           mission.agents.forEach((id) => {
-            progUpdates[id] = { progress: Math.min(prog + Math.random() * 10, 99) }
+            progUpdates[id] = { progress: Math.round(Math.min(prog + Math.random() * 10, 99)) }
           })
           batchUpdate(progUpdates)
         }

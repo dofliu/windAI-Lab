@@ -111,7 +111,7 @@ function StickyNote({
             />
           </div>
           <span className="text-[8px]" style={{ color: theme.global.textMuted }}>
-            {agent.progress}%
+            {Math.round(agent.progress ?? 0)}%
           </span>
         </div>
       )}
