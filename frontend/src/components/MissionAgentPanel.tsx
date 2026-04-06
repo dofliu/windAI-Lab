@@ -92,7 +92,7 @@ export default function MissionAgentPanel({ agents, workLogs, isCompleted }: Mis
                 {isCompleted
                   ? '已完成'
                   : agent.status === 'working'
-                    ? `${Math.round(progress * 100)}%`
+                    ? `${progress}%`
                     : agent.status === 'waiting'
                       ? '等待中'
                       : '待命'}
@@ -108,7 +108,7 @@ export default function MissionAgentPanel({ agents, workLogs, isCompleted }: Mis
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${Math.round(progress * 100)}%`,
+                    width: `${Math.min(progress, 100)}%`,
                     backgroundColor: statusColor.dot,
                   }}
                 />

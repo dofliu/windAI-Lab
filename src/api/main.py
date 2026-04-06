@@ -668,8 +668,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     logger.info(f"WebSocket 客戶端已連線，目前連線數：{ws_manager.active_count}")
 
     try:
-        # 連線時傳送所有代理的當前狀態
+        # 連線時傳送所有代理的當前狀態與最近工作日誌
         agents = get_all_agents()
+        recent_logs = _work_logs + orchestration_engine.work_logs
+        recent_logs.sort(key=lambda x: x.timestamp)
+        recent_logs = list(reversed(recent_logs[-50:]))
         await ws_manager.send_personal(
             websocket,
             {
@@ -677,6 +680,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 "timestamp": datetime.now().isoformat(),
                 "payload": {
                     "agents": [a.model_dump(mode="json") for a in agents],
+                    "work_logs": [log.model_dump(mode="json") for log in recent_logs],
                 },
             },
         )
