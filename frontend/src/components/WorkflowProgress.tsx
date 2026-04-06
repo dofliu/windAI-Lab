@@ -73,7 +73,7 @@ export default function WorkflowProgress({
     if (isCompleted) return 100
     if (totalSteps === 0) return 0
     const avgAgentProgress = activeAgents.length > 0
-      ? activeAgents.reduce((s, a) => s + (a.progress ?? 0), 0) / activeAgents.length
+      ? activeAgents.reduce((s, a) => s + (a.progress ?? 0), 0) / activeAgents.length / 100
       : 0
     return Math.round(((currentStepNum - 1 + avgAgentProgress) / totalSteps) * 100)
   }, [isCompleted, totalSteps, currentStepNum, activeAgents])
@@ -196,7 +196,7 @@ export default function WorkflowProgress({
                   }}
                 >
                   {a.displayName}
-                  {a.progress != null && ` ${Math.round(a.progress * 100)}%`}
+                  {a.progress != null && ` ${a.progress}%`}
                 </span>
               ))}
             </div>

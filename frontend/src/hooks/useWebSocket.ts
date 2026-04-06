@@ -74,6 +74,11 @@ export function useWebSocket() {
             const agentList = (msg.payload.agents || []).map(mapAgent)
             setAgents(agentList)
             updateRoomsFromAgents(agentList)
+            // 載入最近的工作日誌（重新整理後仍可顯示）
+            if (msg.payload.work_logs?.length) {
+              const logs = msg.payload.work_logs.map(mapWorkLog)
+              setWorkLogs(logs)
+            }
             break
           }
 
