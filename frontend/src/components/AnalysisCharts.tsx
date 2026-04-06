@@ -51,7 +51,41 @@ export function AnalysisChart({ result, theme, height = 200 }: {
 }) {
   const { chart_type, title, data, metadata } = result
 
-  if (chart_type === 'scatter' || chart_type === 'power_curve') {
+  if (chart_type === 'power_curve') {
+    // 功率曲線專用：雙散佈圖（實際功率 + NBM 預測）
+    const xKey = 'wind_speed'
+    const xLabel = (metadata?.x_label as string) || '風速 (m/s)'
+    const yLabel = (metadata?.y_label as string) || '功率 (kW)'
+    const actualData = data.filter((d: any) => d.actual_power != null).map((d: any) => ({ [xKey]: d[xKey], y: d.actual_power }))
+    const predictedData = data.filter((d: any) => d.predicted_power != null).map((d: any) => ({ [xKey]: d[xKey], y: d.predicted_power }))
+
+    return (
+      <ChartPanel title={title} theme={theme}>
+        <ResponsiveContainer width="100%" height={height + 40}>
+          <ScatterChart margin={{ top: 8, right: 16, bottom: 20, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.global.border} />
+            <XAxis dataKey={xKey} name={xLabel} tick={{ fontSize: 10, fill: theme.global.textMuted }} label={{ value: xLabel, position: 'bottom', fontSize: 10, fill: theme.global.textMuted }} />
+            <YAxis dataKey="y" name={yLabel} tick={{ fontSize: 10, fill: theme.global.textMuted }} label={{ value: yLabel, angle: -90, position: 'insideLeft', fontSize: 10, fill: theme.global.textMuted }} />
+            <Tooltip {...tooltipStyle(theme)} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Scatter name="實際功率" data={actualData} fill={theme.global.accent} opacity={0.4} />
+            {predictedData.length > 0 && (
+              <Scatter name="NBM 預測" data={predictedData} fill={theme.statuses.error.dot} opacity={0.8} shape="diamond" />
+            )}
+          </ScatterChart>
+        </ResponsiveContainer>
+        {metadata && (
+          <div className="flex flex-wrap gap-3 mt-2 text-[10px]" style={{ color: theme.global.textMuted }}>
+            {Object.entries(metadata).filter(([k]) => !k.endsWith('_label') && k !== 'series').map(([k, v]) => (
+              <span key={k}>{k}: <b style={{ color: theme.global.accent }}>{typeof v === 'number' ? (v < 1 ? v.toFixed(4) : v.toLocaleString()) : v}</b></span>
+            ))}
+          </div>
+        )}
+      </ChartPanel>
+    )
+  }
+
+  if (chart_type === 'scatter') {
     return (
       <ChartPanel title={title} theme={theme}>
         <ResponsiveContainer width="100%" height={height}>
@@ -110,6 +144,35 @@ export function AnalysisChart({ result, theme, height = 200 }: {
             ))}
           </BarChart>
         </ResponsiveContainer>
+      </ChartPanel>
+    )
+  }
+
+  if (chart_type === 'report_link') {
+    const downloadUrl = metadata?.download_url as string
+    const apiBase = window.location.origin.replace(':5173', ':8000').replace(':3000', ':8000')
+    return (
+      <ChartPanel title={title} theme={theme}>
+        <div className="flex flex-col items-center gap-3 py-4">
+          <div className="text-[11px]" style={{ color: theme.global.textMuted }}>
+            {metadata?.section_count ?? 0} 個章節 · {metadata?.warning_count ?? 0} 個警告
+          </div>
+          <a
+            href={`${apiBase}${downloadUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
+            style={{
+              backgroundColor: theme.global.accent,
+              color: '#fff',
+            }}
+          >
+            下載報告 (.md)
+          </a>
+          <div className="text-[9px]" style={{ color: theme.global.textMuted }}>
+            {metadata?.generated_at ? `生成時間：${new Date(metadata.generated_at as string).toLocaleString('zh-TW')}` : ''}
+          </div>
+        </div>
       </ChartPanel>
     )
   }

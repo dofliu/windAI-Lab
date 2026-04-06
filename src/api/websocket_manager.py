@@ -18,9 +18,12 @@ if TYPE_CHECKING:
 class WebSocketManager:
     """WebSocket 連線管理器，追蹤並管理所有活躍連線。"""
 
+    _MAX_LOG_BUFFER = 200
+
     def __init__(self) -> None:
         """初始化連線管理器。"""
         self._active_connections: list[WebSocket] = []
+        self._work_log_buffer: list[dict[str, Any]] = []
 
     @property
     def active_count(self) -> int:
@@ -62,12 +65,22 @@ class WebSocketManager:
         }
         await self.broadcast(message)
 
+    @property
+    def recent_work_logs(self) -> list[dict[str, Any]]:
+        """取得最近的工作日誌（供 initial_state 使用）。"""
+        return list(self._work_log_buffer)
+
     async def broadcast_work_log(self, entry: WorkLogEntry) -> None:
-        """廣播工作日誌項目。"""
+        """廣播工作日誌項目並儲存至緩衝區。"""
+        payload = entry.model_dump(mode="json")
+        # 儲存至緩衝區，確保 refresh 後仍可取得
+        self._work_log_buffer.append(payload)
+        if len(self._work_log_buffer) > self._MAX_LOG_BUFFER:
+            self._work_log_buffer = self._work_log_buffer[-self._MAX_LOG_BUFFER :]
         message = {
             "type": "work_log_entry",
             "timestamp": datetime.now().isoformat(),
-            "payload": entry.model_dump(mode="json"),
+            "payload": payload,
         }
         await self.broadcast(message)
 

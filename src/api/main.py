@@ -670,9 +670,6 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     try:
         # 連線時傳送所有代理的當前狀態與最近工作日誌
         agents = get_all_agents()
-        recent_logs = _work_logs + orchestration_engine.work_logs
-        recent_logs.sort(key=lambda x: x.timestamp)
-        recent_logs = list(reversed(recent_logs[-50:]))
         await ws_manager.send_personal(
             websocket,
             {
@@ -680,7 +677,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 "timestamp": datetime.now().isoformat(),
                 "payload": {
                     "agents": [a.model_dump(mode="json") for a in agents],
-                    "work_logs": [log.model_dump(mode="json") for log in recent_logs],
+                    "work_logs": ws_manager.recent_work_logs,
                 },
             },
         )
@@ -1968,6 +1965,61 @@ async def add_work_order_note(order_id: str, req: AddWorkOrderNoteRequest) -> di
     if order:
         await ws_manager.broadcast_work_order_update(order)
     return {"status": "success", "work_order": order}
+
+
+# ── 報告下載 API ────────────────────────────────────────────────
+
+
+# 報告暫存區（後續可改為資料庫或檔案系統）
+_report_store: dict[str, dict[str, Any]] = {}
+
+
+@app.get("/api/reports", tags=["報告管理"])
+async def list_reports() -> list[dict[str, Any]]:
+    """列出所有可下載的報告。"""
+    return [
+        {"id": rid, "title": r.get("title", ""), "created_at": r.get("created_at", "")}
+        for rid, r in _report_store.items()
+    ]
+
+
+@app.get("/api/reports/{report_id}", tags=["報告管理"])
+async def get_report(report_id: str) -> dict[str, Any]:
+    """取得報告內容。"""
+    report = _report_store.get(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"報告 '{report_id}' 不存在")
+    return report
+
+
+@app.get("/api/reports/{report_id}/download", tags=["報告管理"])
+async def download_report(report_id: str) -> Any:
+    """下載報告（Markdown 格式）。"""
+    from fastapi.responses import Response
+
+    report = _report_store.get(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"報告 '{report_id}' 不存在")
+
+    content = report.get("markdown", report.get("content", ""))
+    title = report.get("title", "report").replace(" ", "_")
+
+    return Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{title}.md"'},
+    )
+
+
+def save_report(report_id: str, title: str, markdown: str) -> None:
+    """儲存報告至暫存區（供其他模組呼叫）。"""
+    _report_store[report_id] = {
+        "id": report_id,
+        "title": title,
+        "markdown": markdown,
+        "created_at": datetime.now().isoformat(),
+    }
+    logger.info(f"報告已儲存：{report_id} — {title}")
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────
