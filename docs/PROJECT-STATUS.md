@@ -1,6 +1,6 @@
 # WindAI Lab — 專案現況總覽
 
-> 最後更新：2026-04-05 | Phase 13 完成 + Epic C (ML 模型進化) 完成
+> 最後更新：2026-04-06 | Phase 14 進行中 — WindGuard AI 整合 + 任務生命週期重構
 > **核心願景：打造一間真實的風場運維 AI 服務公司**
 
 ---
@@ -9,7 +9,7 @@
 
 **WindAI Lab** 是一個風力發電 AI 研究協作平台，採用「技能拆分 + 聘用制」多代理架構，搭配虛擬辦公室 UI，讓研究人員可以丟入任意格式的風場資料，由 AI 代理自動執行清洗、特徵工程、模型訓練與報告生成。
 
-系統正從「研究平台」演進為「風場運維服務公司」，**Step 1（打地基）已完成**，Phase 11-13 全數到位。服務閉環已建立：分析 → 告警 → 工單。
+系統正從「研究平台」演進為「風場運維服務公司」，**Step 1（打地基）已完成**，Phase 11-13 全數到位。Phase 14 進行中：整合 WindGuard AI（LLM 故障推理）+ 前端任務生命週期重構。
 
 ---
 
@@ -17,31 +17,64 @@
 
 ```
 研究平台階段 ██████████████████░░ 92%（Phase 1-10）
-運維服務演進 ████████░░░░░░░░░░░░ 33%（Phase 11-13 / 11-19）
+運維服務演進 ██████████░░░░░░░░░░ 42%（Phase 11-14 / 11-19）
 
-Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  15  16  17  18  19
-        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  ✅  │  ✅   ✅   ✅  │  ⬜   ⬜   ⬜   ⬜   ⬜   ⬜
+Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  14  │  15  16  17  18  19
+        ✅ ✅ ✅ ✅ ✅  ✅   ✅  ✅   ✅  ✅  ✅  ✅  ✅  │  ✅   ✅   ✅  🔨  │  ⬜   ⬜   ⬜   ⬜   ⬜
         ─────── 研究平台（已完成）──────────────────── │ Step1 完成 ✅ │ ──── Step2 → Step3 ─────────
 ```
 
-| 模組 | 已完成 | 新增 (Phase 13) | 完成率 |
+| 模組 | 已完成 | 新增 (Phase 14) | 完成率 |
 |------|--------|-----------------|--------|
 | 核心代理 | 12 (core) | — | 100% |
 | 可聘用代理 | 10 (hirable YAML) | — | 100% |
-| 技能模組 | 12 | — | 100% |
-| ML 模型 | 5 → **7** | **+2**（LSTM pipeline 整合 + PatchTST Transformer） | 100% |
-| 技能模組 | 12 → **14** | **+2**（transformer_forecast + model_benchmark） | 100% |
-| REST API 端點 | 33+ | **+12**（告警 + 工單 + Ingest） | 95% |
-| 前端元件 | 29 | **+2**（AlertPanel + WorkOrderPanel） | 98% |
+| 技能模組 | 14 | — | 100% |
+| ML 模型 | 7 | — | 100% |
+| REST API 端點 | 45+ | **+4**（報告下載 API） | 97% |
+| 前端元件 | 31 | **功率曲線散佈圖、報告下載按鈕** | 98% |
 | Office Renderer | 3 | — | 100% |
-| 測試 | 20 檔案 / 427 測試 | **+3 檔案 / +59 測試** | 良好 |
-| 持久化儲存 | SQLite 3 表 | **+2 表**（alerts + work_orders） | ✅ |
-| **告警系統** | — | **完整告警 CRUD + Ingest API** | ✅ 新增 |
-| **工單管理** | — | **Kanban 看板 + 備註時間線** | ✅ 新增 |
+| 測試 | 21 檔案 / 668 測試 | **+1 檔案 / +15 測試**（WindGuard） | 良好 |
+| 持久化儲存 | SQLite 5 表 | **圖表持久化至 DB** | ✅ |
+| **WindGuard AI** | — | **LLM 推理 + Agentic Calling + Fleet Scanner** | ✅ 新增 |
+| **任務生命週期** | — | **Task Session 架構重構** | ✅ 新增 |
 
 ---
 
-## 最新完成 — Phase 13
+## 最新進展 — Phase 14（進行中）
+
+### Phase 14a：WindGuard AI 整合 ✅
+
+將 Kaggle WindGuard AI 專案驗證的能力整合進 windAI-Lab：
+
+| 項目 | 說明 |
+|------|------|
+| WindGuard 診斷推理 | `windguard_diagnosis.py` — 統計/ML 報告送入 LLM 深層推理，產出具體故障類型、物理機制、維護建議 |
+| Agentic Function Calling | LLM 自主決定呼叫哪些診斷工具（異常偵測、功率曲線、故障分類等），多輪對話式調查 |
+| 風場級別掃描 | `fleet_scanner.py` — 多執行緒並行掃描多台風機，自動風險排序（Critical/High/Medium/Low）|
+| FaultDiagnostician 升級 | 新增 llm_reasoning + fleet_scanning 能力，支援 WindGuard 模式 |
+| 功率曲線散佈圖 | NBM 訓練後產出風速 vs 功率散佈圖（實際 vs 預測），前端雙色散佈圖渲染 |
+| 報告下載 API | `GET /api/reports/{id}/download`，ReportGeneratorSkill 產出 Markdown 報告 |
+
+### Phase 14b：前端任務生命週期重構 ✅ (#61)
+
+解決任務紀錄、圖表、步驟在多次執行間互相污染的系統性問題：
+
+| 問題 | 根因 | 修正 |
+|------|------|------|
+| 單次診斷產生 3 筆紀錄 | 前端 sim + backend 雙重執行 + isActivelyWorking debounce 失效 | Task Session 架構：後端 task_started/task_completed 事件驅動 |
+| 新任務串接舊步驟 | WorkflowProgress 讀取全域 workLogs | 只傳當前任務的 logs（slice from start） |
+| 圖表跨任務累積 | analysisResults 全域累積，無 task scope | task_started 自動清除，每次乾淨開始 |
+| Refresh 後圖表消失 | `db.save_analysis_result()` 從未被呼叫 | broadcast_analysis_result 時同時存入 SQLite |
+| 進度顯示 8700% / 小數點 | 雙重乘法 + simulation 未取整 | 統一 Math.round() |
+| 工作日誌 refresh 消失 | broadcast_work_log 只廣播不儲存 | WebSocketManager 內建 log buffer |
+
+### Phase 14c：診斷報告輸出 ⬜ (#64)
+
+待完成：報告下載連結在前端不顯示，需要 debug PaperWriter → ReportGeneratorSkill 的完整流程。
+
+---
+
+## 先前已完成 — Phase 13
 
 ### Phase 13：告警系統 + 工單管理 ✅
 
@@ -146,19 +179,20 @@ POST /api/alerts/ingest
 | LSTM Forecaster | PyTorch LSTM | 時序預測 | R², RMSE, MAE |
 | PatchTST Forecaster | Transformer | 時序預測（學術前沿） | R², RMSE, MAE |
 | Model Benchmark | 對比框架 | 多模型統一評估 | 自動化 LaTeX 報告 |
+| **WindGuard AI** | **LLM + Agentic** | **LLM 故障推理 + 風場掃描** | **Kaggle 驗證通過** |
 
 ### 下一步 — GitHub Issues 追蹤
 
-開發方向已調整，以 GitHub Issues 追蹤（共 6 個 Epic、15 個子 Issue）：
-
-| Epic | Issue | 優先度 | 狀態 |
-|------|-------|--------|------|
-| [Epic C] ML 模型進化 | #32 | High | ✅ 完成 |
-| [Epic E] 告警規則引擎 | #33 | High | ⬜ |
-| [Epic D] 報告與追蹤 | #34 | High | ⬜ |
-| [Epic A] 案例學習系統 | #35 | Medium | ⬜ |
-| [Epic B] 故障知識體系 | #36 | Medium | ⬜ |
-| [Epic F] 學術論文規劃 | #37 | Ongoing | ⬜ |
+| Epic / Issue | 優先度 | 狀態 |
+|-------------|--------|------|
+| [Epic C] ML 模型進化 #32 | High | ✅ 完成 |
+| 任務生命週期重構 #61 | Critical | ✅ 完成（報告部分移至 #64） |
+| 診斷報告輸出功能 #64 | High | ⬜ 下次處理 |
+| [Epic E] 告警規則引擎 #33 | High | ⬜ |
+| [Epic D] 報告與追蹤 #34 | High | ⬜ |
+| [Epic A] 案例學習系統 #35 | Medium | ⬜ |
+| [Epic B] 故障知識體系 #36 | Medium | ⬜ |
+| [Epic F] 學術論文規劃 #37 | Ongoing | ⬜ |
 
 ---
 
