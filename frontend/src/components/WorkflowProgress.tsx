@@ -196,7 +196,7 @@ export default function WorkflowProgress({
                   }}
                 >
                   {a.displayName}
-                  {a.progress != null && ` ${a.progress}%`}
+                  {a.progress != null && ` ${Math.round(a.progress)}%`}
                 </span>
               ))}
             </div>

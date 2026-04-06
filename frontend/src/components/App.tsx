@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { Agent, SpeechBubble, TaskRecord } from '../types/agent'
+import type { Agent, SpeechBubble, TaskRecord, WorkLog } from '../types/agent'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useAgentSimulation } from '../hooks/useAgentSimulation'
 import { useTaskHistory } from '../hooks/useTaskHistory'
@@ -79,11 +79,21 @@ export default function App() {
   }, [hasBackend, sim.speechBubbles, ws.speechBubbles])
 
   const workLogs = useMemo(() => {
-    if (!hasBackend) return sim.workLogs
-    return [...sim.workLogs, ...ws.workLogs]
+    // 合併 simulation 與 WebSocket 日誌（不依賴 hasBackend，確保 refresh 後仍顯示）
+    if (ws.workLogs.length === 0) return sim.workLogs
+    if (sim.workLogs.length === 0) return ws.workLogs
+    const ids = new Set<string>()
+    const merged: WorkLog[] = []
+    for (const log of [...ws.workLogs, ...sim.workLogs]) {
+      if (!ids.has(log.id)) {
+        ids.add(log.id)
+        merged.push(log)
+      }
+    }
+    return merged
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-      .slice(-100)
-  }, [hasBackend, sim.workLogs, ws.workLogs])
+      .slice(-200)
+  }, [sim.workLogs, ws.workLogs])
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -149,41 +159,61 @@ export default function App() {
   // DashboardView 外部導航
   const [dashboardInitialTab, setDashboardInitialTab] = useState<DashTab | undefined>(undefined)
 
+  // 使用 debounce 避免多步驟工作流中間狀態切換造成重複紀錄
+  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const analysisCountAtStartRef = useRef<number>(0)
+
   useEffect(() => {
     if (isActivelyWorking) {
-      wasWorking.current = true
-      taskStartTimeRef.current = Date.now()
-      taskStartLogCountRef.current = workLogs.length
-      setMissionSticky(true)
-    } else if (wasWorking.current) {
-      // 任務剛完成 → 保持結果畫面 + 存檔
-      wasWorking.current = false
-
-      const durationMs = taskStartTimeRef.current
-        ? Date.now() - taskStartTimeRef.current
-        : 0
-
-      // 只取本次任務的日誌
-      const taskLogs = workLogs.slice(taskStartLogCountRef.current)
-      const participatingAgentIds = new Set(
-        taskLogs.map((l) => l.agentId).filter((id) => id !== 'system'),
-      )
-      const participatingAgents = agents.filter((a) => participatingAgentIds.has(a.id))
-
-      const record: TaskRecord = {
-        id: `WLAB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36)}`,
-        description: lastCommandDescription || '未命名任務',
-        timestamp: new Date().toISOString(),
-        durationMs,
-        agentIds: participatingAgents.map((a) => a.id),
-        agentNames: participatingAgents.map((a) => a.displayName),
-        analysisResults: ws.analysisResults ?? [],
-        extractedMetrics: extractMetricsFromLogs(taskLogs),
-        workLogSnapshot: taskLogs.slice(-50).map(serializeWorkLog),
-        status: 'completed',
+      // 取消任何等待中的完成計時器（代理重新開始工作）
+      if (completionTimerRef.current) {
+        clearTimeout(completionTimerRef.current)
+        completionTimerRef.current = null
       }
-      saveRecord(record)
-      taskStartTimeRef.current = null
+      if (!wasWorking.current) {
+        // 首次開始 — 記錄起始狀態
+        wasWorking.current = true
+        taskStartTimeRef.current = Date.now()
+        taskStartLogCountRef.current = workLogs.length
+        analysisCountAtStartRef.current = (ws.analysisResults ?? []).length
+        setMissionSticky(true)
+      }
+    } else if (wasWorking.current) {
+      // 代理停止工作 — 延遲 2 秒再判定完成（避免步驟間隙誤判）
+      if (completionTimerRef.current) return
+      completionTimerRef.current = setTimeout(() => {
+        completionTimerRef.current = null
+        wasWorking.current = false
+
+        const durationMs = taskStartTimeRef.current
+          ? Date.now() - taskStartTimeRef.current
+          : 0
+
+        // 只取本次任務的日誌
+        const taskLogs = workLogs.slice(taskStartLogCountRef.current)
+        const participatingAgentIds = new Set(
+          taskLogs.map((l) => l.agentId).filter((id) => id !== 'system'),
+        )
+        const participatingAgents = agents.filter((a) => participatingAgentIds.has(a.id))
+
+        // 只取本次任務的分析結果（不重複納入之前任務的圖表）
+        const taskAnalysisResults = (ws.analysisResults ?? []).slice(analysisCountAtStartRef.current)
+
+        const record: TaskRecord = {
+          id: `WLAB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36)}`,
+          description: lastCommandDescription || '未命名任務',
+          timestamp: new Date().toISOString(),
+          durationMs,
+          agentIds: participatingAgents.map((a) => a.id),
+          agentNames: participatingAgents.map((a) => a.displayName),
+          analysisResults: taskAnalysisResults,
+          extractedMetrics: extractMetricsFromLogs(taskLogs),
+          workLogSnapshot: taskLogs.slice(-50).map(serializeWorkLog),
+          status: 'completed',
+        }
+        saveRecord(record)
+        taskStartTimeRef.current = null
+      }, 2000)
     }
   }, [isActivelyWorking])
 

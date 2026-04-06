@@ -143,7 +143,7 @@ function AvatarTooltip({ agent }: { agent: Agent }) {
             <div className="h-1 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: theme.global.border }}>
               <div className="h-full" style={{ width: `${agent.progress}%`, backgroundColor: sc.dot }} />
             </div>
-            <span className="text-[10px]" style={{ color: sc.text }}>{agent.progress}%</span>
+            <span className="text-[10px]" style={{ color: sc.text }}>{Math.round(agent.progress ?? 0)}%</span>
           </div>
         )}
         <div

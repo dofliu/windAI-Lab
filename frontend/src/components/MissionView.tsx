@@ -449,7 +449,7 @@ function AgentMissionCard({ agent, theme, onClick }: AgentMissionCardProps) {
       {/* 進度數字 */}
       {agent.status === 'working' && (
         <span className="text-xs font-mono" style={{ color: statusColor.text }}>
-          {agent.progress ?? 0}%
+          {Math.round(agent.progress ?? 0)}%
         </span>
       )}
     </div>

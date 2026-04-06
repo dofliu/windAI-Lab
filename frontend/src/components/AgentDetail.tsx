@@ -63,7 +63,7 @@ export default function AgentDetail({
             <div className="mt-3">
               <div className="mb-1 flex justify-between text-xs text-slate-400">
                 <span>進度</span>
-                <span>{agent.progress}%</span>
+                <span>{Math.round(agent.progress ?? 0)}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-700">
                 <div

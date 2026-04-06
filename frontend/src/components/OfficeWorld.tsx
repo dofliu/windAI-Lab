@@ -448,7 +448,7 @@ export default function OfficeWorld({ rooms, selectedAgent, onSelectAgent, speec
                     <div className="h-1 flex-1 rounded-full overflow-hidden" style={{ backgroundColor: theme.global.border }}>
                       <div className="h-full" style={{ width: `${agent.progress}%`, backgroundColor: theme.statuses.working.dot }} />
                     </div>
-                    <span style={{ color: theme.statuses.working.text }}>{agent.progress}%</span>
+                    <span style={{ color: theme.statuses.working.text }}>{Math.round(agent.progress ?? 0)}%</span>
                   </div>
                 )}
               </div>
