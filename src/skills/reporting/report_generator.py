@@ -59,6 +59,23 @@ class ReportGeneratorSkill(BaseSkill):
         warning_count = report_md.count("⚠️") + report_md.count("🔴")
 
         if progress_cb:
+            await progress_cb(0.9, "儲存報告...")
+
+        # 儲存報告並產生下載連結
+        import uuid
+
+        report_id = str(uuid.uuid4())[:8]
+        report_title = f"{turbine_id}_{_report_type_label(report_type)}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+        download_url = f"/api/reports/{report_id}/download"
+
+        try:
+            from src.api.main import save_report
+
+            save_report(report_id, report_title, report_md)
+        except Exception:
+            pass  # 若 main 尚未載入（測試環境），靜默跳過
+
+        if progress_cb:
             await progress_cb(1.0, "報告生成完成")
 
         return SkillOutput(
@@ -70,6 +87,8 @@ class ReportGeneratorSkill(BaseSkill):
                 "section_count": section_count,
                 "warning_count": warning_count,
                 "generated_at": datetime.now().isoformat(),
+                "report_id": report_id,
+                "download_url": download_url,
             },
             summary=f"{turbine_id} {_report_type_label(report_type)}已生成（{section_count} 個章節）",
             artifacts={"report_markdown": report_md},

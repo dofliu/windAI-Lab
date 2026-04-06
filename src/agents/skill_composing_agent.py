@@ -300,6 +300,24 @@ class SkillComposingAgent(BaseAgent):
                         }
                     )
 
+                # 功率曲線散佈圖（實際 vs 預測）
+                pc_points = data.get("power_curve_points", [])
+                if pc_points:
+                    charts.append(
+                        {
+                            "chart_type": "power_curve",
+                            "title": "功率曲線：實際 vs NBM 預測",
+                            "data": pc_points,
+                            "metadata": {
+                                "x_label": "風速 (m/s)",
+                                "y_label": "功率 (kW)",
+                                "series": ["actual_power", "predicted_power"],
+                                "R²": round(r2, 4) if r2 else 0,
+                                "data_points": len(pc_points),
+                            },
+                        }
+                    )
+
             # ── 領域特徵萃取 ──
             if skill_id == "domain_feature_extraction":
                 new_features = data.get("new_features", [])
@@ -324,6 +342,26 @@ class SkillComposingAgent(BaseAgent):
                                 {"name": "RUL (天)", "value": round(rul_days, 1)},
                             ],
                             "metadata": data,
+                        }
+                    )
+
+            # ── 報告生成 → 下載連結 ──
+            if skill_id == "report_generator":
+                download_url = data.get("download_url")
+                report_id = data.get("report_id")
+                if download_url:
+                    charts.append(
+                        {
+                            "chart_type": "report_link",
+                            "title": f"📄 {data.get('turbine_id', '')} 診斷報告",
+                            "data": [],
+                            "metadata": {
+                                "report_id": report_id,
+                                "download_url": download_url,
+                                "section_count": data.get("section_count", 0),
+                                "warning_count": data.get("warning_count", 0),
+                                "generated_at": data.get("generated_at", ""),
+                            },
                         }
                     )
 
