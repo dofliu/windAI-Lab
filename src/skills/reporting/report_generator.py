@@ -69,11 +69,11 @@ class ReportGeneratorSkill(BaseSkill):
         download_url = f"/api/reports/{report_id}/download"
 
         try:
-            from src.api.main import save_report
+            from src.services.report_store import save_report
 
             save_report(report_id, report_title, report_md)
         except Exception:
-            pass  # 若 main 尚未載入（測試環境），靜默跳過
+            pass  # 若模組不可用（測試環境），靜默跳過
 
         if progress_cb:
             await progress_cb(1.0, "報告生成完成")
