@@ -161,7 +161,6 @@ export default function App() {
 
   // 使用 debounce 避免多步驟工作流中間狀態切換造成重複紀錄
   const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const analysisCountAtStartRef = useRef<number>(0)
 
   useEffect(() => {
     if (isActivelyWorking) {
@@ -175,11 +174,11 @@ export default function App() {
         wasWorking.current = true
         taskStartTimeRef.current = Date.now()
         taskStartLogCountRef.current = workLogs.length
-        analysisCountAtStartRef.current = (ws.analysisResults ?? []).length
         setMissionSticky(true)
       }
     } else if (wasWorking.current) {
-      // 代理停止工作 — 延遲 2 秒再判定完成（避免步驟間隙誤判）
+      // 代理停止工作 — 延遲 3 秒再判定完成
+      // （後端 workflow 完成後有 2 秒 sleep 才重設代理，需等足夠長）
       if (completionTimerRef.current) return
       completionTimerRef.current = setTimeout(() => {
         completionTimerRef.current = null
@@ -196,9 +195,7 @@ export default function App() {
         )
         const participatingAgents = agents.filter((a) => participatingAgentIds.has(a.id))
 
-        // 只取本次任務的分析結果（不重複納入之前任務的圖表）
-        const taskAnalysisResults = (ws.analysisResults ?? []).slice(analysisCountAtStartRef.current)
-
+        // 使用當前所有分析結果（handleCommand 開始時已清除舊結果）
         const record: TaskRecord = {
           id: `WLAB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36)}`,
           description: lastCommandDescription || '未命名任務',
@@ -206,14 +203,14 @@ export default function App() {
           durationMs,
           agentIds: participatingAgents.map((a) => a.id),
           agentNames: participatingAgents.map((a) => a.displayName),
-          analysisResults: taskAnalysisResults,
+          analysisResults: [...(ws.analysisResults ?? [])],
           extractedMetrics: extractMetricsFromLogs(taskLogs),
           workLogSnapshot: taskLogs.slice(-50).map(serializeWorkLog),
           status: 'completed',
         }
         saveRecord(record)
         taskStartTimeRef.current = null
-      }, 2000)
+      }, 3000)
     }
   }, [isActivelyWorking])
 
@@ -255,8 +252,9 @@ export default function App() {
   ])
 
   const handleCommand = (command: string, parameters: Record<string, string>) => {
-    // 新指令時重置
-    if (!SIM_COMMANDS.has(command)) {
+    const isSimOnly = SIM_COMMANDS.has(command)
+    // 新工作任務時重置
+    if (!isSimOnly) {
       setMissionSticky(false)
       ws.clearAnalysisResults()
       // 記錄指令描述
@@ -266,9 +264,12 @@ export default function App() {
         .join(', ')
       setLastCommandDescription(paramStr ? `${command} (${paramStr})` : command)
     }
-    sim.sendCommand(command, parameters)
-    if (isConnected && !SIM_COMMANDS.has(command)) {
+    // 後端連線時：工作指令只發給後端，不重複送 simulation
+    // 無後端時：所有指令都走 simulation
+    if (isConnected && !isSimOnly) {
       ws.sendCommand(command, parameters)
+    } else {
+      sim.sendCommand(command, parameters)
     }
   }
 
