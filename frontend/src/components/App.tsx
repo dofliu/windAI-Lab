@@ -151,7 +151,6 @@ export default function App() {
 
   // 任務完成後保持戰情中心畫面，讓使用者能查看結果
   const [missionSticky, setMissionSticky] = useState(false)
-  const wasWorking = useRef(false)
   const taskStartTimeRef = useRef<number | null>(null)
   const taskStartLogCountRef = useRef<number>(0)
   const [lastCommandDescription, setLastCommandDescription] = useState<string>('')
@@ -159,73 +158,73 @@ export default function App() {
   // DashboardView 外部導航
   const [dashboardInitialTab, setDashboardInitialTab] = useState<DashTab | undefined>(undefined)
 
-  // 使用 debounce 避免多步驟工作流中間狀態切換造成重複紀錄
-  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // ── Task Lifecycle（由後端事件驅動，不再用 isActivelyWorking 猜測）──
 
+  // 收到 task_started → 開啟戰情中心
   useEffect(() => {
-    if (isActivelyWorking) {
-      // 取消任何等待中的完成計時器（代理重新開始工作）
-      if (completionTimerRef.current) {
-        clearTimeout(completionTimerRef.current)
-        completionTimerRef.current = null
-      }
-      if (!wasWorking.current) {
-        // 首次開始 — 記錄起始狀態
-        wasWorking.current = true
-        taskStartTimeRef.current = Date.now()
-        taskStartLogCountRef.current = workLogs.length
-        setMissionSticky(true)
-      }
-    } else if (wasWorking.current) {
-      // 代理停止工作 — 延遲 3 秒再判定完成
-      // （後端 workflow 完成後有 2 秒 sleep 才重設代理，需等足夠長）
-      if (completionTimerRef.current) return
-      completionTimerRef.current = setTimeout(() => {
-        completionTimerRef.current = null
-        wasWorking.current = false
-
-        const durationMs = taskStartTimeRef.current
-          ? Date.now() - taskStartTimeRef.current
-          : 0
-
-        // 只取本次任務的日誌
-        const taskLogs = workLogs.slice(taskStartLogCountRef.current)
-        const participatingAgentIds = new Set(
-          taskLogs.map((l) => l.agentId).filter((id) => id !== 'system'),
-        )
-        const participatingAgents = agents.filter((a) => participatingAgentIds.has(a.id))
-
-        // 使用當前所有分析結果（handleCommand 開始時已清除舊結果）
-        const record: TaskRecord = {
-          id: `WLAB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString(36)}`,
-          description: lastCommandDescription || '未命名任務',
-          timestamp: new Date().toISOString(),
-          durationMs,
-          agentIds: participatingAgents.map((a) => a.id),
-          agentNames: participatingAgents.map((a) => a.displayName),
-          analysisResults: [...(ws.analysisResults ?? [])],
-          extractedMetrics: extractMetricsFromLogs(taskLogs),
-          workLogSnapshot: taskLogs.slice(-50).map(serializeWorkLog),
-          status: 'completed',
-        }
-        saveRecord(record)
-        taskStartTimeRef.current = null
-      }, 3000)
+    if (ws.currentTaskId) {
+      taskStartTimeRef.current = Date.now()
+      taskStartLogCountRef.current = workLogs.length
+      setMissionSticky(true)
     }
-  }, [isActivelyWorking])
+  }, [ws.currentTaskId])
+
+  // 收到 task_completed → 建立唯一紀錄（用後端 task_id 作為 ID）
+  useEffect(() => {
+    if (!ws.taskCompleted) return
+
+    const { taskId, analysisResults: taskResults } = ws.taskCompleted
+    const durationMs = taskStartTimeRef.current
+      ? Date.now() - taskStartTimeRef.current
+      : 0
+
+    // 取本次任務的日誌
+    const taskLogs = workLogs.slice(taskStartLogCountRef.current)
+    const participatingAgentIds = new Set(
+      taskLogs.map((l) => l.agentId).filter((id) => id !== 'system'),
+    )
+    const participatingAgents = agents.filter((a) => participatingAgentIds.has(a.id))
+
+    // 合併：即時收到的 analysisResults + 後端 DB 保存的（確保 refresh 後有）
+    const liveResults = ws.analysisResults ?? []
+    const dbResults = taskResults ?? []
+    // 用 title 去重
+    const seenTitles = new Set<string>()
+    const mergedResults: any[] = []
+    for (const r of [...liveResults, ...dbResults]) {
+      const key = r.title || JSON.stringify(r)
+      if (!seenTitles.has(key)) {
+        seenTitles.add(key)
+        mergedResults.push(r)
+      }
+    }
+
+    const record: TaskRecord = {
+      id: taskId,
+      description: ws.currentTaskMeta?.description || lastCommandDescription || '未命名任務',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      agentIds: participatingAgents.map((a) => a.id),
+      agentNames: participatingAgents.map((a) => a.displayName),
+      analysisResults: mergedResults,
+      extractedMetrics: extractMetricsFromLogs(taskLogs),
+      workLogSnapshot: taskLogs.slice(-50).map(serializeWorkLog),
+      status: 'completed',
+    }
+    saveRecord(record)
+    taskStartTimeRef.current = null
+  }, [ws.taskCompleted])
 
   const isMissionMode = isActivelyWorking || missionSticky
 
   const handleCloseMission = useCallback(() => {
     setMissionSticky(false)
-    ws.clearAnalysisResults()
-  }, [ws])
+  }, [])
 
   const handleViewFullRecord = useCallback(() => {
     setMissionSticky(false)
-    ws.clearAnalysisResults()
     setDashboardInitialTab('records' as DashTab)
-  }, [ws])
+  }, [])
 
   /* ── Hire / Fire handlers (simulation mode) ── */
   const handleHire = useCallback((agent: { id: string; name: string; display_name: string; tier: string; color: string; icon: string }) => {
@@ -253,19 +252,15 @@ export default function App() {
 
   const handleCommand = (command: string, parameters: Record<string, string>) => {
     const isSimOnly = SIM_COMMANDS.has(command)
-    // 新工作任務時重置
     if (!isSimOnly) {
-      setMissionSticky(false)
-      ws.clearAnalysisResults()
-      // 記錄指令描述
+      // 記錄指令描述（task_started 事件會自動清除舊狀態）
       const paramStr = Object.entries(parameters)
         .filter(([, v]) => v)
         .map(([k, v]) => `${k}=${v}`)
         .join(', ')
       setLastCommandDescription(paramStr ? `${command} (${paramStr})` : command)
     }
-    // 後端連線時：工作指令只發給後端，不重複送 simulation
-    // 無後端時：所有指令都走 simulation
+    // 後端連線時：工作指令只發給後端，不送 simulation
     if (isConnected && !isSimOnly) {
       ws.sendCommand(command, parameters)
     } else {
@@ -441,13 +436,13 @@ export default function App() {
           {isMissionMode && (
             <WorkflowProgress
               agents={agents}
-              workLogs={workLogs}
+              workLogs={workLogs.slice(taskStartLogCountRef.current)}
               analysisResults={ws.analysisResults ?? []}
               isCompleted={!isActivelyWorking && missionSticky}
               isActivelyWorking={isActivelyWorking}
               onClose={handleCloseMission}
               onViewFullRecord={handleViewFullRecord}
-              currentTaskDescription={lastCommandDescription}
+              currentTaskDescription={ws.currentTaskMeta?.description || lastCommandDescription}
               workflowEvents={ws.workflowEvents ?? []}
             />
           )}

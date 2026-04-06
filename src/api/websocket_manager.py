@@ -113,6 +113,31 @@ class WebSocketManager:
         }
         await self.broadcast(message)
 
+    async def broadcast_task_lifecycle(
+        self,
+        event: str,
+        task_id: str,
+        workflow_name: str = "",
+        description: str = "",
+        analysis_results: list[dict[str, Any]] | None = None,
+    ) -> None:
+        """廣播任務生命週期事件（task_started / task_completed）。
+
+        前端據此管理任務邊界：開始時清除舊狀態，完成時封存紀錄。
+        """
+        message = {
+            "type": event,
+            "timestamp": datetime.now().isoformat(),
+            "payload": {
+                "task_id": task_id,
+                "workflow_name": workflow_name,
+                "description": description,
+            },
+        }
+        if analysis_results is not None:
+            message["payload"]["analysis_results"] = analysis_results
+        await self.broadcast(message)
+
     async def broadcast_analysis_result(self, result_data: dict[str, Any]) -> None:
         """廣播分析結果（圖表資料）至前端戰情中心。
 
