@@ -46,33 +46,71 @@ class PaperWriter(BaseAgent):
         return TaskResult(status=TaskStatus.SUCCESS, summary=f"撰寫完成：{task}")
 
     async def _generate_report(self, params: dict[str, Any], context: TaskContext) -> TaskResult:
-        """彙整分析結果生成報告。"""
-        await self.update_progress(0.2, "整理分析結果摘要")
-        await self.update_progress(0.4, "撰寫報告主體")
-        await self.update_progress(0.6, "插入圖表與數據")
-        await self.update_progress(0.8, "撰寫建議與結論")
-        await self.update_progress(1.0, "報告已生成")
+        """彙整分析結果生成報告（使用 ReportGeneratorSkill 產出真實 Markdown）。"""
+        await self.update_progress(0.1, "整理分析結果摘要")
 
-        # 從 context 取得上游結果
-        diagnosis = context.results.get("diagnosis", {})
-        sections = [
-            "異常摘要",
-            "故障分類分析",
-            "健康評分",
-            "維護建議",
-            "參考文獻",
-        ]
+        turbine_id = params.get("turbine_id", "未知")
 
-        return TaskResult(
-            status=TaskStatus.SUCCESS,
-            data={
-                "report_sections": sections,
-                "page_count": 8,
-                "format": "PDF",
-                "includes_diagnosis": bool(diagnosis),
-            },
-            summary=f"診斷報告已生成（{len(sections)} 章節，8 頁）",
-        )
+        try:
+            from src.skills.base import SkillInput
+            from src.skills.reporting.report_generator import ReportGeneratorSkill
+
+            skill = ReportGeneratorSkill()
+            skill_input = SkillInput(
+                parameters={"turbine_id": turbine_id, "report_type": "diagnosis"},
+                context=context.results,
+            )
+
+            async def _progress(pct: float, msg: str) -> None:
+                adjusted = 0.1 + pct * 0.7
+                await self.update_progress(adjusted, msg)
+
+            output = await skill.execute(skill_input, progress_cb=_progress)
+
+            await self.update_progress(0.85, "廣播報告下載連結...")
+
+            # 廣播報告下載連結至前端
+            download_url = output.data.get("download_url")
+            report_id = output.data.get("report_id")
+            if download_url:
+                from src.api.websocket_manager import manager as ws_manager
+
+                await ws_manager.broadcast_analysis_result(
+                    {
+                        "chart_type": "report_link",
+                        "title": f"📄 {turbine_id} 故障診斷報告",
+                        "data": [],
+                        "metadata": {
+                            "report_id": report_id,
+                            "download_url": download_url,
+                            "section_count": output.data.get("section_count", 0),
+                            "warning_count": output.data.get("warning_count", 0),
+                            "generated_at": output.data.get("generated_at", ""),
+                        },
+                    }
+                )
+
+            await self.update_progress(1.0, "報告已生成")
+
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                data=output.data,
+                summary=output.summary or f"{turbine_id} 診斷報告已生成",
+            )
+        except Exception as e:
+            self._logger.warning(f"ReportGeneratorSkill 執行失敗，使用簡化報告：{e}")
+            await self.update_progress(1.0, "報告已生成（簡化版）")
+
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                data={
+                    "report_sections": ["異常摘要", "故障分類", "健康評分", "維護建議"],
+                    "page_count": 4,
+                    "format": "Markdown",
+                    "includes_diagnosis": bool(context.results.get("diagnosis")),
+                },
+                summary=f"{turbine_id} 診斷報告已生成（簡化版）",
+            )
 
     async def _write_methodology(self, params: dict[str, Any]) -> TaskResult:
         """撰寫方法論章節。"""

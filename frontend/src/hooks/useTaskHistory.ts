@@ -39,7 +39,7 @@ function backendToTaskRecord(t: BackendTask): TaskRecord {
     durationMs: t.duration_ms,
     agentIds: t.agent_ids || [],
     agentNames: t.agent_names || [],
-    analysisResults: [],
+    analysisResults: (t as any).analysis_results || [],
     extractedMetrics: [],
     workLogSnapshot: [],
     status: t.status === 'completed' ? 'completed' : 'error',
@@ -89,20 +89,30 @@ export function useTaskHistory() {
   }, [fetchBackendHistory])
 
   // 合併：前端優先（有完整 analysisResults），後端補充
+  // 除了 ID 去重外，也按 description + 時間近似去重（2 分鐘內同描述 = 同任務）
   const records = (() => {
-    const seen = new Set<string>()
     const merged: TaskRecord[] = []
-    // 前端記錄優先
+    const seen = new Set<string>()
+    const timeKeys = new Set<string>()
+
+    const toTimeKey = (r: TaskRecord) => {
+      const t = Math.floor(new Date(r.timestamp).getTime() / 120000) // 2 分鐘區間
+      return `${r.description}@${t}`
+    }
+
+    // 前端記錄優先（有 analysisResults）
     for (const r of localRecords) {
       seen.add(r.id)
+      timeKeys.add(toTimeKey(r))
       merged.push(r)
     }
-    // 後端記錄補充（去重）
+    // 後端記錄補充（同 ID 或同描述+近似時間 → 跳過）
     for (const r of backendRecords) {
-      if (!seen.has(r.id)) {
-        seen.add(r.id)
-        merged.push(r)
-      }
+      if (seen.has(r.id)) continue
+      if (timeKeys.has(toTimeKey(r))) continue
+      seen.add(r.id)
+      timeKeys.add(toTimeKey(r))
+      merged.push(r)
     }
     // 按時間排序（最新在前）
     merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())

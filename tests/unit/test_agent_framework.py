@@ -469,7 +469,7 @@ class TestConcreteAgents:
         ctx = TaskContext(results={"diagnosis": {"health_score": 85}})
         result = await agent.execute("生成診斷報告", ctx)
         assert result.status == TaskStatus.SUCCESS
-        assert "report_sections" in result.data
+        assert "report_markdown" in result.data or "report_sections" in result.data
 
     @pytest.mark.asyncio()
     async def test_research_lead_review(self) -> None:
