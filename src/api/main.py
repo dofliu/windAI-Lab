@@ -1973,34 +1973,33 @@ async def add_work_order_note(order_id: str, req: AddWorkOrderNoteRequest) -> di
 # ── 報告下載 API ────────────────────────────────────────────────
 
 
-# 報告暫存區（後續可改為資料庫或檔案系統）
-_report_store: dict[str, dict[str, Any]] = {}
-
-
 @app.get("/api/reports", tags=["報告管理"])
-async def list_reports() -> list[dict[str, Any]]:
+async def api_list_reports() -> list[dict[str, Any]]:
     """列出所有可下載的報告。"""
-    return [
-        {"id": rid, "title": r.get("title", ""), "created_at": r.get("created_at", "")}
-        for rid, r in _report_store.items()
-    ]
+    from src.services.report_store import list_reports
+
+    return list_reports()
 
 
 @app.get("/api/reports/{report_id}", tags=["報告管理"])
-async def get_report(report_id: str) -> dict[str, Any]:
+async def api_get_report(report_id: str) -> dict[str, Any]:
     """取得報告內容。"""
-    report = _report_store.get(report_id)
+    from src.services.report_store import get_report
+
+    report = get_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail=f"報告 '{report_id}' 不存在")
     return report
 
 
 @app.get("/api/reports/{report_id}/download", tags=["報告管理"])
-async def download_report(report_id: str) -> Any:
+async def api_download_report(report_id: str) -> Any:
     """下載報告（Markdown 格式）。"""
     from fastapi.responses import Response
 
-    report = _report_store.get(report_id)
+    from src.services.report_store import get_report
+
+    report = get_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail=f"報告 '{report_id}' 不存在")
 
@@ -2012,17 +2011,6 @@ async def download_report(report_id: str) -> Any:
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{title}.md"'},
     )
-
-
-def save_report(report_id: str, title: str, markdown: str) -> None:
-    """儲存報告至暫存區（供其他模組呼叫）。"""
-    _report_store[report_id] = {
-        "id": report_id,
-        "title": title,
-        "markdown": markdown,
-        "created_at": datetime.now().isoformat(),
-    }
-    logger.info(f"報告已儲存：{report_id} — {title}")
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────

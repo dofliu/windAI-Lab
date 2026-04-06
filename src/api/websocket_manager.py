@@ -24,6 +24,7 @@ class WebSocketManager:
         """初始化連線管理器。"""
         self._active_connections: list[WebSocket] = []
         self._work_log_buffer: list[dict[str, Any]] = []
+        self._current_task_id: str | None = None
 
     @property
     def active_count(self) -> int:
@@ -125,6 +126,11 @@ class WebSocketManager:
 
         前端據此管理任務邊界：開始時清除舊狀態，完成時封存紀錄。
         """
+        if event == "task_started":
+            self._current_task_id = task_id
+        elif event == "task_completed":
+            self._current_task_id = None
+
         message = {
             "type": event,
             "timestamp": datetime.now().isoformat(),
@@ -139,7 +145,7 @@ class WebSocketManager:
         await self.broadcast(message)
 
     async def broadcast_analysis_result(self, result_data: dict[str, Any]) -> None:
-        """廣播分析結果（圖表資料）至前端戰情中心。
+        """廣播分析結果（圖表資料）至前端戰情中心，並存入 DB。
 
         result_data 應包含：
         - chart_type: str — 圖表類型（如 "power_curve", "health_score", "experiment"）
@@ -147,6 +153,22 @@ class WebSocketManager:
         - data: list[dict] — 圖表資料點
         - metadata: dict — 額外資訊（如模型名稱、R² 等）
         """
+        # 持久化至 DB（讓 refresh 後仍可顯示）
+        if self._current_task_id:
+            try:
+                from src.core.database import get_database
+
+                db = get_database()
+                db.save_analysis_result(
+                    task_id=self._current_task_id,
+                    chart_type=result_data.get("chart_type", "unknown"),
+                    title=result_data.get("title", ""),
+                    data=result_data.get("data"),
+                    metadata=result_data.get("metadata"),
+                )
+            except Exception:
+                pass  # DB 不可用時靜默跳過，不影響即時廣播
+
         message = {
             "type": "analysis_result",
             "timestamp": datetime.now().isoformat(),
