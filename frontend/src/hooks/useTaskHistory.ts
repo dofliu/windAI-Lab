@@ -121,7 +121,9 @@ export function useTaskHistory() {
 
   const saveRecord = useCallback((record: TaskRecord) => {
     setLocalRecords((prev) => {
-      const next = [record, ...prev]
+      // 同 ID 則覆蓋（後端 task_id 與前端紀錄統一）
+      const filtered = prev.filter((r) => r.id !== record.id)
+      const next = [record, ...filtered]
       return next.length > MAX_RECORDS ? next.slice(0, MAX_RECORDS) : next
     })
   }, [])

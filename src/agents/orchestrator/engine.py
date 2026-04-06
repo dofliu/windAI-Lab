@@ -831,22 +831,31 @@ class OrchestrationEngine:
         except Exception as exc:
             logger.warning(f"資料庫寫入失敗（不影響執行）：{exc}")
 
-        async def _run():
+        # 廣播任務開始事件 — 前端據此開啟新 task session
+        effective_id = db_task_id or task_id
+        await ws_manager.broadcast_task_lifecycle(
+            "task_started",
+            task_id=effective_id,
+            workflow_name=workflow.name,
+            description=workflow.description,
+        )
+
+        async def _run() -> None:
             try:
                 await self.execute_workflow(workflow)
                 # 持久化：標記完成 + 儲存分析結果
+                agent_ids: list[str] = []
+                agent_names: list[str] = []
+                seen: set[str] = set()
+                for log in self._work_logs[-200:]:
+                    if log.agent_id != "system" and log.agent_id not in seen:
+                        seen.add(log.agent_id)
+                        agent_ids.append(log.agent_id)
+                        agent_names.append(log.agent_name)
+
                 if db_task_id:
                     try:
                         db = get_database()
-                        # 收集參與代理
-                        agent_ids: list[str] = []
-                        agent_names: list[str] = []
-                        seen: set[str] = set()
-                        for log in self._work_logs[-200:]:
-                            if log.agent_id != "system" and log.agent_id not in seen:
-                                seen.add(log.agent_id)
-                                agent_ids.append(log.agent_id)
-                                agent_names.append(log.agent_name)
                         db.complete_task(
                             db_task_id,
                             status="completed",
@@ -855,6 +864,25 @@ class OrchestrationEngine:
                         )
                     except Exception as exc:
                         logger.warning(f"任務完成記錄失敗：{exc}")
+
+                # 取得此任務的分析結果（從 DB）
+                task_results: list[dict[str, Any]] = []
+                if db_task_id:
+                    try:
+                        db = get_database()
+                        task_results = db.get_task_results(db_task_id)
+                    except Exception:
+                        pass
+
+                # 廣播任務完成事件 — 前端據此封存 task session
+                await ws_manager.broadcast_task_lifecycle(
+                    "task_completed",
+                    task_id=effective_id,
+                    workflow_name=workflow.name,
+                    description=workflow.description,
+                    analysis_results=task_results,
+                )
+
             except Exception as exc:
                 if db_task_id:
                     try:
@@ -863,6 +891,13 @@ class OrchestrationEngine:
                     except Exception:
                         pass
                 logger.error(f"工作流程執行失敗：{exc}")
+
+                await ws_manager.broadcast_task_lifecycle(
+                    "task_completed",
+                    task_id=effective_id,
+                    workflow_name=workflow.name,
+                    description=f"失敗：{exc}",
+                )
             finally:
                 if task_id in self._running_tasks:
                     del self._running_tasks[task_id]

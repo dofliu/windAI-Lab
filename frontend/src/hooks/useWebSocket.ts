@@ -19,6 +19,10 @@ export function useWebSocket() {
   const [fileEvents, setFileEvents] = useState<any[]>([])
   const [analysisResults, setAnalysisResults] = useState<any[]>([])
   const [workflowEvents, setWorkflowEvents] = useState<Array<WorkflowRetryEvent | WorkflowDegradationEvent | WorkflowCheckpointEvent>>([])
+  // Task Session：由後端 task_started/task_completed 驅動
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [currentTaskMeta, setCurrentTaskMeta] = useState<{ name: string; description: string } | null>(null)
+  const [taskCompleted, setTaskCompleted] = useState<{ taskId: string; analysisResults: any[] } | null>(null)
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const wsRef = useRef<WebSocket | null>(null)
@@ -116,10 +120,31 @@ export function useWebSocket() {
             break
           }
 
+          case 'task_started': {
+            // 後端通知新任務開始 → 清除舊狀態，開始新 session
+            const { task_id, workflow_name, description } = msg.payload
+            setCurrentTaskId(task_id)
+            setCurrentTaskMeta({ name: workflow_name, description })
+            setTaskCompleted(null)
+            setAnalysisResults([])
+            setWorkflowEvents([])
+            break
+          }
+
+          case 'task_completed': {
+            // 後端通知任務完成 → 封存結果，前端據此建立單一紀錄
+            const { task_id: completedId, analysis_results: taskResults } = msg.payload
+            setTaskCompleted({
+              taskId: completedId,
+              analysisResults: taskResults || [],
+            })
+            break
+          }
+
           case 'analysis_result': {
             setAnalysisResults(prev => {
               const next = [...prev, msg.payload]
-              return next.length > 30 ? next.slice(-30) : next
+              return next.length > 50 ? next.slice(-50) : next
             })
             break
           }
@@ -238,5 +263,5 @@ export function useWebSocket() {
   }, [connect])
 
   const speechBubbles: SpeechBubble[] = [] // TODO: parse from WebSocket messages
-  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults, workflowEvents, clearWorkflowEvents, alerts, setAlerts, workOrders, setWorkOrders }
+  return { agents, rooms, workLogs, speechBubbles, connectionStatus, hasLiveUpdates, sendCommand, fileEvents, analysisResults, clearAnalysisResults, workflowEvents, clearWorkflowEvents, alerts, setAlerts, workOrders, setWorkOrders, currentTaskId, currentTaskMeta, taskCompleted }
 }
