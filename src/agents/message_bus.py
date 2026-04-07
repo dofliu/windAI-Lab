@@ -112,7 +112,7 @@ class MessageBus:
 
             await ws_manager.broadcast_agent_message(message.to_dict())
         except Exception:
-            logger.debug("WebSocket 廣播代理訊息失敗（可能無連線）")
+            logger.warning("WebSocket 廣播代理訊息失敗（可能無連線）")
 
         target = message.to_agent
 

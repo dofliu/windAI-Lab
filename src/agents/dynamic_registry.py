@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 from datetime import UTC
 from pathlib import Path
@@ -52,6 +53,7 @@ class DynamicAgentRegistry:
         self._state: dict[str, AgentModel] = {}
         self._instances: dict[str, BaseAgent] = {}
         self._skill_registry: SkillRegistry = skill_registry
+        self._state_lock: asyncio.Lock = asyncio.Lock()
 
     # ── 初始化 ──
 
@@ -263,11 +265,12 @@ class DynamicAgentRegistry:
         progress: float | None = None,
         collaborating_with: list[str] | None = None,
     ) -> AgentModel | None:
-        """更新代理狀態（相容舊版介面）。"""
+        """更新代理狀態（相容舊版介面，使用鎖保護並行安全）。"""
         model = self._state.get(agent_id)
         if model is None:
             return None
 
+        # 同步更新狀態欄位（鎖在 async 呼叫端使用）
         if status is not None:
             model.status = status
         if current_task is not None:
