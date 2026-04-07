@@ -740,7 +740,162 @@ def extract_workflow_params(command_name: str, parameters: dict) -> dict:
         return {"turbine_id": parameters.get("turbine_id", "WT-01")}
     elif command_name == "lit-search":
         return {"topic": parameters.get("topic", "wind turbine fault diagnosis")}
+    elif command_name == "folder-analyze":
+        return {"folder_path": parameters.get("folder_path", "")}
+    elif command_name == "fleet-compare":
+        return {
+            "turbine_ids": parameters.get("turbine_ids", []),
+            "folder_path": parameters.get("folder_path", ""),
+        }
     return {}
+
+
+# ═══════════════════════════════════════════════════════════════
+# 資料夾批次分析
+# ═══════════════════════════════════════════════════════════════
+
+
+def create_folder_analyze_workflow(folder_path: str = "") -> Workflow:
+    """建立 /folder-analyze 資料夾批次分析工作流程。
+
+    自動掃描資料夾內所有 SCADA 檔案，批次載入並分析。
+    """
+    return Workflow(
+        id="folder-analyze",
+        name="資料夾批次分析",
+        description="自動掃描資料夾、批次載入並分析所有 SCADA 檔案",
+        parameters={"folder_path": folder_path},
+        steps=[
+            _director_dispatch("資料夾批次分析"),
+            WorkflowStep(
+                name="掃描資料夾",
+                agent_ids=["scada-processor"],
+                description="掃描資料夾結構，辨識檔案類型與載入策略",
+                duration=2.0,
+                task_template="inspect {folder_path}",
+                sub_messages=[
+                    "📂 資料夾掃描完成",
+                    "已辨識檔案類型與推薦載入策略",
+                ],
+                progress_messages={50: "分析檔案結構中..."},
+            ),
+            WorkflowStep(
+                name="批次載入與清洗",
+                agent_ids=["scada-processor"],
+                description="依策略批次載入所有資料檔案並清洗",
+                duration=5.0,
+                task_template="batch_load {folder_path}",
+                sub_messages=[
+                    "所有檔案載入完成",
+                    "資料清洗與合併完成",
+                ],
+                progress_messages={
+                    20: "逐檔載入中...",
+                    60: "資料清洗與合併...",
+                    90: "品質檢查...",
+                },
+                retry=RetryConfig(
+                    max_retries=1,
+                    retry_delay=2.0,
+                    degradation=DegradationStrategy.SKIP,
+                ),
+            ),
+            WorkflowStep(
+                name="AI 分析",
+                agent_ids=["fault-diagnostician"],
+                description="對合併後的資料執行故障診斷",
+                duration=5.0,
+                task_template="diagnose {folder_path}",
+                sub_messages=[
+                    "異常偵測完成",
+                    "故障分類完成",
+                ],
+                progress_messages={
+                    30: "特徵工程...",
+                    60: "故障分類...",
+                    90: "生成診斷結論...",
+                },
+            ),
+            WorkflowStep(
+                name="生成報告",
+                agent_ids=["paper-writer"],
+                description="彙整批次分析結果，生成報告",
+                duration=3.0,
+                task_template="生成診斷報告",
+                sub_messages=["📄 批次分析報告已生成"],
+                progress_messages={50: "整理結果中..."},
+            ),
+            _director_review("資料夾批次分析"),
+        ],
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# 風場級跨風機比較
+# ═══════════════════════════════════════════════════════════════
+
+
+def create_fleet_compare_workflow(
+    turbine_ids: list[str] | None = None,
+    folder_path: str = "",
+) -> Workflow:
+    """建立 /fleet-compare 跨風機比較分析工作流程。"""
+    ids_str = ", ".join(turbine_ids or []) or "自動辨識"
+    return Workflow(
+        id="fleet-compare",
+        name="風場跨風機比較分析",
+        description=f"比較分析多台風機的健康狀態與效率 ({ids_str})",
+        parameters={
+            "turbine_ids": turbine_ids or [],
+            "folder_path": folder_path,
+        },
+        steps=[
+            _director_dispatch("跨風機比較分析"),
+            WorkflowStep(
+                name="跨風機比較分析",
+                agent_ids=["fault-diagnostician"],
+                description="逐台分析並產出比較報告",
+                duration=8.0,
+                task_template="fleet compare",
+                sub_messages=[
+                    "所有風機分析完成",
+                    "風險排序與效率對比已產出",
+                ],
+                progress_messages={
+                    20: "逐台分析中...",
+                    60: "計算比較指標...",
+                    90: "產出風險排序...",
+                },
+                retry=RetryConfig(
+                    max_retries=1,
+                    retry_delay=2.0,
+                    degradation=DegradationStrategy.SKIP,
+                ),
+            ),
+            WorkflowStep(
+                name="維護排程",
+                agent_ids=["maintenance-planner"],
+                description="根據比較結果產出維護排程建議",
+                duration=3.0,
+                task_template="schedule maintenance",
+                sub_messages=[
+                    "維護工單已產出",
+                    "資源分配建議已完成",
+                ],
+                progress_messages={50: "計算維護優先級..."},
+            ),
+            WorkflowStep(
+                name="生成比較報告",
+                agent_ids=["paper-writer"],
+                description="彙整跨風機比較結果，生成風場報告",
+                duration=3.0,
+                task_template="生成診斷報告",
+                sub_messages=["📄 風場比較報告已生成"],
+                progress_messages={50: "撰寫報告中..."},
+            ),
+            _director_review("跨風機比較分析"),
+        ],
+    )
 
 
 # ── 可用的工作流程註冊表 ─────────────────────────────────────
@@ -756,4 +911,6 @@ AVAILABLE_WORKFLOWS: dict[str, callable] = {
     "ai:train": create_ai_train_workflow,
     "ai:evaluate": create_ai_evaluate_workflow,
     "health-check": create_health_check_workflow,
+    "folder-analyze": create_folder_analyze_workflow,
+    "fleet-compare": create_fleet_compare_workflow,
 }

@@ -6,5 +6,9 @@ color: "#f59e0b"
 icon: "👔"
 core: true
 custom_class: "src.agents.leadership.director.ProjectDirector"
-description: "統籌全場任務分派、跨團隊協調、進度追蹤"
-skills: []
+description: "統籌全場任務分派、跨團隊協調、LLM 智慧審核"
+skills:
+  - "director_review"
+task_routing:
+  - match: ["review", "審核", "確認", "judge", "判斷"]
+    pipeline: ["director_review"]

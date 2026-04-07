@@ -426,6 +426,9 @@ def get_agent(agent_id: str) -> AgentModel | None:
     return deepcopy(agent) if agent else None
 
 
+_state_lock = __import__("threading").Lock()
+
+
 def update_agent_status(
     agent_id: str,
     *,
@@ -434,29 +437,33 @@ def update_agent_status(
     progress: float | None = None,
     collaborating_with: list[str] | None = None,
 ) -> AgentModel | None:
-    """更新指定代理的狀態欄位，回傳更新後的代理模型。"""
-    if _use_dynamic:
-        model = _get_dynamic().update_agent_status(
-            agent_id,
-            status=status,
-            current_task=current_task,
-            progress=progress,
-            collaborating_with=collaborating_with,
-        )
-        return deepcopy(model) if model else None
+    """更新指定代理的狀態欄位，回傳更新後的代理模型。
 
-    agent = _agent_state.get(agent_id)
-    if agent is None:
-        return None
-    if status is not None:
-        agent.status = status
-    if current_task is not None:
-        agent.current_task = current_task
-    if progress is not None:
-        agent.progress = progress
-    if collaborating_with is not None:
-        agent.collaborating_with = collaborating_with
-    return deepcopy(agent)
+    使用鎖保護狀態字典，避免並行更新時的競態條件。
+    """
+    with _state_lock:
+        if _use_dynamic:
+            model = _get_dynamic().update_agent_status(
+                agent_id,
+                status=status,
+                current_task=current_task,
+                progress=progress,
+                collaborating_with=collaborating_with,
+            )
+            return deepcopy(model) if model else None
+
+        agent = _agent_state.get(agent_id)
+        if agent is None:
+            return None
+        if status is not None:
+            agent.status = status
+        if current_task is not None:
+            agent.current_task = current_task
+        if progress is not None:
+            agent.progress = progress
+        if collaborating_with is not None:
+            agent.collaborating_with = collaborating_with
+        return deepcopy(agent)
 
 
 def reset_all_agents() -> None:

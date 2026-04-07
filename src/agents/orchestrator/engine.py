@@ -599,11 +599,11 @@ class OrchestrationEngine:
         )
         await ws_manager.broadcast_work_log(log)
 
-        # 調參重跑迴圈
+        # 調參重跑迴圈（使用副本避免污染原始步驟定義）
+        current_params = dict(step.task_parameters)
         for rerun in range(1, cp.max_reruns + 1):
-            adjusted_params = self._apply_param_adjustments(
-                step.task_parameters, cp.param_adjustments
-            )
+            adjusted_params = self._apply_param_adjustments(current_params, cp.param_adjustments)
+            current_params = adjusted_params
             step.task_parameters = adjusted_params
 
             log = self._create_log(
@@ -741,10 +741,29 @@ class OrchestrationEngine:
 
     # ── 工作流程主迴圈 ──────────────────────────────────────
 
+    def _validate_workflow(self, workflow: Workflow) -> list[str]:
+        """預檢驗證工作流程，回傳警告訊息列表。"""
+        from src.agents.dynamic_registry import dynamic_registry
+
+        warnings: list[str] = []
+        for step in workflow.steps:
+            for agent_id in step.agent_ids:
+                model = get_agent(agent_id)
+                if model is None:
+                    warnings.append(f"步驟「{step.name}」的代理 {agent_id} 不存在於註冊表")
+                elif dynamic_registry.get_instance(agent_id) is None:
+                    warnings.append(f"步驟「{step.name}」的代理 {agent_id} 無實例，將使用模擬模式")
+        return warnings
+
     async def execute_workflow(self, workflow: Workflow) -> str:
         """執行完整工作流程。"""
         task_id = str(uuid.uuid4())
         logger.info(f"開始執行工作流程：{workflow.name} (task_id={task_id})")
+
+        # ── 預檢驗證 ──
+        validation_warnings = self._validate_workflow(workflow)
+        for warn in validation_warnings:
+            logger.warning(f"工作流程預檢：{warn}")
 
         # 廣播工作流程開始
         log = self._create_log(
@@ -757,9 +776,22 @@ class OrchestrationEngine:
 
         try:
             for i, step in enumerate(workflow.steps):
-                # 合併 workflow 層級參數到步驟
+                # 合併 workflow 層級參數到步驟（使用副本避免污染原始步驟定義）
                 merged_params = {**workflow.parameters, **step.task_parameters}
-                step.task_parameters = merged_params
+                step = WorkflowStep(
+                    name=step.name,
+                    agent_ids=step.agent_ids,
+                    description=step.description,
+                    duration=step.duration,
+                    step_type=step.step_type,
+                    sub_messages=step.sub_messages,
+                    progress_messages=step.progress_messages,
+                    task_template=step.task_template,
+                    task_parameters=merged_params,
+                    collaborator_ids=step.collaborator_ids,
+                    retry=step.retry,
+                    checkpoint=step.checkpoint,
+                )
 
                 step_label = f"[{i+1}/{total_steps}]"
                 log = self._create_log("system", "系統", f"📋 {step_label} {step.name}", "info")
