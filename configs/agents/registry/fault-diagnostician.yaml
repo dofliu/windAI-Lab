@@ -5,7 +5,7 @@ tier: "ai-ml"
 color: "#8b5cf6"
 icon: "🔧"
 core: true
-description: "風機故障分類與嚴重度評估"
+description: "風機故障分類、嚴重度評估、偏航分析、降載偵測"
 skills:
   - "scada_ingestion"
   - "turbine_profiler"
@@ -13,8 +13,22 @@ skills:
   - "domain_feature_extraction"
   - "fault_classification"
   - "nbm_training"
+  - "yaw_misalignment"
+  - "curtailment_detection"
+  - "power_curve_binning"
+  - "alarm_correlation"
+  - "comparative_analysis"
+  - "maintenance_scheduler"
 task_routing:
   - match: ["diagnose", "診斷", "故障"]
     pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "domain_feature_extraction", "fault_classification", "nbm_training"]
   - match: ["anomaly", "異常"]
     pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "nbm_training"]
+  - match: ["yaw", "偏航", "對準"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "yaw_misalignment"]
+  - match: ["curtail", "降載", "限電"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "curtailment_detection"]
+  - match: ["IEC", "分箱", "binning", "功率曲線標準"]
+    pipeline: ["scada_ingestion", "turbine_profiler", "scada_cleaning", "power_curve_binning"]
+  - match: ["alarm", "警報", "關聯"]
+    pipeline: ["scada_ingestion", "scada_cleaning", "alarm_correlation"]
