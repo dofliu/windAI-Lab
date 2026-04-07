@@ -186,11 +186,13 @@ class DirectorReviewSkill(BaseSkill):
                     parts.append(f"關鍵指標：{json.dumps(key_metrics, ensure_ascii=False)}")
             parts.append("")
 
-        parts.extend([
-            "---",
-            "請根據以上分析結果進行全面審核，給出最終判斷。",
-            "以 JSON 格式回覆。",
-        ])
+        parts.extend(
+            [
+                "---",
+                "請根據以上分析結果進行全面審核，給出最終判斷。",
+                "以 JSON 格式回覆。",
+            ]
+        )
 
         return "\n".join(parts)
 
@@ -291,9 +293,7 @@ class DirectorReviewSkill(BaseSkill):
             ),
             "strengths": strengths or ["分析流程完整"],
             "concerns": concerns or ["無重大問題"],
-            "required_actions": (
-                [c for c in concerns if "失敗" in c or "不足" in c] or ["無"]
-            ),
+            "required_actions": ([c for c in concerns if "失敗" in c or "不足" in c] or ["無"]),
             "risk_notes": [c for c in concerns if "健康" in c or "立即" in c] or ["無特別風險"],
             "final_recommendation": (
                 f"{'建議執行維護建議' if verdict == 'approved' else '建議補充分析後重新審核' if verdict == 'conditional' else '建議重新執行分析'}"

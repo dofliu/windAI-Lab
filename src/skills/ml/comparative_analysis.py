@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pandas as pd
-
 from src.skills.base import BaseSkill, ProgressCallback, SkillInput, SkillOutput, SkillStatus
 from src.utils.logger import get_logger
 
@@ -210,10 +208,13 @@ class ComparativeAnalysisSkill(BaseSkill):
                     "anomaly_rate": r["anomaly_rate"],
                     "power_curve_deviation": r["power_curve_deviation"],
                     "risk_level": (
-                        "Critical" if r["health_score"] < 40
-                        else "High" if r["health_score"] < 60
-                        else "Medium" if r["health_score"] < 80
-                        else "Low"
+                        "Critical"
+                        if r["health_score"] < 40
+                        else (
+                            "High"
+                            if r["health_score"] < 60
+                            else "Medium" if r["health_score"] < 80 else "Low"
+                        )
                     ),
                 }
                 for r in risk_ranking
@@ -238,7 +239,6 @@ class ComparativeAnalysisSkill(BaseSkill):
                 for r in deviation_ranking
             ],
             "failed_turbines": [
-                {"turbine_id": r["turbine_id"], "error": r.get("error", "")}
-                for r in failed
+                {"turbine_id": r["turbine_id"], "error": r.get("error", "")} for r in failed
             ],
         }

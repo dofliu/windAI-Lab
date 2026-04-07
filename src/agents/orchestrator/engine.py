@@ -602,9 +602,7 @@ class OrchestrationEngine:
         # 調參重跑迴圈（使用副本避免污染原始步驟定義）
         current_params = dict(step.task_parameters)
         for rerun in range(1, cp.max_reruns + 1):
-            adjusted_params = self._apply_param_adjustments(
-                current_params, cp.param_adjustments
-            )
+            adjusted_params = self._apply_param_adjustments(current_params, cp.param_adjustments)
             current_params = adjusted_params
             step.task_parameters = adjusted_params
 
@@ -754,9 +752,7 @@ class OrchestrationEngine:
                 if model is None:
                     warnings.append(f"步驟「{step.name}」的代理 {agent_id} 不存在於註冊表")
                 elif dynamic_registry.get_instance(agent_id) is None:
-                    warnings.append(
-                        f"步驟「{step.name}」的代理 {agent_id} 無實例，將使用模擬模式"
-                    )
+                    warnings.append(f"步驟「{step.name}」的代理 {agent_id} 無實例，將使用模擬模式")
         return warnings
 
     async def execute_workflow(self, workflow: Workflow) -> str:

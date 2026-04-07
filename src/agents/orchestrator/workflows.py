@@ -762,8 +762,8 @@ def create_folder_analyze_workflow(folder_path: str = "") -> Workflow:
     """
     return Workflow(
         id="folder-analyze",
-        name=f"資料夾批次分析",
-        description=f"自動掃描資料夾、批次載入並分析所有 SCADA 檔案",
+        name="資料夾批次分析",
+        description="自動掃描資料夾、批次載入並分析所有 SCADA 檔案",
         parameters={"folder_path": folder_path},
         steps=[
             _director_dispatch("資料夾批次分析"),

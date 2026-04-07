@@ -69,9 +69,7 @@ class MaintenanceSchedulerSkill(BaseSkill):
             await progress_cb(0.1, "收集上游分析結果...")
 
         # 收集維護需求
-        maintenance_items = self._collect_maintenance_needs(
-            inp.parameters, inp.context or {}
-        )
+        maintenance_items = self._collect_maintenance_needs(inp.parameters, inp.context or {})
 
         if progress_cb:
             await progress_cb(0.4, f"識別到 {len(maintenance_items)} 項維護需求")
@@ -141,70 +139,83 @@ class MaintenanceSchedulerSkill(BaseSkill):
                 rul_days = data.get("predicted_rul_days")
                 if rul_days is not None:
                     severity = (
-                        "Critical" if rul_days < 30
-                        else "High" if rul_days < 90
-                        else "Medium" if rul_days < 180
-                        else "Low"
+                        "Critical"
+                        if rul_days < 30
+                        else "High" if rul_days < 90 else "Medium" if rul_days < 180 else "Low"
                     )
-                    items.append({
-                        "turbine_id": turbine_id,
-                        "source": "rul_prediction",
-                        "severity": severity,
-                        "description": f"RUL 預測剩餘 {rul_days:.0f} 天",
-                        "rul_days": rul_days,
-                        "maintenance_type": (
-                            "bearing_replacement" if rul_days < 30
-                            else "vibration_measurement" if rul_days < 90
-                            else "scheduled_maintenance"
-                        ),
-                    })
+                    items.append(
+                        {
+                            "turbine_id": turbine_id,
+                            "source": "rul_prediction",
+                            "severity": severity,
+                            "description": f"RUL 預測剩餘 {rul_days:.0f} 天",
+                            "rul_days": rul_days,
+                            "maintenance_type": (
+                                "bearing_replacement"
+                                if rul_days < 30
+                                else (
+                                    "vibration_measurement"
+                                    if rul_days < 90
+                                    else "scheduled_maintenance"
+                                )
+                            ),
+                        }
+                    )
 
             # 故障分類結果
             if skill_id == "fault_classification":
                 severity_dist = data.get("severity_distribution", {})
                 if severity_dist.get("critical", 0) > 0:
-                    items.append({
-                        "turbine_id": turbine_id,
-                        "source": "fault_classification",
-                        "severity": "Critical",
-                        "description": "ML 分類偵測到 Critical 級故障事件",
-                        "maintenance_type": "emergency_inspection",
-                    })
+                    items.append(
+                        {
+                            "turbine_id": turbine_id,
+                            "source": "fault_classification",
+                            "severity": "Critical",
+                            "description": "ML 分類偵測到 Critical 級故障事件",
+                            "maintenance_type": "emergency_inspection",
+                        }
+                    )
                 elif severity_dist.get("high", 0) > 0:
-                    items.append({
-                        "turbine_id": turbine_id,
-                        "source": "fault_classification",
-                        "severity": "High",
-                        "description": "ML 分類偵測到 High 級故障事件",
-                        "maintenance_type": "vibration_measurement",
-                    })
+                    items.append(
+                        {
+                            "turbine_id": turbine_id,
+                            "source": "fault_classification",
+                            "severity": "High",
+                            "description": "ML 分類偵測到 High 級故障事件",
+                            "maintenance_type": "vibration_measurement",
+                        }
+                    )
 
             # 異常偵測結果
             if skill_id == "anomaly_detection":
                 anomaly_ratio = data.get("anomaly_ratio", 0)
                 health = data.get("health_score", 100)
                 if anomaly_ratio > 0.1 or health < 50:
-                    items.append({
-                        "turbine_id": turbine_id,
-                        "source": "anomaly_detection",
-                        "severity": "High" if health < 50 else "Medium",
-                        "description": (
-                            f"異常比率 {anomaly_ratio:.1%}，健康分數 {health}/100"
-                        ),
-                        "maintenance_type": "oil_sampling",
-                    })
+                    items.append(
+                        {
+                            "turbine_id": turbine_id,
+                            "source": "anomaly_detection",
+                            "severity": "High" if health < 50 else "Medium",
+                            "description": (
+                                f"異常比率 {anomaly_ratio:.1%}，健康分數 {health}/100"
+                            ),
+                            "maintenance_type": "oil_sampling",
+                        }
+                    )
 
             # NBM 結果
             if skill_id == "nbm_training":
                 anomaly_count = data.get("anomaly_count", 0)
                 if anomaly_count > 100:
-                    items.append({
-                        "turbine_id": turbine_id,
-                        "source": "nbm_training",
-                        "severity": "Medium",
-                        "description": f"NBM 偵測到 {anomaly_count} 筆功率曲線異常",
-                        "maintenance_type": "blade_inspection",
-                    })
+                    items.append(
+                        {
+                            "turbine_id": turbine_id,
+                            "source": "nbm_training",
+                            "severity": "Medium",
+                            "description": f"NBM 偵測到 {anomaly_count} 筆功率曲線異常",
+                            "maintenance_type": "blade_inspection",
+                        }
+                    )
 
         # 多台風機報告
         turbine_reports = parameters.get("turbine_reports", [])
@@ -212,13 +223,17 @@ class MaintenanceSchedulerSkill(BaseSkill):
             tid = report.get("turbine_id", "")
             health = report.get("health_score", 100)
             if health < 60:
-                items.append({
-                    "turbine_id": tid,
-                    "source": "health_assessment",
-                    "severity": "Critical" if health < 40 else "High",
-                    "description": f"健康分數 {health}/100",
-                    "maintenance_type": "emergency_inspection" if health < 40 else "vibration_measurement",
-                })
+                items.append(
+                    {
+                        "turbine_id": tid,
+                        "source": "health_assessment",
+                        "severity": "Critical" if health < 40 else "High",
+                        "description": f"健康分數 {health}/100",
+                        "maintenance_type": (
+                            "emergency_inspection" if health < 40 else "vibration_measurement"
+                        ),
+                    }
+                )
 
         return items
 
@@ -240,18 +255,20 @@ class MaintenanceSchedulerSkill(BaseSkill):
             # 建議執行日 = deadline 前 2 天（留緩衝）
             suggested = deadline - timedelta(days=min(2, deadline_days))
 
-            work_orders.append({
-                "order_id": f"WO-{now.strftime('%Y%m%d')}-{i+1:03d}",
-                "turbine_id": item["turbine_id"],
-                "priority": severity,
-                "description": item["description"],
-                "source": item["source"],
-                "maintenance_type": maint_type,
-                "estimated_downtime_hours": downtime,
-                "deadline": deadline.strftime("%Y-%m-%d"),
-                "suggested_date": suggested.strftime("%Y-%m-%d"),
-                "status": "pending",
-            })
+            work_orders.append(
+                {
+                    "order_id": f"WO-{now.strftime('%Y%m%d')}-{i+1:03d}",
+                    "turbine_id": item["turbine_id"],
+                    "priority": severity,
+                    "description": item["description"],
+                    "source": item["source"],
+                    "maintenance_type": maint_type,
+                    "estimated_downtime_hours": downtime,
+                    "deadline": deadline.strftime("%Y-%m-%d"),
+                    "suggested_date": suggested.strftime("%Y-%m-%d"),
+                    "status": "pending",
+                }
+            )
 
         return work_orders
 

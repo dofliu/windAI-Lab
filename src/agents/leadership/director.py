@@ -95,9 +95,7 @@ class ProjectDirector(BaseAgent):
             summary=f"已將「{task_desc}」分派至 {len(target_agents)} 位代理",
         )
 
-    async def _review(
-        self, task: str, params: dict[str, Any], context: TaskContext
-    ) -> TaskResult:
+    async def _review(self, task: str, params: dict[str, Any], context: TaskContext) -> TaskResult:
         """智慧審核：使用 LLM 或規則式審核下級代理提交的成果。
 
         審核流程：
@@ -167,9 +165,7 @@ class ProjectDirector(BaseAgent):
                     "verdict": "approved" if approved else "conditional",
                     "mode": "basic_fallback",
                 },
-                summary=(
-                    f"已完成審核：{task} — {'通過' if approved else '有條件通過'}"
-                ),
+                summary=(f"已完成審核：{task} — {'通過' if approved else '有條件通過'}"),
             )
 
     def _basic_quality_check(self, upstream: dict[str, Any]) -> bool:
