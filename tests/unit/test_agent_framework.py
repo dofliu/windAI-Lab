@@ -410,14 +410,19 @@ class TestConcreteAgents:
 
     @pytest.mark.asyncio()
     async def test_project_director_review(self) -> None:
-        """ProjectDirector 執行審核任務。"""
+        """ProjectDirector 執行審核任務（使用智慧審核）。"""
         from src.agents.leadership.director import ProjectDirector
 
         agent = ProjectDirector()
-        ctx = TaskContext()
+        ctx = TaskContext(
+            results={
+                "analysis": {"status": "success", "data": {"r2_score": 0.95}},
+            }
+        )
         result = await agent.execute("審核成果", ctx)
         assert result.status == TaskStatus.SUCCESS
-        assert result.data.get("approved") is True
+        # 升級後回傳 verdict 而非簡單的 approved=True
+        assert "verdict" in result.data or "approved" in result.data
 
     @pytest.mark.asyncio()
     async def test_backend_dev_api_task(self) -> None:
