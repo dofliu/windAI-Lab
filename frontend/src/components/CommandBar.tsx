@@ -53,7 +53,7 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
 
   // 從後端取得可用風機列表
   useEffect(() => {
-    fetch('http://localhost:8000/api/scada/turbines')
+    fetch('/api/scada/turbines')
       .then((res) => res.json())
       .then((data) => {
         if (data.turbines && data.turbines.length > 0) {

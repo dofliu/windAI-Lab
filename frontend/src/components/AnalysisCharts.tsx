@@ -150,7 +150,7 @@ export function AnalysisChart({ result, theme, height = 200 }: {
 
   if (chart_type === 'report_link') {
     const downloadUrl = metadata?.download_url as string
-    const apiBase = window.location.origin.replace(':5173', ':8000').replace(':3000', ':8000')
+    const apiBase = ''  // Vite proxy 模式，使用相對路徑
     return (
       <ChartPanel title={title} theme={theme}>
         <div className="flex flex-col items-center gap-3 py-4">

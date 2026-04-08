@@ -131,12 +131,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS 中介層設定：允許 Vite 開發伺服器跨域存取
+# CORS 中介層設定：允許前端開發伺服器跨域存取
+# 支援 5173 (Vite 預設)、5800 (WindAI 預設)、3000/8000 (向下相容)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5800",
+        "http://127.0.0.1:5800",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -2018,10 +2021,13 @@ async def api_download_report(report_id: str) -> Any:
 if __name__ == "__main__":
     import uvicorn
 
+    from src.core.config import get_settings
+
+    _settings = get_settings()
     uvicorn.run(
         "src.api.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
+        host=_settings.host,
+        port=_settings.port,
+        reload=_settings.debug,
         log_level="info",
     )

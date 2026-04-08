@@ -58,8 +58,8 @@ export default function AgentManagement({ allAgents = [], onHire, onFire }: Prop
   const fetchData = useCallback(async () => {
     try {
       const [avRes, skRes] = await Promise.all([
-        fetch('http://localhost:8000/api/agents/available'),
-        fetch('http://localhost:8000/api/skills'),
+        fetch('/api/agents/available'),
+        fetch('/api/skills'),
       ])
       const avData = await avRes.json()
       const skData = await skRes.json()
@@ -96,7 +96,7 @@ export default function AgentManagement({ allAgents = [], onHire, onFire }: Prop
 
     if (backendOnline) {
       try {
-        const res = await fetch(`http://localhost:8000/api/agents/hire?agent_id=${agent.id}`, { method: 'POST' })
+        const res = await fetch(`/api/agents/hire?agent_id=${agent.id}`, { method: 'POST' })
         const data = await res.json()
         if (res.ok) {
           setMessage(`✅ 已聘用 ${data.agent?.display_name ?? agent.display_name}`)
@@ -123,7 +123,7 @@ export default function AgentManagement({ allAgents = [], onHire, onFire }: Prop
 
     if (backendOnline) {
       try {
-        const res = await fetch(`http://localhost:8000/api/agents/fire?agent_id=${agentId}`, { method: 'POST' })
+        const res = await fetch(`/api/agents/fire?agent_id=${agentId}`, { method: 'POST' })
         const data = await res.json()
         if (res.ok) {
           setMessage(`👋 已解聘 ${agent?.displayName ?? agentId}`)

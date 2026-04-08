@@ -56,7 +56,7 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/scada/turbines')
+    fetch('/api/scada/turbines')
       .then((res) => res.json())
       .then((data) => {
         if (data.turbines?.length > 0) {

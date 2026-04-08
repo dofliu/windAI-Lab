@@ -68,7 +68,7 @@ export default function KnowledgeBasePanel() {
     setAskResult(null)
     try {
       const res = await fetch(
-        `http://localhost:8000/api/knowledge-base/ask?query=${encodeURIComponent(query)}&n_results=5`,
+        `/api/knowledge-base/ask?query=${encodeURIComponent(query)}&n_results=5`,
         { method: 'POST' }
       )
       const data = await res.json()
@@ -85,7 +85,7 @@ export default function KnowledgeBasePanel() {
     setError(null)
     try {
       const res = await fetch(
-        `http://localhost:8000/api/knowledge-base/search?query=${encodeURIComponent(query)}&n_results=10`,
+        `/api/knowledge-base/search?query=${encodeURIComponent(query)}&n_results=10`,
         { method: 'POST' }
       )
       const data = await res.json()
@@ -101,8 +101,8 @@ export default function KnowledgeBasePanel() {
     setError(null)
     try {
       const [srcRes, statsRes] = await Promise.all([
-        fetch('http://localhost:8000/api/knowledge-base/sources'),
-        fetch('http://localhost:8000/api/knowledge-base/stats'),
+        fetch('/api/knowledge-base/sources'),
+        fetch('/api/knowledge-base/stats'),
       ])
       const srcData = await srcRes.json()
       const statsData = await statsRes.json()
@@ -119,7 +119,7 @@ export default function KnowledgeBasePanel() {
     setError(null)
     try {
       const res = await fetch(
-        `http://localhost:8000/api/knowledge-base/source?source=${encodeURIComponent(source)}`,
+        `/api/knowledge-base/source?source=${encodeURIComponent(source)}`,
         { method: 'DELETE' }
       )
       const data = await res.json()
@@ -140,7 +140,7 @@ export default function KnowledgeBasePanel() {
     setIngestResult(null)
     try {
       const res = await fetch(
-        `http://localhost:8000/api/knowledge-base/ingest-folder?folder_path=${encodeURIComponent(folderPath)}`,
+        `/api/knowledge-base/ingest-folder?folder_path=${encodeURIComponent(folderPath)}`,
         { method: 'POST' }
       )
       const data = await res.json()

@@ -48,8 +48,8 @@ export default function MLDashboard() {
     }
   }, [])
 
-  const handleTrain = () => apiCall(`http://localhost:8000/api/ml/train?turbine_id=${turbineId}`, setTrainResult)
-  const handleInfer = () => apiCall(`http://localhost:8000/api/ml/inference?turbine_id=${turbineId}`, setInferResult)
+  const handleTrain = () => apiCall(`/api/ml/train?turbine_id=${turbineId}`, setTrainResult)
+  const handleInfer = () => apiCall(`/api/ml/inference?turbine_id=${turbineId}`, setInferResult)
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto">

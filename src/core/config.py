@@ -29,7 +29,8 @@ class Settings(BaseSettings):
 
     # ── 伺服器 ──
     host: str = Field(default="0.0.0.0", description="API 伺服器綁定位址")
-    port: int = Field(default=8000, description="API 伺服器埠號")
+    port: int = Field(default=5800, description="API 伺服器埠號")
+    frontend_port: int = Field(default=5173, description="前端開發伺服器埠號")
     debug: bool = Field(default=False, description="偵錯模式")
 
     # ── 資料路徑 ──

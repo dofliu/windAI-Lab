@@ -50,9 +50,9 @@ class TestSettings:
         """確認預設 host 為 '0.0.0.0'。"""
         assert app_settings.host == "0.0.0.0"
 
-    def test_default_port_is_8000(self, app_settings: Settings) -> None:
-        """確認預設 port 為 8000。"""
-        assert app_settings.port == 8000
+    def test_default_port_is_5800(self, app_settings: Settings) -> None:
+        """確認預設 port 為 5800。"""
+        assert app_settings.port == 5800
 
     def test_default_debug_is_false(self, app_settings: Settings) -> None:
         """確認預設 debug 模式為 False。"""
