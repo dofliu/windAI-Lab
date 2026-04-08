@@ -28,7 +28,7 @@ export default function FileWatcherStatus({ fileEvents }: Props) {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/file-watcher/status')
+      const res = await fetch('/api/file-watcher/status')
       const data = await res.json()
       setIsRunning(data.running ?? false)
       setStatus(data)
@@ -46,7 +46,7 @@ export default function FileWatcherStatus({ fileEvents }: Props) {
   const toggle = async () => {
     try {
       const endpoint = isRunning ? 'stop' : 'start'
-      await fetch(`http://localhost:8000/api/file-watcher/${endpoint}`, { method: 'POST' })
+      await fetch(`/api/file-watcher/${endpoint}`, { method: 'POST' })
       await fetchStatus()
     } catch {
       // ignore
@@ -57,7 +57,7 @@ export default function FileWatcherStatus({ fileEvents }: Props) {
   const forceScan = async () => {
     setScanning(true)
     try {
-      await fetch('http://localhost:8000/api/file-watcher/scan', { method: 'POST' })
+      await fetch('/api/file-watcher/scan', { method: 'POST' })
       await fetchStatus()
     } catch {
       // ignore

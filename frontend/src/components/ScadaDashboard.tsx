@@ -112,7 +112,7 @@ export default function ScadaDashboard() {
 
   // 從後端動態取得風機列表
   useEffect(() => {
-    fetch('http://localhost:8000/api/scada/turbines')
+    fetch('/api/scada/turbines')
       .then((res) => res.json())
       .then((data) => {
         if (data.turbines && data.turbines.length > 0) {
@@ -129,7 +129,7 @@ export default function ScadaDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`http://localhost:8000/api/scada/${turbineId}/overview?limit=2000`)
+      const res = await fetch(`/api/scada/${turbineId}/overview?limit=2000`)
       const text = await res.text()
       const json = safeJsonParse(text) as Record<string, unknown>
       if (json.status === 'error') {
@@ -147,7 +147,7 @@ export default function ScadaDashboard() {
   const loadFeatures = useCallback(async () => {
     setFeatureLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/api/scada/${turbineId}/features`)
+      const res = await fetch(`/api/scada/${turbineId}/features`)
       const text = await res.text()
       const json = safeJsonParse(text) as Record<string, unknown>
       if (json.status === 'success') {

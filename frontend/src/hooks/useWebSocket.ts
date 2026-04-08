@@ -62,7 +62,9 @@ export function useWebSocket() {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
     setConnectionStatus('connecting')
-    const ws = new WebSocket('ws://localhost:8000/ws')
+    const wsUrl = import.meta.env.VITE_WS_URL ||
+      `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
       setConnectionStatus('connected')

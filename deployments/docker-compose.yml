@@ -7,10 +7,10 @@ services:
       dockerfile: Dockerfile
     container_name: windai-backend
     ports:
-      - "8000:8000"
+      - "5800:5800"
     environment:
       - WINDAI_HOST=0.0.0.0
-      - WINDAI_PORT=8000
+      - WINDAI_PORT=5800
       - WINDAI_DEBUG=true
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - WINDAI_DATA_ROOT=/app/data
@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     container_name: windai-frontend
     ports:
-      - "3000:80"
+      - "5173:80"
     depends_on:
       - backend
     restart: unless-stopped
