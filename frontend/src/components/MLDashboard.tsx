@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { API_BASE } from '../config/api'
 
 interface MLResult {
   status: string
@@ -48,8 +49,8 @@ export default function MLDashboard() {
     }
   }, [])
 
-  const handleTrain = () => apiCall(`/api/ml/train?turbine_id=${turbineId}`, setTrainResult)
-  const handleInfer = () => apiCall(`/api/ml/inference?turbine_id=${turbineId}`, setInferResult)
+  const handleTrain = () => apiCall(`${API_BASE}/ml/train?turbine_id=${turbineId}`, setTrainResult)
+  const handleInfer = () => apiCall(`${API_BASE}/ml/inference?turbine_id=${turbineId}`, setInferResult)
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto">

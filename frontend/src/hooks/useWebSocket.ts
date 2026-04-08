@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Agent, WorkLog, OfficeRoom, AgentStatus, SpeechBubble, WorkflowRetryEvent, WorkflowDegradationEvent, WorkflowCheckpointEvent, Alert, WorkOrder } from '../types/agent'
 import { initialRooms } from '../utils/mockData'
+import { WS_URL } from '../config/api'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -62,9 +63,7 @@ export function useWebSocket() {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
     setConnectionStatus('connecting')
-    const wsUrl = import.meta.env.VITE_WS_URL ||
-      `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
-    const ws = new WebSocket(wsUrl)
+    const ws = new WebSocket(WS_URL)
 
     ws.onopen = () => {
       setConnectionStatus('connected')

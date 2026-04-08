@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../themes'
+import { API_BASE } from '../config/api'
 
 interface TaskLauncherProps {
   onExecute: (command: string, parameters: Record<string, string>) => void
@@ -56,7 +57,7 @@ export default function TaskLauncher({ onExecute, disabled = false }: TaskLaunch
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('/api/scada/turbines')
+    fetch(`${API_BASE}/scada/turbines`)
       .then((res) => res.json())
       .then((data) => {
         if (data.turbines?.length > 0) {

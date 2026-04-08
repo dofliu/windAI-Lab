@@ -13,7 +13,7 @@ import type { TaskRecord } from '../types/agent'
 
 const STORAGE_KEY = 'windai_task_history'
 const MAX_RECORDS = 50
-const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+import { API_BASE } from '../config/api'
 
 /** 後端任務記錄格式 */
 interface BackendTask {
