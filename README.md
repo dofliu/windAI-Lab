@@ -28,6 +28,8 @@ pip install -r requirements.txt
 
 # 啟動 API 伺服器
 uvicorn src.api.main:app --reload
+uvicorn src.api.main:app --host 0.0.0.0 --port 5800 --reload
+
 ```
 
 ### 前端
@@ -46,9 +48,9 @@ docker compose up -d
 
 | 服務 | 網址 |
 |------|------|
-| 前端虛擬辦公室 | http://localhost:5173 |
-| 後端 REST API | http://localhost:8000 |
-| API 互動文件 | http://localhost:8000/docs |
+| 前端虛擬辦公室 | <http://localhost:5173> |
+| 後端 REST API | <http://localhost:8000> |
+| API 互動文件 | <http://localhost:8000/docs> |
 
 ---
 
@@ -228,9 +230,10 @@ class MySkill(BaseSkill):
 ### 內建資料集
 
 **Kelmarsh Wind Farm SCADA Dataset** (CC-BY-4.0)
+
 - 6 x Senvion MM92 (2050 kW, 92m rotor)
 - 10 分鐘平均值，2016 年全年
-- 來源：https://zenodo.org/records/5841834
+- 來源：<https://zenodo.org/records/5841834>
 
 ### 使用自己的資料
 
