@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Alert, AlertSeverity, AlertStatus } from '../types/agent'
 import { useTheme } from '../themes'
+import { API_BASE } from '../config/api'
 
 interface AlertPanelProps {
   alerts: Alert[]
@@ -41,7 +42,7 @@ export default function AlertPanel({ alerts: wsAlerts, onAlertsChange }: AlertPa
       const params = new URLSearchParams({ limit: '100' })
       if (filterStatus !== 'all') params.set('status', filterStatus)
       if (filterSeverity !== 'all') params.set('severity', filterSeverity)
-      const res = await fetch(`/api/alerts?${params}`)
+      const res = await fetch(`${API_BASE}/alerts?${params}`)
       const data = await res.json()
       if (data.alerts) setAlerts(data.alerts)
     } catch {
@@ -67,7 +68,7 @@ export default function AlertPanel({ alerts: wsAlerts, onAlertsChange }: AlertPa
 
   const handleUpdateStatus = async (alertId: string, status: AlertStatus) => {
     try {
-      const res = await fetch(`/api/alerts/${alertId}`, {
+      const res = await fetch(`${API_BASE}/alerts/${alertId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, resolved_by: 'user' }),
@@ -84,7 +85,7 @@ export default function AlertPanel({ alerts: wsAlerts, onAlertsChange }: AlertPa
 
   const handleCreateWorkOrder = async (alertId: string) => {
     try {
-      const res = await fetch(`/api/alerts/${alertId}/create-work-order`, {
+      const res = await fetch(`${API_BASE}/alerts/${alertId}/create-work-order`, {
         method: 'POST',
       })
       if (res.ok) {
@@ -98,7 +99,7 @@ export default function AlertPanel({ alerts: wsAlerts, onAlertsChange }: AlertPa
     setCreating(true)
     const form = new FormData(e.currentTarget)
     try {
-      await fetch('/api/alerts', {
+      await fetch(`${API_BASE}/alerts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

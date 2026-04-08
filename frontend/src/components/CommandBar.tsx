@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTheme } from '../themes'
+import { API_BASE } from '../config/api'
 
 interface CommandBarProps {
   onExecute: (command: string, parameters: Record<string, string>) => void
@@ -53,7 +54,7 @@ export default function CommandBar({ onExecute, disabled = false }: CommandBarPr
 
   // 從後端取得可用風機列表
   useEffect(() => {
-    fetch('/api/scada/turbines')
+    fetch(`${API_BASE}/scada/turbines`)
       .then((res) => res.json())
       .then((data) => {
         if (data.turbines && data.turbines.length > 0) {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { API_BASE } from '../config/api'
 
 interface FileEvent {
   filename: string
@@ -28,7 +29,7 @@ export default function FileWatcherStatus({ fileEvents }: Props) {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/file-watcher/status')
+      const res = await fetch(`${API_BASE}/file-watcher/status`)
       const data = await res.json()
       setIsRunning(data.running ?? false)
       setStatus(data)
@@ -46,7 +47,7 @@ export default function FileWatcherStatus({ fileEvents }: Props) {
   const toggle = async () => {
     try {
       const endpoint = isRunning ? 'stop' : 'start'
-      await fetch(`/api/file-watcher/${endpoint}`, { method: 'POST' })
+      await fetch(`${API_BASE}/file-watcher/${endpoint}`, { method: 'POST' })
       await fetchStatus()
     } catch {
       // ignore
@@ -57,7 +58,7 @@ export default function FileWatcherStatus({ fileEvents }: Props) {
   const forceScan = async () => {
     setScanning(true)
     try {
-      await fetch('/api/file-watcher/scan', { method: 'POST' })
+      await fetch(`${API_BASE}/file-watcher/scan`, { method: 'POST' })
       await fetchStatus()
     } catch {
       // ignore

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Search, BookOpen, Database, FolderInput, Loader2, MessageSquare, Sparkles, Trash2, FileText } from 'lucide-react'
 import { useTheme } from '../themes'
+import { API_BASE } from '../config/api'
 
 interface SearchResultItem {
   doc_id: string
@@ -68,7 +69,7 @@ export default function KnowledgeBasePanel() {
     setAskResult(null)
     try {
       const res = await fetch(
-        `/api/knowledge-base/ask?query=${encodeURIComponent(query)}&n_results=5`,
+        `${API_BASE}/knowledge-base/ask?query=${encodeURIComponent(query)}&n_results=5`,
         { method: 'POST' }
       )
       const data = await res.json()
@@ -85,7 +86,7 @@ export default function KnowledgeBasePanel() {
     setError(null)
     try {
       const res = await fetch(
-        `/api/knowledge-base/search?query=${encodeURIComponent(query)}&n_results=10`,
+        `${API_BASE}/knowledge-base/search?query=${encodeURIComponent(query)}&n_results=10`,
         { method: 'POST' }
       )
       const data = await res.json()
@@ -101,8 +102,8 @@ export default function KnowledgeBasePanel() {
     setError(null)
     try {
       const [srcRes, statsRes] = await Promise.all([
-        fetch('/api/knowledge-base/sources'),
-        fetch('/api/knowledge-base/stats'),
+        fetch(`${API_BASE}/knowledge-base/sources`),
+        fetch(`${API_BASE}/knowledge-base/stats`),
       ])
       const srcData = await srcRes.json()
       const statsData = await statsRes.json()
@@ -119,7 +120,7 @@ export default function KnowledgeBasePanel() {
     setError(null)
     try {
       const res = await fetch(
-        `/api/knowledge-base/source?source=${encodeURIComponent(source)}`,
+        `${API_BASE}/knowledge-base/source?source=${encodeURIComponent(source)}`,
         { method: 'DELETE' }
       )
       const data = await res.json()
@@ -140,7 +141,7 @@ export default function KnowledgeBasePanel() {
     setIngestResult(null)
     try {
       const res = await fetch(
-        `/api/knowledge-base/ingest-folder?folder_path=${encodeURIComponent(folderPath)}`,
+        `${API_BASE}/knowledge-base/ingest-folder?folder_path=${encodeURIComponent(folderPath)}`,
         { method: 'POST' }
       )
       const data = await res.json()

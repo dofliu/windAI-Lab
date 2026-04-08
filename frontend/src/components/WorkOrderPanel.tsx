@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { WorkOrder, WorkOrderStatus, WorkOrderPriority, Agent } from '../types/agent'
 import { useTheme } from '../themes'
+import { API_BASE } from '../config/api'
 
 interface WorkOrderPanelProps {
   workOrders: WorkOrder[]
@@ -36,7 +37,7 @@ export default function WorkOrderPanel({ workOrders: wsOrders, allAgents = [] }:
 
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch('/api/work-orders?limit=100')
+      const res = await fetch(`${API_BASE}/work-orders?limit=100`)
       const data = await res.json()
       if (data.work_orders) setOrders(data.work_orders)
     } catch {
@@ -61,7 +62,7 @@ export default function WorkOrderPanel({ workOrders: wsOrders, allAgents = [] }:
 
   const handleUpdateStatus = async (orderId: string, status: WorkOrderStatus) => {
     try {
-      const res = await fetch(`/api/work-orders/${orderId}`, {
+      const res = await fetch(`${API_BASE}/work-orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
@@ -76,7 +77,7 @@ export default function WorkOrderPanel({ workOrders: wsOrders, allAgents = [] }:
   const handleAddNote = async (orderId: string) => {
     if (!noteText.trim()) return
     try {
-      const res = await fetch(`/api/work-orders/${orderId}/notes`, {
+      const res = await fetch(`${API_BASE}/work-orders/${orderId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ author: 'user', text: noteText.trim() }),
@@ -93,7 +94,7 @@ export default function WorkOrderPanel({ workOrders: wsOrders, allAgents = [] }:
     e.preventDefault()
     const form = new FormData(e.currentTarget)
     try {
-      await fetch('/api/work-orders', {
+      await fetch(`${API_BASE}/work-orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

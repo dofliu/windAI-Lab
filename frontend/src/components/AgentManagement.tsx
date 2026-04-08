@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Agent } from '../types/agent'
+import { API_BASE } from '../config/api'
 
 interface AvailableAgent {
   id: string
@@ -58,8 +59,8 @@ export default function AgentManagement({ allAgents = [], onHire, onFire }: Prop
   const fetchData = useCallback(async () => {
     try {
       const [avRes, skRes] = await Promise.all([
-        fetch('/api/agents/available'),
-        fetch('/api/skills'),
+        fetch(`${API_BASE}/agents/available`),
+        fetch(`${API_BASE}/skills`),
       ])
       const avData = await avRes.json()
       const skData = await skRes.json()
@@ -96,7 +97,7 @@ export default function AgentManagement({ allAgents = [], onHire, onFire }: Prop
 
     if (backendOnline) {
       try {
-        const res = await fetch(`/api/agents/hire?agent_id=${agent.id}`, { method: 'POST' })
+        const res = await fetch(`${API_BASE}/agents/hire?agent_id=${agent.id}`, { method: 'POST' })
         const data = await res.json()
         if (res.ok) {
           setMessage(`✅ 已聘用 ${data.agent?.display_name ?? agent.display_name}`)
@@ -123,7 +124,7 @@ export default function AgentManagement({ allAgents = [], onHire, onFire }: Prop
 
     if (backendOnline) {
       try {
-        const res = await fetch(`/api/agents/fire?agent_id=${agentId}`, { method: 'POST' })
+        const res = await fetch(`${API_BASE}/agents/fire?agent_id=${agentId}`, { method: 'POST' })
         const data = await res.json()
         if (res.ok) {
           setMessage(`👋 已解聘 ${agent?.displayName ?? agentId}`)
