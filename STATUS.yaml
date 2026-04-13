@@ -1,0 +1,20 @@
+name: WindAI Lab
+name_zh: 風力發電AI研究平台
+category: wind_energy
+progress: 92
+status: active
+last_updated: "2026-04-13"
+next_milestone: "Phase 11 - 部署優化與論文撰寫"
+technologies:
+  - Python
+  - FastAPI
+  - React
+  - PyTorch
+  - ChromaDB
+outputs:
+  - paper
+  - platform
+  - tool
+description: "Multi-agent collaborative research platform with virtual office interface for wind energy AI"
+description_zh: "風力發電 AI 研究協作系統，匯聚 22 位 AI 代理與 12 個技能模組，支援故障診斷（F1=1.0）、功率曲線建模（R²=0.997）、剩餘壽命預測。整合虛擬辦公室 UI、SCADA 真實資料分析、RAG 知識庫與自動品質檢查機制，是系統化進行風能科研的協作平台。"
+key_metrics: "F1=1.0 fault diagnosis, R²=0.997 power curve, 42 agents"
