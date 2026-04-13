@@ -9,7 +9,6 @@ from src.agents.skill_composing_agent import AgentSpec, SkillComposingAgent, Tas
 from src.skills.base import BaseSkill, SkillInput, SkillOutput, SkillStatus
 from src.skills.registry import SkillRegistry
 
-
 # ── 測試用技能 ──
 
 

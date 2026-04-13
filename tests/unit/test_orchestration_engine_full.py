@@ -6,20 +6,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
-
 from src.agents.orchestrator.engine import (
     CheckpointAction,
     CheckpointConfig,
     DegradationStrategy,
     OrchestrationEngine,
     RetryConfig,
-    StepType,
     Workflow,
     WorkflowStep,
     _deep_search_metric,
 )
-
+from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
 
 # ── Fixtures ──
 
@@ -302,7 +299,7 @@ class TestStepParameterIsolation:
         )
         original_params = dict(original_step.task_parameters)
 
-        workflow = Workflow(
+        Workflow(
             id="test",
             name="test",
             description="test",

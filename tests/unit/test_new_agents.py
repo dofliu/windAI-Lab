@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agents.base import TaskContext, TaskResult, TaskStatus
-
+from src.agents.base import TaskContext, TaskStatus
 
 # ── ExperimentTracker 測試 ─────────────────────────────────────
 

@@ -8,17 +8,14 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.skills.data.alarm_processor import (
-    AlarmProcessorSkill,
     _compute_alarm_summary,
     _compute_mtbf,
     _detect_alarm_columns,
     _events_to_timeseries,
     _normalize_events,
 )
-
 
 # ── 合成警報資料 ──────────────────────────────────────────────
 

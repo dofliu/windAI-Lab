@@ -39,7 +39,6 @@ from src.core.exceptions import (
     WorkflowNotFoundError,
 )
 
-
 # ── Settings 設定測試 ─────────────────────────────────────────────────────────
 
 
@@ -294,7 +293,7 @@ class TestAgentNamespacesConstant:
 
     def test_values_are_strings(self) -> None:
         """確認所有命名空間值為非空字串。"""
-        for key, value in AGENT_NAMESPACES.items():
+        for _key, value in AGENT_NAMESPACES.items():
             assert isinstance(value, str)
             assert len(value) > 0
 

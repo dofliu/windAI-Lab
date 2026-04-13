@@ -7,7 +7,6 @@ import pytest
 from src.skills.base import BaseSkill, SkillInput, SkillOutput, SkillStatus
 from src.skills.registry import SkillRegistry
 
-
 # ── 測試用假技能 ──
 
 
