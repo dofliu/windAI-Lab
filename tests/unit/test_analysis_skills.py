@@ -6,10 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
-
 from src.skills.base import SkillInput, SkillStatus
-
+from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
 
 # ── 共用測試資料 ──
 

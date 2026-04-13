@@ -6,16 +6,13 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from src.features.domain_features.wind_features import (
     compute_operational_features,
     compute_power_curve_features,
     compute_temperature_features,
 )
-
 
 # ── 測試輔助函式 ──────────────────────────────────────────────────────────────
 

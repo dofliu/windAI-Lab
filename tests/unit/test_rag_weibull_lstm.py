@@ -7,7 +7,6 @@ import pytest
 
 from src.skills.base import SkillInput, SkillStatus
 
-
 # ════════════════════════════════════════════════════════════════
 # RAG 強化
 # ════════════════════════════════════════════════════════════════
@@ -74,10 +73,10 @@ class TestBGE3EmbeddingFunction:
 
 class TestWeibullModel:
     def test_fit_mle(self) -> None:
-        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
-
         # 生成 Weibull 分佈資料（k=2, c=8）
         from scipy.stats import weibull_min
+
+        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
 
         np.random.seed(42)
         ws = weibull_min.rvs(2, loc=0, scale=8, size=5000)
@@ -92,9 +91,9 @@ class TestWeibullModel:
         assert result.sample_count == 5000
 
     def test_fit_moments(self) -> None:
-        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
-
         from scipy.stats import weibull_min
+
+        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
 
         np.random.seed(42)
         ws = weibull_min.rvs(2, loc=0, scale=8, size=3000)
@@ -107,9 +106,9 @@ class TestWeibullModel:
         assert result.scale_c > 0
 
     def test_predict_frequency(self) -> None:
-        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
-
         from scipy.stats import weibull_min
+
+        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
 
         ws = weibull_min.rvs(2, loc=0, scale=8, size=1000)
         model = WeibullDistributionModel()
@@ -120,9 +119,9 @@ class TestWeibullModel:
         assert 0 < freq < 1
 
     def test_predict_exceedance(self) -> None:
-        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
-
         from scipy.stats import weibull_min
+
+        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
 
         ws = weibull_min.rvs(2, loc=0, scale=8, size=1000)
         model = WeibullDistributionModel()
@@ -134,9 +133,9 @@ class TestWeibullModel:
         assert model.predict_exceedance(30.0) < 0.01
 
     def test_estimate_aep(self) -> None:
-        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
-
         from scipy.stats import weibull_min
+
+        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
 
         ws = weibull_min.rvs(2, loc=0, scale=8, size=2000)
         model = WeibullDistributionModel()
@@ -149,9 +148,9 @@ class TestWeibullModel:
         assert aep.full_load_hours > 0
 
     def test_frequency_table(self) -> None:
-        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
-
         from scipy.stats import weibull_min
+
+        from src.models.wind_distribution.weibull_model import WeibullDistributionModel
 
         ws = weibull_min.rvs(2, loc=0, scale=8, size=1000)
         model = WeibullDistributionModel()
@@ -181,7 +180,6 @@ class TestWeibullSkill:
     @pytest.mark.asyncio
     async def test_with_valid_data(self) -> None:
         import pandas as pd
-
         from scipy.stats import weibull_min
 
         from src.skills.ml.weibull_analysis import WeibullAnalysisSkill
