@@ -14,7 +14,6 @@ import pandas as pd
 import pytest
 
 from src.skills.ml.auto_experiment import (
-    AutoExperimentSkill,
     ExperimentReport,
     TrialResult,
     _build_report_data,
@@ -24,7 +23,6 @@ from src.skills.ml.auto_experiment import (
     _plan_model_comparison,
     _run_single_trial,
 )
-
 
 # ── 合成資料 ──────────────────────────────────────────────────
 

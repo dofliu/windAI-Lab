@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
+from src.agents.base import TaskContext, TaskStatus
+from src.skills.base import SkillInput, SkillStatus
 from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
-
-from src.agents.base import TaskContext, TaskResult, TaskStatus
-from src.skills.base import SkillInput, SkillOutput, SkillStatus
-
 
 # ═══════════════════════════════════════════════════════════════
 # DirectorReviewSkill

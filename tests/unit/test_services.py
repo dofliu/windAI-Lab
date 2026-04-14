@@ -9,7 +9,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from src.api.agent_registry import reset_all_agents, update_agent_status
+from src.api.agent_registry import reset_all_agents
 from src.api.models import AgentModel, AgentStatus, AgentTier
 from src.core.constants import TASK_ID_PREFIX
 from src.core.exceptions import AgentBusyError, AgentNotFoundError
@@ -21,7 +21,6 @@ from src.services.agent_service import (
     reset_all,
 )
 from src.services.diagnosis_service import run_full_diagnosis
-
 
 # ── 測試隔離 fixture ──────────────────────────────────────────────────────────
 

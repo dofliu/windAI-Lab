@@ -10,12 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
-
 from src.agents.base import BaseAgent, TaskContext, TaskResult, TaskStatus
-from src.agents.message_bus import MessageBus
 from src.agents.orchestrator.engine import (
-    CheckpointConfig,
     DegradationStrategy,
     OrchestrationEngine,
     RetryConfig,
@@ -25,7 +21,7 @@ from src.agents.orchestrator.engine import (
 )
 from src.api.agent_registry import reset_all_agents
 from src.api.models import AgentModel, AgentStatus, AgentTier
-
+from tests.unit._ws_mock import mock_ws_manager  # noqa: F401
 
 # ── 測試用代理 ──
 
@@ -501,8 +497,8 @@ class TestCollaborators:
             await engine._run_agent_step("a", step)
 
         # 代理 a 的協作者應為 b 和 c
-        ctx_params = agent_a.task_calls[0][1]
         # collaborators 是透過 TaskContext 傳入的，此處驗證呼叫成功即可
+        assert len(agent_a.task_calls) > 0
 
     @pytest.mark.asyncio
     async def test_explicit_collaborators(self, engine: OrchestrationEngine) -> None:

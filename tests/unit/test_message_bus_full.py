@@ -16,7 +16,6 @@ from src.agents.base import (
 )
 from src.agents.message_bus import MessageBus
 
-
 # ── 測試用代理 ──
 
 

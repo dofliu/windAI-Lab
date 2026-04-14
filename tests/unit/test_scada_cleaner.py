@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from src.data_pipeline.cleaning.scada_cleaner import clean_scada_data
-
 
 # ── 測試輔助函式 ──────────────────────────────────────────────────────────────
 
