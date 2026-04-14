@@ -6,7 +6,8 @@
 
 from __future__ import annotations
 
-import pandas as pd
+from typing import TYPE_CHECKING
+
 import pytest
 
 from src.api.agent_registry import reset_all_agents
@@ -21,6 +22,9 @@ from src.services.agent_service import (
     reset_all,
 )
 from src.services.diagnosis_service import run_full_diagnosis
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # ── 測試隔離 fixture ──────────────────────────────────────────────────────────
 

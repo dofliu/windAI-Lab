@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -29,6 +29,9 @@ from src.skills.data.data_inspector import (
     _sample_files,
     _scan_folder,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── 測試用合成資料 ──────────────────────────────────────────────
 
