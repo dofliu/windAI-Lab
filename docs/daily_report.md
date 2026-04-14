@@ -1,33 +1,28 @@
 # WindAI Lab Daily Report
 
-> 最後更新：2026-04-13
-> Hackathon 截止日：2026-05-18（剩餘 35 天）
+> 最後更新：2026-04-14
+> Hackathon 截止日：2026-05-18（剩餘 34 天）
 
 ## 昨日 Commit 摘要
 
-最近 24 小時無新 commit。以下為近期重要 commit：
-
-- `42ae24f` docs: update project documentation in README.md
-- `ecd3b86` fix: 前端 API URL 統一由 config/api.ts 管理
-- `84a5104` fix: 新增 vite-env.d.ts 修正 import.meta.env TypeScript 錯誤
-- `24b2ef4` refactor: 後端 port 8000→5800，前端消除硬編碼 URL
-- `51bbd99` feat: 新增 4 個風機分析技能 — 偏航分析、降載偵測、警報關聯、IEC 分箱
-- `6eefb3b` feat: 新增 3 個技能 + 升級專案總監 LLM 審核 + 2 個新工作流
-- `56bc858` fix: 修正代理工作流核心 bug + 新增 108 個測試
+- `94fc6dc` Merge remote-tracking branch 'origin/master' [conflict resolved]
+- `83338d6` Merge pull request #74 — Lint 修復（54→3 個錯誤）
 
 ## Issue 狀態
 
 | 動作 | Issue # | 標題 | 說明 |
 |------|---------|------|------|
-| 新建 | #73 | [Bug] Lint 錯誤 54 個需清理 | ruff check 偵測到 54 個 lint 錯誤 |
-| 關閉 | #32 | [Epic C] ML 模型進化 | 所有子 Issue (#38/#39/#40) 已完成並關閉 |
-| 關閉 | #67 | feat: 專案總監 LLM 審核 + 3 技能 + 2 工作流 | PR #66/#70/#71/#72 已合併 |
-| 進行中 | #73 | [Bug] Lint 錯誤清理 | PR #74 已建立，修復 51/54 個錯誤 |
+| 新建 | #75 | 對接外部 API 資料處理模式建立 | 使用者建立，Phase 14 資料連接器需求 |
+| 新建 | #76 | [Enhancement] ruff 配置遷移至 lint.* | 自動偵測，ruff 棄用警告修復 |
+| 已關閉 | #73 | [Bug] Lint 錯誤 54 個需清理 | PR #74 已合併，54→3 個錯誤 ✅ |
+| 進行中 | #76 | ruff 配置遷移 | PR #77 已建立，待合併 |
 
 ## Open Issues 總覽
 
 | # | 標題 | Labels | 建立日期 | 備註 |
 |---|------|--------|----------|------|
+| #75 | 對接外部 API 資料處理模式建立 | — | 2026-04-14 | 🆕 使用者新建，Phase 14 範疇 |
+| #76 | [Enhancement] ruff 配置遷移至 lint.* | auto-detected, enhancement | 2026-04-14 | PR #77 待合併 |
 | #69 | refactor: 移除舊版 registry.py 雙軌架構 | refactor, tech-debt | 2026-04-07 | 待處理 |
 | #64 | feat: 診斷報告輸出與檢視功能 | enhancement, backend, frontend | 2026-04-06 | Phase 14c，High |
 | #52 | [F1] 投稿策略與時程規劃 | research, docs | 2026-04-05 | Epic F 子任務 |
@@ -47,9 +42,8 @@
 | #35 | [Epic A] 案例學習系統 | epic, ml, rag | 2026-04-05 | Medium |
 | #34 | [Epic D] 報告與追蹤 | epic, feature | 2026-04-05 | High |
 | #33 | [Epic E] 告警規則引擎 | epic, backend | 2026-04-05 | High |
-| #73 | [Bug] Lint 錯誤 54 個需清理 | auto-detected, bug | 2026-04-13 | PR #74 處理中 |
 
-**Open：20 個 | Closed（近期）：5 個**
+**Open：21 個 | Closed（近期）：#73, #67, #32, #68, #61, #40, #39, #38**
 
 ## 完成度評估
 
@@ -59,22 +53,27 @@
 | Step 1 打地基（Phase 11-13） | 100% | 戰情中心 + 持久化 + 告警工單 ✅ |
 | Phase 14 WindGuard AI | 80% | 14a/14b ✅，14c 報告輸出待修 (#64) |
 | Epic C ML 模型進化 | 100% | LSTM + PatchTST + 對比框架 ✅ |
+| Epic E 告警規則引擎 | 0% | High，#41→#42→#43 待啟動 |
+| Epic D 報告與追蹤 | 0% | High，#44→#45→#46 待啟動 |
+| 外部 API 對接 (#75) | 0% | 🆕 使用者新需求，Phase 14 範疇 |
 | Step 2 接真實風場（Phase 15-16） | 0% | 未開始 |
 | Step 3 完整運維服務（Phase 17-19） | 0% | 未開始 |
 | **整體運維服務演進** | **42%** | Phase 14 進行中 |
 
 ## 程式碼品質
 
-- Lint 錯誤：3（修復前：54，今日修復 51 個）
+- Lint 錯誤：3（昨日：3，均為 TC002/TC003 unsafe-fix）
 - TODO/FIXME：0
-- 測試：134 passed / 0 fail（部分 test files 驗證）
+- 測試：134 passed / 0 fail
 - Notebooks：無 .ipynb 檔案
+- pyproject.toml ruff 配置：棄用警告已修復（PR #77）
 
 ## 建議行動（優先順序）
 
-1. **[High] 合併 PR #74** — Lint 修復，降低 CI 噪音（Closes #73）
-2. **[High] 修復 #64 報告輸出功能** — Phase 14c 最後一塊拼圖，修完即完成 Phase 14
-3. **[High] 啟動 Epic E #33 告警規則引擎** — 服務閉環的關鍵功能，#41→#42→#43 依序推進
-4. **[High] 處理 #69 移除舊版 registry 雙軌架構** — 降低技術債務
-5. **[Medium] 啟動 Epic D #34 報告與追蹤** — 自動化報告排程，提升可交付性
-6. **[Ongoing] #37 學術論文規劃** — 配合 Hackathon 截止日，規劃投稿策略
+1. **[High] 合併 PR #77** — ruff 配置遷移，消除棄用警告（Closes #76）
+2. **[High] 處理 #75 外部 API 對接** — 使用者今日新建的需求，建立 DataConnector 抽象層 + REST API 拉取介面
+3. **[High] 修復 #64 報告輸出功能** — Phase 14c 最後一塊拼圖，修完即完成 Phase 14
+4. **[High] 啟動 Epic E #33 告警規則引擎** — 服務閉環的關鍵功能，#41→#42→#43 依序推進
+5. **[High] 處理 #69 移除舊版 registry 雙軌架構** — 降低技術債務
+6. **[Medium] 啟動 Epic D #34 報告與追蹤** — 自動化報告排程，提升可交付性
+7. **[Ongoing] #37 學術論文規劃** — 配合 Hackathon 截止日，規劃投稿策略
