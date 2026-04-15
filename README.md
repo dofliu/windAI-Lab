@@ -1,6 +1,6 @@
 # WindAI Lab — 風力發電 AI 研究協作系統
 
-> **版本**：0.1.0 | **最後更新**：2026-04-04 | **進度**：Phase 10 完成（92%）
+> **版本**：0.1.0 | **最後更新**：2026-04-15 | **進度**：Phase 14 進行中（Step 1 完成 + Epic C ✅）
 
 多代理協作平台，結合虛擬辦公室介面與真實 SCADA 資料分析，專為風力發電研究設計。
 
@@ -9,7 +9,7 @@
 ## 系統亮點
 
 - **12 位核心 AI 代理** + 10 位可按需聘用的專家，YAML 驅動、零程式碼新增
-- **12 個獨立技能模組**，自動發現、自由組合成分析管線
+- **28 個獨立技能模組**，自動發現、自由組合成分析管線
 - **虛擬辦公室 UI**，3 種視覺風格（像素風 / 現代企業 / 極簡白板），即時監控代理狀態
 - **真實 SCADA 資料分析**：故障診斷（F1=1.0）、功率曲線建模（R²=0.997）、RUL 預測
 - **通用資料載入**：丟入任意 CSV/Parquet，自動偵測欄位、清洗、特徵工程
@@ -150,10 +150,10 @@ windAILab/
 ├── frontend/src/
 │   ├── renderers/                  # 可插拔辦公室 Renderer（pixel/modern/minimal）
 │   ├── themes/                     # 主題系統（含 visualStyle 綁定）
-│   ├── components/                 # UI 元件（28 個）
+│   ├── components/                 # UI 元件（31 個）
 │   └── hooks/                      # React hooks
 ├── src/
-│   ├── skills/                     # 技能模組（12 個，自動發現）
+│   ├── skills/                     # 技能模組（28 個，自動發現）
 │   │   ├── base.py                 # BaseSkill 抽象介面
 │   │   ├── registry.py             # SkillRegistry
 │   │   ├── data/                   # 資料處理技能
@@ -176,7 +176,7 @@ windAILab/
 │   └── api/                        # FastAPI 後端
 │       ├── main.py                 # API 路由 + WebSocket
 │       └── websocket_manager.py    # 即時推播管理
-├── tests/                          # 測試（17 檔案 / 368 測試）
+├── tests/                          # 測試（33 檔案 / 812 測試）
 ├── requirements.txt                # Python 依賴
 ├── pyproject.toml                  # 專案設定（ruff/black/mypy/pytest）
 ├── Dockerfile                      # 容器化部署
