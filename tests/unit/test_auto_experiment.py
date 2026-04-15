@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -23,6 +23,9 @@ from src.skills.ml.auto_experiment import (
     _plan_model_comparison,
     _run_single_trial,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── 合成資料 ──────────────────────────────────────────────────
 
