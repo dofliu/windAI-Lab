@@ -1,28 +1,32 @@
 # WindAI Lab Daily Report
 
 > 最後更新：2026-04-15
-> Hackathon 截止日：2026-05-18（剩餘 34 天）
+> Hackathon 截止日：2026-05-18（剩餘 33 天）
 
 ## 昨日 Commit 摘要
 
-- `1fd6ef9` Merge pull request #77 — ruff 配置遷移至 lint.* 區段（Closes #76）
+- `41a1f93` Merge pull request #79 — 清除剩餘 3 個 TC002/TC003 lint 錯誤
+- `fbb141e` docs: 更新 2026-04-15 每日報告 — lint 錯誤歸零
+- `8792d38` fix: 移動 3 個 import 至 TYPE_CHECKING block，lint 錯誤歸零
+- `1fd6ef9` Merge pull request #77 — ruff 配置遷移至 lint.* 區段
 - `504286c` Merge pull request #78 — 日報更新
 - `40d1966` docs: 更新 2026-04-14 每日報告
 - `60bdf8d` fix: 遷移 pyproject.toml ruff 配置至 lint.* 區段
-- `8792d38` fix: 移動 3 個 import 至 TYPE_CHECKING block，lint 錯誤歸零
 
 ## Issue 狀態
 
 | 動作 | Issue # | 標題 | 說明 |
 |------|---------|------|------|
-| 已關閉 | #76 | [Enhancement] ruff 配置遷移至 lint.* | PR #77 已合併 ✅ |
-| 進行中 | #79 | Lint 錯誤歸零 | PR #79 已建立，3 個 TC002/TC003 修復 |
+| 已關閉 | #79 | fix: 清除剩餘 TC002/TC003 lint 錯誤 | PR #79 已合併 ✅ |
+| 新建 | #80 | [Doc] README/TODO-roadmap 數據過時 | 技能 12→28、測試 17→33 檔 |
+| 進行中 | #80 | [Doc] README/TODO-roadmap 數據過時 | PR #81 已建立 |
 | 無變動 | #75 | 對接外部 API 資料處理模式建立 | 使用者需求，Phase 14 範疇 |
 
 ## Open Issues 總覽
 
 | # | 標題 | Labels | 建立日期 | 備註 |
 |---|------|--------|----------|------|
+| #80 | [Doc] README/TODO-roadmap 數據過時 | documentation, auto-detected | 2026-04-15 | PR #81 待合併 |
 | #75 | 對接外部 API 資料處理模式建立 | — | 2026-04-14 | 使用者新建，Phase 14 範疇 |
 | #69 | refactor: 移除舊版 registry.py 雙軌架構 | refactor, tech-debt | 2026-04-07 | 待處理 |
 | #64 | feat: 診斷報告輸出與檢視功能 | enhancement, backend, frontend | 2026-04-06 | Phase 14c，High |
@@ -44,7 +48,7 @@
 | #34 | [Epic D] 報告與追蹤 | epic, feature | 2026-04-05 | High |
 | #33 | [Epic E] 告警規則引擎 | epic, backend | 2026-04-05 | High |
 
-**Open：20 個 | Closed（近期）：#76, #73, #67, #32, #68, #61, #40, #39, #38**
+**Open：21 個 | Closed（近期）：#79, #76, #73, #67, #32, #68, #61, #40, #39, #38**
 
 ## 完成度評估
 
@@ -63,15 +67,16 @@
 
 ## 程式碼品質
 
-- Lint 錯誤：**0**（昨日：3）✅ 全部清零
+- Lint 錯誤：**0**（昨日：0）✅ 維持清零
 - TODO/FIXME：0
-- 測試：134 passed / 0 fail（環境限制無法執行，以上次驗證為準）
+- 測試：33 檔案 / 812 測試案例（環境限制無法執行，以上次驗證為準）
 - Notebooks：無 .ipynb 檔案
-- ruff 配置：已遷移至 lint.* 區段，無棄用警告 ✅
+- ruff 配置：lint.* 區段，無棄用警告 ✅
+- 文件：PR #81 修正 README/TODO-roadmap 過時數據
 
 ## 建議行動（優先順序）
 
-1. **[High] 合併 PR #79** — lint 錯誤歸零（TC002/TC003 全數修復）
+1. **[High] 合併 PR #81** — 修正 README/TODO-roadmap 過時數據（技能 12→28、測試 17→33 檔）
 2. **[High] 處理 #75 外部 API 對接** — 使用者需求，建立 DataConnector 抽象層 + REST API 拉取介面
 3. **[High] 修復 #64 報告輸出功能** — Phase 14c 最後一塊拼圖，修完即完成 Phase 14
 4. **[High] 啟動 Epic E #33 告警規則引擎** — 服務閉環的關鍵功能，#41→#42→#43 依序推進
