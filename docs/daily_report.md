@@ -5,18 +5,17 @@
 
 ## 昨日 Commit 摘要
 
+- `2e0ba08` Merge pull request #85 — 日報更新
+- `84ab55c` docs: 更新 2026-04-16 每日報告 — #83 已關閉、21 個 open issues
 - `8485fdf` Merge pull request #84 — 修正 PROJECT-STATUS.md 過時數據
 - `33ecea4` docs: 更新 2026-04-15 每日報告 — PR #84 修正 PROJECT-STATUS.md
 - `0ba4346` docs: 更新 PROJECT-STATUS.md 過時數據 — 技能 14→28、測試 21→30 檔
-- `be8de91` Merge pull request #82 — 日報更新
-- `9e7dbdb` docs: 更新 2026-04-15 每日報告 — PR #79 已合併、新建 #80
-- `41a1f93` Merge pull request #79 — 清除剩餘 3 個 TC002/TC003 lint 錯誤
 
 ## Issue 狀態
 
 | 動作 | Issue # | 標題 | 說明 |
 |------|---------|------|------|
-| 已關閉 | #83 | [Doc] PROJECT-STATUS.md 數據過時 | PR #84 已合併，數據已修正 |
+| 補充 comment | #80 | [Doc] README/TODO-roadmap 數據過時 | 補充 TODO-roadmap.md 仍有 Phase 進度描述、完成百分比等過時內容，PR #81 未涵蓋 |
 | 無變動 | #80 | [Doc] README/TODO-roadmap 數據過時 | PR #81 仍待合併 |
 | 無變動 | #75 | 對接外部 API 資料處理模式建立 | 使用者需求，Phase 14 範疇 |
 | 無變動 | #69 | refactor: 移除舊版 registry.py 雙軌架構 | 技術債務，待處理 |
@@ -26,7 +25,7 @@
 
 | # | 標題 | Labels | 建立日期 | 備註 |
 |---|------|--------|----------|------|
-| #80 | [Doc] README/TODO-roadmap 數據過時 | documentation, auto-detected | 2026-04-15 | PR #81 待合併 |
+| #80 | [Doc] README/TODO-roadmap 數據過時 | documentation, auto-detected | 2026-04-15 | PR #81 待合併；已補充 comment 標記額外過時內容 |
 | #75 | 對接外部 API 資料處理模式建立 | — | 2026-04-14 | 使用者需求 |
 | #69 | refactor: 移除舊版 registry.py 雙軌架構 | refactor, tech-debt | 2026-04-07 | 技術債務 |
 | #64 | feat: 診斷報告輸出與檢視功能 | enhancement, backend, frontend | 2026-04-06 | Phase 14c |
@@ -48,7 +47,7 @@
 | #34 | [Epic D] 報告與追蹤 | epic, feature | 2026-04-05 | High |
 | #33 | [Epic E] 告警規則引擎 | epic, backend | 2026-04-05 | High |
 
-**Open：21 個 | 近期 Closed：#83, #79, #76, #73, #67, #68, #61, #32, #40, #39, #38**
+**Open：21 個 | 近期 Closed：#83, #85, #84, #79, #76, #73, #67, #68, #61, #32**
 
 ## 完成度評估
 
@@ -67,12 +66,13 @@
 
 ## 程式碼品質
 
-- Lint 錯誤：**0**（昨日：0）維持清零
+- Lint 錯誤：**0**（昨日：0）連續維持清零
 - TODO/FIXME：0
 - 測試：30 檔案 / 812 測試案例（環境限制無法執行，以上次驗證為準）
 - Notebooks：無 .ipynb 檔案
 - ruff 配置：lint.* 區段，無棄用警告
-- 文件更新：PR #84 已合併修正 PROJECT-STATUS.md；PR #81 修正 README/TODO-roadmap 仍待合併
+- 依賴安全：pip audit 不可用，未偵測到已知漏洞
+- 文件更新：PR #81 修正 README/TODO-roadmap 仍待合併；已補充 comment 標記額外過時內容
 
 ## 建議行動（優先順序）
 
@@ -82,4 +82,4 @@
 4. **[High] 啟動 Epic E #33 告警規則引擎** — 服務閉環的關鍵功能，#41→#42→#43 依序推進
 5. **[High] 處理 #69 移除舊版 registry 雙軌架構** — 降低技術債務
 6. **[Medium] 啟動 Epic D #34 報告與追蹤** — 自動化報告排程，提升可交付性
-7. **[Ongoing] #37 學術論文規劃** — 配合 Hackathon 截止日，規劃投稿策略
+7. **[Ongoing] #37 學術論文規劃** — 配合 Hackathon 截止日（剩餘 32 天），規劃投稿策略
