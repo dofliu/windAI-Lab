@@ -11,8 +11,9 @@
 |------|------|
 | 每日工作流程執行 | 完整 Phase 1-7 流程：文件讀取 → 變更掃描 → Issue 管理 → 主動修正 → 日報產出 → 推播通知 |
 | PR #81 已合併 | README/TODO-roadmap 過時數據修正完成，#80 已關閉 |
-| Issue 管理 | #80 已關閉（PR #81 合併）；無新 issue 需建立；Open Issues 降至 20 個 |
+| Issue 管理 | #80 已關閉；無新 issue 需建立；Open Issues 降至 20 個 |
 | 程式碼品質 | ruff 0.15.11 驗證通過 — Lint 0 錯誤、TODO/FIXME 0 個 — 持續穩定 |
+| **🔧 P1 #64 進度** | **PaperWriter context 扁平化修正**（11 行，commit `7c66b00`）— 解決報告內容 N/A 與 report_link 廣播問題 |
 
 ---
 
@@ -70,7 +71,7 @@
 | #34 | [Epic D] 報告與追蹤 | epic, feature | 2026-04-05 | High |
 | #33 | [Epic E] 告警規則引擎 | epic, backend | 2026-04-05 | High |
 
-**Open：20 個（較昨日 -1） | 今日 Closed：#80（PR #81 合併）**
+**Open：20 個（較昨日 -1） | 今日 Closed：#80（PR #81 合併）| 今日進度中：#64（P0 context 扁平化已推送）**
 
 ---
 
@@ -108,7 +109,7 @@
 | 優先序 | 任務 | 建議指派 | 預估工時 | 依賴 | 狀態 |
 |--------|------|----------|----------|------|------|
 | ~~P0~~ | ~~合併 PR #81~~ | ~~wLab:project-manager~~ | ~~0.5h~~ | — | ✅ 已完成 |
-| **P1** | #64 診斷報告輸出 | wEng:backend-dev + wEng:frontend-dev | 8h | 無 | ⬜ 待啟動 |
+| **P1** | #64 診斷報告輸出 | wEng:backend-dev + wEng:frontend-dev | 8h | 無 | 🔨 P0 部分已修（context 扁平化） |
 | **P2** | #75 外部 API 對接 | wData:scada-processor + wEng:backend-dev | 16h | 無 | ⬜ 待啟動 |
 | **P3** | #41 告警規則引擎核心 | wEng:backend-dev | 12h | 無 | ⬜ 待啟動 |
 | **P4** | #42 通知渠道 | wEng:backend-dev | 8h | #41 | ⬜ 等待 P3 |
@@ -151,8 +152,41 @@ wEng 團隊承擔 5 個 High 優先待辦，是當前最大瓶頸。建議策略
 |------|------|----------|
 | Hackathon 剩餘 31 天 | Epic E/D 尚未啟動（合計 ~50h 工時） | 本週內務必啟動 #41 告警引擎，為服務閉環奠基 |
 | wEng 團隊負載集中 | 5 個 High 優先任務堆疊 | 延後 #69 + 釋放 wAI/wDomain 閒置產能 |
-| Phase 14c 延宕 | 報告輸出是使用者可見成果 | 優先 #64，8h 可完成，回報率高 |
-| 連續 3 天無程式碼變更 | 開發動能減弱 | 今日應切入 #64 或 #41 開始寫程式碼 |
+| Phase 14c 延宕 | 報告輸出是使用者可見成果 | 🔨 P0 context 扁平化已修，待前端驗證 |
+| ~~連續 3 天無程式碼變更~~ | ✅ 已切入 #64 | 今日 commit `7c66b00` 打破停滯 |
+
+---
+
+## 今日程式碼變更詳情
+
+### Commit `7c66b00` — fix(#64): PaperWriter context 扁平化
+
+**根因**：`/diagnose` workflow 中 `fault-diagnostician`（`SkillComposingAgent`）產出 `TaskResult.data = {skill_id: {status, data, ...}}`，經 `OrchestrationEngine._run_agent_step()` 包裝為 `{agent_id: result.data}`，形成 `{"fault-diagnostician": {"scada_ingestion": ..., "fault_classification": ..., "nbm_training": ...}}` 的巢狀結構。
+
+下一步 `paper-writer` 直接將此 `context.results` 傳給 `ReportGeneratorSkill`，但 skill 內部 `_get_skill_data(context, "fault_classification")` 以 `context.get("fault_classification", {})` 查找，因鍵埋在 agent_id 底下而永遠拿不到資料 → 報告所有欄位顯示 N/A。
+
+**修正**：`src/agents/research/paper_writer.py:_generate_report()` 加入 11 行扁平化邏輯，保留原鍵值的同時將 agent 底下的 skill 結果提升到頂層：
+
+```python
+flat_context: dict[str, Any] = dict(context.results)
+for value in context.results.values():
+    if isinstance(value, dict):
+        for key, val in value.items():
+            if isinstance(val, dict) and "status" in val:
+                flat_context[key] = val
+```
+
+**驗證**：
+- ✅ Lint 零錯誤（ruff 0.15.11）
+- ✅ 扁平化邏輯手動驗證通過 3 個情境（巢狀、已扁平、空）
+- ✅ 既有 `test_paper_writer_report` 向後相容（舊測試的 `{"diagnosis": {"health_score": 85}}` 不含 `"status"` 鍵，不觸發扁平化）
+
+**影響**：修正後 `/diagnose` 產出的報告將包含完整的健康分數、故障分類 F1、NBM R² 等資料，且 `report_link` 廣播流程已驗證無阻塞。
+
+**剩餘 #64 子項目**（建議分別獨立 PR）：
+- P1 報告內嵌預覽面板（Markdown 渲染）
+- P2 報告持久化至 SQLite
+- P3 PDF 匯出支援
 
 ---
 
