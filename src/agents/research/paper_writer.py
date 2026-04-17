@@ -51,6 +51,16 @@ class PaperWriter(BaseAgent):
 
         turbine_id = params.get("turbine_id", "未知")
 
+        # 扁平化 context.results：上游代理（如 fault-diagnostician）會產生
+        # {agent_id: {skill_id: output}} 結構，但 ReportGeneratorSkill 期望
+        # {skill_id: output} 直接可查，因此展開一層。
+        flat_context: dict[str, Any] = dict(context.results)
+        for value in context.results.values():
+            if isinstance(value, dict):
+                for key, val in value.items():
+                    if isinstance(val, dict) and "status" in val:
+                        flat_context[key] = val
+
         try:
             from src.skills.base import SkillInput
             from src.skills.reporting.report_generator import ReportGeneratorSkill
@@ -58,7 +68,7 @@ class PaperWriter(BaseAgent):
             skill = ReportGeneratorSkill()
             skill_input = SkillInput(
                 parameters={"turbine_id": turbine_id, "report_type": "diagnosis"},
-                context=context.results,
+                context=flat_context,
             )
 
             async def _progress(pct: float, msg: str) -> None:
