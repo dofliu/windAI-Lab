@@ -119,6 +119,17 @@ CREATE INDEX IF NOT EXISTS idx_work_orders_status ON work_orders(status);
 CREATE INDEX IF NOT EXISTS idx_work_orders_priority ON work_orders(priority);
 CREATE INDEX IF NOT EXISTS idx_work_orders_turbine_id ON work_orders(turbine_id);
 CREATE INDEX IF NOT EXISTS idx_work_orders_alert_id ON work_orders(alert_id);
+
+-- ── Phase 14c：診斷報告持久化 ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS reports (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    markdown TEXT NOT NULL,
+    task_id TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at);
 """
 
 
@@ -353,6 +364,36 @@ class Database:
                 (task_id,),
             ).fetchall()
             return [_row_to_result(r) for r in rows]
+
+    # ── Report CRUD ───────────────────────────────────────────────
+
+    def save_report(
+        self, report_id: str, title: str, markdown: str, task_id: str | None = None
+    ) -> None:
+        """儲存報告至 DB（若 id 已存在則覆寫）。"""
+        self.initialize()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO reports (id, title, markdown, task_id, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (report_id, title, markdown, task_id, datetime.now().isoformat()),
+            )
+
+    def get_report(self, report_id: str) -> dict[str, Any] | None:
+        """依 id 取得報告完整內容。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM reports WHERE id = ?", (report_id,)).fetchone()
+            return dict(row) if row else None
+
+    def list_reports(self) -> list[dict[str, Any]]:
+        """列出所有報告摘要（不含 markdown 內容，依時間倒序）。"""
+        self.initialize()
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, title, task_id, created_at FROM reports ORDER BY created_at DESC"
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     # ── Alert CRUD ────────────────────────────────────────────────
 
