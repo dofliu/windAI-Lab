@@ -26,10 +26,10 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | 技能模組 | 28 | 依需求新增 |
 | ML 模型 | 7（+2 新增：LSTM v2 + PatchTST） | GNN / 遷移學習 |
 | 對比實驗框架 | 1（ModelBenchmark） | — |
-| API 端點 | 45+ | 10+（連接器/風場管理等） |
-| 前端元件 | 31 | 5+（多風場儀表板/派工等） |
+| API 端點 | 51 | 10+（連接器/風場管理等） |
+| 前端元件 | 32 | 5+（多風場儀表板/派工等） |
 | Office Renderer | 3（pixel / modern / minimal） | 可擴充 |
-| DB 資料表 | 5（tasks/work_logs/analysis_results/alerts/work_orders） | 按需新增 |
+| DB 資料表 | 6（tasks/work_logs/analysis_results/alerts/work_orders/reports） | 按需新增 |
 
 ### 架構狀態
 
