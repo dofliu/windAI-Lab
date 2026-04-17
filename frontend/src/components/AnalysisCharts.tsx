@@ -4,7 +4,7 @@
  * 從 MissionView.tsx 提取出來，供 MissionPanel 與 TaskHistoryList 共用。
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, CartesianGrid,
@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import type { WindAITheme } from '../themes'
 import type { AnalysisResultPayload } from '../types/agent'
+import { ReportPreview } from './ReportPreview'
 
 export function tooltipStyle(theme: WindAITheme) {
   return {
@@ -149,32 +150,7 @@ export function AnalysisChart({ result, theme, height = 200 }: {
   }
 
   if (chart_type === 'report_link') {
-    const downloadUrl = metadata?.download_url as string
-    const apiBase = ''  // Vite proxy 模式，使用相對路徑
-    return (
-      <ChartPanel title={title} theme={theme}>
-        <div className="flex flex-col items-center gap-3 py-4">
-          <div className="text-[11px]" style={{ color: theme.global.textMuted }}>
-            {metadata?.section_count ?? 0} 個章節 · {metadata?.warning_count ?? 0} 個警告
-          </div>
-          <a
-            href={`${apiBase}${downloadUrl}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
-            style={{
-              backgroundColor: theme.global.accent,
-              color: '#fff',
-            }}
-          >
-            下載報告 (.md)
-          </a>
-          <div className="text-[9px]" style={{ color: theme.global.textMuted }}>
-            {metadata?.generated_at ? `生成時間：${new Date(metadata.generated_at as string).toLocaleString('zh-TW')}` : ''}
-          </div>
-        </div>
-      </ChartPanel>
-    )
+    return <ReportLinkCard title={title} metadata={metadata} theme={theme} />
   }
 
   // 預設：顯示 metadata 為數據卡片
@@ -193,5 +169,70 @@ export function AnalysisChart({ result, theme, height = 200 }: {
         </div>
       )}
     </ChartPanel>
+  )
+}
+
+/** 報告下載卡片：支援內嵌預覽（Modal）、Markdown 下載、PDF 下載。 */
+function ReportLinkCard({ title, metadata, theme }: {
+  title: string
+  metadata: Record<string, unknown> | undefined
+  theme: WindAITheme
+}) {
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const downloadUrl = metadata?.download_url as string
+  const reportId = metadata?.report_id as string
+  const pdfUrl = reportId ? `/api/reports/${reportId}/download?format=pdf` : ''
+  return (
+    <>
+      <ChartPanel title={title} theme={theme}>
+        <div className="flex flex-col items-center gap-2 py-3">
+          <div className="text-[11px]" style={{ color: theme.global.textMuted }}>
+            {(metadata?.section_count as number) ?? 0} 個章節 · {(metadata?.warning_count as number) ?? 0} 個警告
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {reportId && (
+              <button
+                onClick={() => setPreviewOpen(true)}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:opacity-80"
+                style={{ backgroundColor: theme.global.border, color: theme.global.textPrimary }}
+              >
+                👁 預覽
+              </button>
+            )}
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:opacity-80"
+              style={{ backgroundColor: theme.global.accent, color: '#fff' }}
+            >
+              ⬇ Markdown
+            </a>
+            {reportId && (
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:opacity-80"
+                style={{ backgroundColor: theme.statuses.working.dot, color: '#fff' }}
+              >
+                📄 PDF
+              </a>
+            )}
+          </div>
+          <div className="text-[9px]" style={{ color: theme.global.textMuted }}>
+            {metadata?.generated_at ? `生成時間：${new Date(metadata.generated_at as string).toLocaleString('zh-TW')}` : ''}
+          </div>
+        </div>
+      </ChartPanel>
+      {previewOpen && reportId && (
+        <ReportPreview
+          reportId={reportId}
+          title={title}
+          theme={theme}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+    </>
   )
 }

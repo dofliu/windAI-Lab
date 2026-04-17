@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -1996,10 +1996,18 @@ async def api_get_report(report_id: str) -> dict[str, Any]:
 
 
 @app.get("/api/reports/{report_id}/download", tags=["報告管理"])
-async def api_download_report(report_id: str) -> Any:
-    """下載報告（Markdown 格式）。"""
-    from fastapi.responses import Response
+async def api_download_report(
+    report_id: str,
+    fmt: str = Query("md", alias="format"),
+) -> Any:
+    """下載報告。支援 ?format=md（預設）與 ?format=pdf（HTML 列印模式）。
 
+    ?format=pdf 回傳帶列印 CSS 的 HTML，開啟後自動觸發瀏覽器列印對話框，
+    使用者可選擇「另存為 PDF」。此方案不需額外 Python 依賴。
+    """
+    from fastapi.responses import HTMLResponse, Response
+
+    from src.services.report_html import render_report_html
     from src.services.report_store import get_report
 
     report = get_report(report_id)
@@ -2008,6 +2016,10 @@ async def api_download_report(report_id: str) -> Any:
 
     content = report.get("markdown", report.get("content", ""))
     title = report.get("title", "report").replace(" ", "_")
+
+    if fmt.lower() == "pdf":
+        html = render_report_html(title, content, auto_print=True)
+        return HTMLResponse(content=html, media_type="text/html; charset=utf-8")
 
     return Response(
         content=content,
