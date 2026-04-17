@@ -5,7 +5,7 @@
  * 支援關閉按鈕、背景點擊關閉、ESC 鍵關閉。
  */
 
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { WindAITheme } from '../themes'
 
 type Props = {

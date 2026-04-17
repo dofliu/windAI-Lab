@@ -383,9 +383,7 @@ class Database:
         """依 id 取得報告完整內容。"""
         self.initialize()
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM reports WHERE id = ?", (report_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM reports WHERE id = ?", (report_id,)).fetchone()
             return dict(row) if row else None
 
     def list_reports(self) -> list[dict[str, Any]]:

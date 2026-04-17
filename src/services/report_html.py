@@ -80,10 +80,14 @@ def render_report_html(title: str, markdown: str, auto_print: bool = False) -> s
         auto_print: 若為 True，頁面載入後自動呼叫 window.print()。
     """
     body = _md_to_html(markdown)
-    auto_js = "<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>" if auto_print else ""
+    auto_js = (
+        "<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>"
+        if auto_print
+        else ""
+    )
     return (
-        "<!DOCTYPE html><html lang=\"zh-TW\"><head>"
-        f"<meta charset=\"utf-8\"><title>{escape(title)}</title>"
+        '<!DOCTYPE html><html lang="zh-TW"><head>'
+        f'<meta charset="utf-8"><title>{escape(title)}</title>'
         f"<style>{_CSS}</style></head><body>"
         f"{body}{auto_js}</body></html>"
     )
