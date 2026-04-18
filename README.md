@@ -1,6 +1,6 @@
 # WindAI Lab — 風力發電 AI 研究協作系統
 
-> **版本**：0.1.0 | **最後更新**：2026-04-15 | **進度**：Phase 14 進行中（Step 1 完成 + Epic C ✅）
+> **版本**：0.1.0 | **最後更新**：2026-04-17 | **進度**：Phase 14 進行中（Step 1 完成 + Epic C ✅ + #64 ✅）
 
 多代理協作平台，結合虛擬辦公室介面與真實 SCADA 資料分析，專為風力發電研究設計。
 
@@ -150,7 +150,7 @@ windAILab/
 ├── frontend/src/
 │   ├── renderers/                  # 可插拔辦公室 Renderer（pixel/modern/minimal）
 │   ├── themes/                     # 主題系統（含 visualStyle 綁定）
-│   ├── components/                 # UI 元件（31 個）
+│   ├── components/                 # UI 元件（32 個）
 │   └── hooks/                      # React hooks
 ├── src/
 │   ├── skills/                     # 技能模組（28 個，自動發現）
@@ -176,7 +176,7 @@ windAILab/
 │   └── api/                        # FastAPI 後端
 │       ├── main.py                 # API 路由 + WebSocket
 │       └── websocket_manager.py    # 即時推播管理
-├── tests/                          # 測試（33 檔案 / 812 測試）
+├── tests/                          # 測試（32 檔案 / 812 測試）
 ├── requirements.txt                # Python 依賴
 ├── pyproject.toml                  # 專案設定（ruff/black/mypy/pytest）
 ├── Dockerfile                      # 容器化部署
