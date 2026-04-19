@@ -1,6 +1,6 @@
 # WindAI Lab Daily Report
 
-> 最後更新：2026-04-19（每日例行工作流）
+> 最後更新：2026-04-19（每日例行工作流 — 第二輪增量更新）
 > Hackathon 截止日：2026-05-18（剩餘 29 天）
 
 ---
@@ -10,10 +10,11 @@
 | 項目 | 說明 |
 |------|------|
 | **功能開發** | ✅ 完成 #41 告警規則引擎核心 — 結束連續 3 天開發空窗期 |
-| **每日例行掃描** | Python TODO/FIXME: 0、前端 TODO: 1（穩定）、lint 2 個已修復 |
-| **Issue 管理** | 19 → 18 個 Open Issues（#41 完成待關閉），無新 bug |
-| **專案文件同步** | README / PROJECT-STATUS / TODO-roadmap / 日報更新 |
-| **CI 修復** | 修正 SIM105 + F401 lint 錯誤，推送修復 commit |
+| **PR 合併** | ✅ PR #94 已合併（告警規則引擎），#41 正式 CLOSED |
+| **CI 修復** | 修正 SIM105 + F401 lint 錯誤 + 告警規則引擎測試 mock 路徑（3 波修復） |
+| **每日例行掃描** | Python TODO/FIXME: 0、前端 TODO: 1（穩定）、`ruff check .` All checks passed! |
+| **Issue 管理** | 19 → 18 個 Open Issues（#41 已關閉），無新 bug、無需新建 issue |
+| **專案文件同步** | README / PROJECT-STATUS / TODO-roadmap / 日報增量更新 |
 
 ---
 
@@ -21,11 +22,13 @@
 
 | Hash | 訊息 | 變更 |
 |------|------|------|
-| `73ac6c3` | Merge pull request #93 | 日報更新合併 |
+| `f9dc081` | Merge pull request #94 | 告警規則引擎 PR 合併 |
+| `94b31c9` | fix: 修正告警規則引擎測試 mock 路徑（CI 測試失敗修復） | 1 檔, +18/-15 行 |
+| `55b747b` | docs: 2026-04-19 每日例行工作流 — #41 完成 + 日報 + 文件同步 | 4 檔, +90/-62 行 |
+| `bdbc226` | fix: 修正告警規則引擎 lint 錯誤（SIM105 + F401） | 2 檔, +2/-4 行 |
 | `03440d3` | feat(#41): 告警規則引擎核心 | 4 檔, +784 行（核心功能） |
-| `bdbc226` | fix: 修正告警規則引擎 lint 錯誤 | 2 檔, +2/-4 行 |
 
-**趨勢**：開發恢復 — 完成 Epic E 首個子任務，3 天空窗期結束。
+**趨勢**：開發恢復且閉環完成 — Epic E 首個子任務落地、PR 合併、CI 綠燈。
 
 ---
 
@@ -33,8 +36,8 @@
 
 | 動作 | Issue # | 標題 | 說明 |
 |------|---------|------|------|
-| ✅ 完成 | #41 | [E1] 告警規則引擎核心 | 5 條預設規則 + 複合條件 + 靜默期 + 自動工單 + 5 API + 37 測試 |
-| 無新建 | — | — | 掃描未發現新 bug |
+| ✅ 關閉 | #41 | [E1] 告警規則引擎核心 | PR #94 合併後自動關閉（04-19 02:31 UTC）— 5 條預設規則 + 複合條件 + 靜默期 + 自動工單 + 5 API + 37 測試 |
+| 無新建 | — | — | 掃描未發現新 bug（lint=0、Python TODO=0） |
 
 ---
 
@@ -84,14 +87,15 @@
 
 ## 程式碼品質
 
-- Lint 錯誤：**0**（今日修復 2 個：SIM105 + F401）
-- TODO/FIXME：**1**（前端 useWebSocket.ts L266 — speechBubbles TODO，trivial）
+- Lint 錯誤：**0**（`ruff check .` All checks passed！今日共修復 3 波：SIM105 + F401 + mock path）
+- TODO/FIXME：**1**（前端 useWebSocket.ts L266 — speechBubbles TODO，trivial、穩定）
 - Python TODO/FIXME：**0** — 乾淨
-- 測試：33 檔案 / 849 測試案例（+1 檔 / +37 測試，告警規則引擎）
+- 測試：33 檔案 / 849 測試案例（+1 檔 / +37 測試，告警規則引擎 + mock 路徑修正）
 - 前端元件：32 個
 - 技能模組：28 個
 - REST API 端點：56 個（+5 告警規則 API）
 - 依賴安全：pip audit 不可用，未偵測到已知漏洞
+- CI 狀態：綠燈（PR #94 合併成功）
 
 ---
 
@@ -153,9 +157,11 @@
 
 | 日期 | 工作項目 | 負責團隊 | 成果 | PR/Commit |
 |------|----------|----------|------|-----------|
+| 04-19 | PR #94 合併 + #41 自動關閉 | wLab:director | Epic E 核心引擎落地 | PR #94 合併 |
+| 04-19 | CI 測試 mock 路徑修復 | wEng:backend-dev | `test_alert_engine.py` 18 處調整 | `94b31c9` |
 | 04-19 | #41 告警規則引擎核心 | wEng:backend-dev | 核心引擎 + 5 API + 37 測試 | PR #94, `03440d3` |
 | 04-19 | CI lint 修復 | wEng:backend-dev | SIM105 + F401 修正 | `bdbc226` |
-| 04-19 | 每日例行掃描 | wLab:director | 19 open issues 全有效 | — |
+| 04-19 | 每日例行掃描（第二輪） | wLab:director | 18 open issues 全有效、無新 bug | — |
 | 04-18 | PR #93 日報更新 | wRes | 日報 + 文件日期同步 | #93 |
 | 04-17 | #64 P0-P3 完成 | wEng + wRes | 診斷報告完整上線 | #91 |
 
@@ -190,5 +196,5 @@
 
 ---
 
-*本報告由 Claude Code 自動產出，日期：2026-04-19*
-*工作流程：Phase 1（文件讀取）→ Phase 2（變更掃描）→ Phase 3（Issue 管理）→ Phase 4（#41 開發）→ Phase 5（日報產出）→ Phase 7（通知）*
+*本報告由 Claude Code 自動產出，日期：2026-04-19（第二輪增量更新：PR #94 合併 + CI 測試修復 + #41 正式關閉）*
+*工作流程：Phase 1（文件讀取）→ Phase 2（變更掃描）→ Phase 3（Issue 管理：#41 已關閉）→ Phase 4（無需主動修復：lint=0）→ Phase 5（日報增量更新）→ Phase 7（通知）*
