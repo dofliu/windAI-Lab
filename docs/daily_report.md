@@ -1,6 +1,6 @@
 # WindAI Lab Daily Report
 
-> 最後更新：2026-04-19（每日例行工作流 — 第二輪增量更新）
+> 最後更新：2026-04-19（每日例行工作流 — 第三輪增量更新）
 > Hackathon 截止日：2026-05-18（剩餘 29 天）
 
 ---
@@ -13,8 +13,9 @@
 | **PR 合併** | ✅ PR #94 已合併（告警規則引擎），#41 正式 CLOSED |
 | **CI 修復** | 修正 SIM105 + F401 lint 錯誤 + 告警規則引擎測試 mock 路徑（3 波修復） |
 | **每日例行掃描** | Python TODO/FIXME: 0、前端 TODO: 1（穩定）、`ruff check .` All checks passed! |
-| **Issue 管理** | 19 → 18 個 Open Issues（#41 已關閉），無新 bug、無需新建 issue |
-| **專案文件同步** | README / PROJECT-STATUS / TODO-roadmap / 日報增量更新 |
+| **Issue 管理** | 18 → 18 → 19 個 Open Issues（第三輪新增 #96 派工系統） |
+| **派工系統** | ✨ **建立總監工作分配與紀錄系統文件層**（#96）— 3 模板 + 索引 + 今日示範 |
+| **專案文件同步** | README / CLAUDE.md / 日報全面同步派工系統 |
 
 ---
 
@@ -37,7 +38,7 @@
 | 動作 | Issue # | 標題 | 說明 |
 |------|---------|------|------|
 | ✅ 關閉 | #41 | [E1] 告警規則引擎核心 | PR #94 合併後自動關閉（04-19 02:31 UTC）— 5 條預設規則 + 複合條件 + 靜默期 + 自動工單 + 5 API + 37 測試 |
-| 無新建 | — | — | 掃描未發現新 bug（lint=0、Python TODO=0） |
+| 🆕 新建 | #96 | 總監工作分配與紀錄系統 | 第三輪新建：依使用者連日強調，建立派工 + 紀錄 + 報告三層架構（階段一文件層本日完成） |
 
 ---
 
@@ -63,8 +64,9 @@
 | #35 | [Epic A] 案例學習系統 | epic, ml, rag | 2026-04-05 | Medium |
 | #34 | [Epic D] 報告與追蹤 | epic, feature | 2026-04-05 | High |
 | #33 | [Epic E] 告警規則引擎 | epic, backend | 2026-04-05 | 🔨 進行中（#41 ✅，#42/#43 待啟動） |
+| **#96** | **總監工作分配與紀錄系統** | **auto-detected, enhancement, feature, priority:high** | **2026-04-19** | **🆕 階段一文件層 ✅ 本日完成** |
 
-**Open：18 個（昨日 19 → 今日 18，#41 完成）**
+**Open：19 個（第三輪 18 + #96 新建 = 19）**
 
 ---
 
@@ -157,11 +159,13 @@
 
 | 日期 | 工作項目 | 負責團隊 | 成果 | PR/Commit |
 |------|----------|----------|------|-----------|
+| 04-19 | **派工系統文件層**（#96） | **wLab:director + wRes:rag-curator** | **3 模板 + 索引 + 今日派工單與工作紀錄** | **本輪 commit** |
 | 04-19 | PR #94 合併 + #41 自動關閉 | wLab:director | Epic E 核心引擎落地 | PR #94 合併 |
 | 04-19 | CI 測試 mock 路徑修復 | wEng:backend-dev | `test_alert_engine.py` 18 處調整 | `94b31c9` |
 | 04-19 | #41 告警規則引擎核心 | wEng:backend-dev | 核心引擎 + 5 API + 37 測試 | PR #94, `03440d3` |
 | 04-19 | CI lint 修復 | wEng:backend-dev | SIM105 + F401 修正 | `bdbc226` |
 | 04-19 | 每日例行掃描（第二輪） | wLab:director | 18 open issues 全有效、無新 bug | — |
+| 04-19 | 每日例行掃描（第三輪） | wLab:director | 派工系統 #96 新建 + 文件層落地 | 本輪 commit |
 | 04-18 | PR #93 日報更新 | wRes | 日報 + 文件日期同步 | #93 |
 | 04-17 | #64 P0-P3 完成 | wEng + wRes | 診斷報告完整上線 | #91 |
 
@@ -188,13 +192,29 @@
 
 ## 建議行動（優先順序）
 
-1. **[P1] 立即處理 #75 外部 API 對接** — 使用者需求已等 5 天，建立 DataConnector 抽象層
-2. **[P2] 啟動 #42 通知渠道** — #41 完成後無阻塞，Email/Webhook/LINE Notify
-3. **[P3] 啟動 #43 告警規則 YAML 設定** — 熱更新規則，無需修改程式碼
-4. **[P4] 啟動 Epic D #34 報告與追蹤** — #44 報告排程自動化
-5. **[Ongoing] #37 學術論文規劃** — 配合 Hackathon 截止日（剩餘 29 天）
+1. **[P1] 啟動 #96 階段二** — `DirectorAllocationService` 後端服務（4-6h）
+2. **[P1] 立即處理 #75 外部 API 對接** — 使用者需求已等 5 天，建立 DataConnector 抽象層
+3. **[P2] 啟動 #42 通知渠道** — #41 完成後無阻塞，Email/Webhook/LINE Notify
+4. **[P3] 啟動 #43 告警規則 YAML 設定** — 熱更新規則，無需修改程式碼
+5. **[P4] 啟動 Epic D #34 報告與追蹤** — #44 報告排程自動化（可與 #96 階段三整合）
+6. **[Ongoing] #37 學術論文規劃** — 配合 Hackathon 截止日（剩餘 29 天）
 
 ---
 
-*本報告由 Claude Code 自動產出，日期：2026-04-19（第二輪增量更新：PR #94 合併 + CI 測試修復 + #41 正式關閉）*
-*工作流程：Phase 1（文件讀取）→ Phase 2（變更掃描）→ Phase 3（Issue 管理：#41 已關閉）→ Phase 4（無需主動修復：lint=0）→ Phase 5（日報增量更新）→ Phase 7（通知）*
+## 第三輪增量更新摘要（派工系統文件層）
+
+| 項目 | 詳情 |
+|------|------|
+| **新建 Issue** | #96 總監工作分配與紀錄系統（auto-detected, enhancement, priority:high） |
+| **新增目錄** | `docs/work-logs/` + `docs/work-logs/2026-04/` |
+| **新增模板** | `tmpl-work-assignment.md` / `tmpl-work-record.md` / `tmpl-formal-report.md` |
+| **示範文件** | 2026-04-19-allocation.md（今日派工單）+ WLAB-20260419-03（本任務工作紀錄） |
+| **文件更新** | README.md（文件索引）、CLAUDE.md（派工流程說明） |
+| **Lint 狀態** | ✅ `ruff check .` All checks passed!（純文件變更） |
+
+詳細工作紀錄：[docs/work-logs/2026-04/WLAB-20260419-03-director-allocation-system.md](work-logs/2026-04/WLAB-20260419-03-director-allocation-system.md)
+
+---
+
+*本報告由 Claude Code 自動產出，日期：2026-04-19（第三輪增量更新：總監派工系統 #96 文件層落地）*
+*工作流程：Phase 1（文件讀取）→ Phase 2（變更掃描）→ Phase 3（Issue 管理：#96 新建）→ Phase 4（派工系統文件建置）→ Phase 5（日報增量更新）→ Phase 7（通知）*
