@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -213,10 +214,8 @@ class AlertRuleEngine:
             self._silence_tracker[silence_key] = datetime.now()
 
             description = rule.description_template
-            try:
+            with contextlib.suppress(KeyError, ValueError):
                 description = description.format(**metric_values)
-            except (KeyError, ValueError):
-                pass
 
             triggered.append(
                 {
