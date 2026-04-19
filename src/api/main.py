@@ -2028,6 +2028,72 @@ async def api_download_report(
     )
 
 
+# ── 告警規則引擎 API ──────────────────────────────────────────
+
+
+@app.get("/api/alert-rules", tags=["告警規則引擎"])
+async def api_list_alert_rules() -> list[dict[str, Any]]:
+    """列出所有告警規則。"""
+    from src.services.alert_engine import get_alert_rule_engine
+
+    engine = get_alert_rule_engine()
+    return [r.to_dict() for r in engine.rules]
+
+
+@app.get("/api/alert-rules/{rule_id}", tags=["告警規則引擎"])
+async def api_get_alert_rule(rule_id: str) -> dict[str, Any]:
+    """取得單一告警規則。"""
+    from src.services.alert_engine import get_alert_rule_engine
+
+    engine = get_alert_rule_engine()
+    rule = engine.get_rule(rule_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"規則 '{rule_id}' 不存在")
+    return rule.to_dict()
+
+
+@app.patch("/api/alert-rules/{rule_id}/toggle", tags=["告警規則引擎"])
+async def api_toggle_alert_rule(rule_id: str, enabled: bool = True) -> dict[str, Any]:
+    """啟用或停用告警規則。"""
+    from src.services.alert_engine import get_alert_rule_engine
+
+    engine = get_alert_rule_engine()
+    if not engine.set_rule_enabled(rule_id, enabled):
+        raise HTTPException(status_code=404, detail=f"規則 '{rule_id}' 不存在")
+    return {"status": "success", "rule_id": rule_id, "enabled": enabled}
+
+
+@app.delete("/api/alert-rules/{rule_id}", tags=["告警規則引擎"])
+async def api_delete_alert_rule(rule_id: str) -> dict[str, Any]:
+    """刪除告警規則。"""
+    from src.services.alert_engine import get_alert_rule_engine
+
+    engine = get_alert_rule_engine()
+    if not engine.remove_rule(rule_id):
+        raise HTTPException(status_code=404, detail=f"規則 '{rule_id}' 不存在")
+    return {"status": "success", "rule_id": rule_id}
+
+
+@app.get("/api/alert-rules/stats/summary", tags=["告警規則引擎"])
+async def api_alert_rules_stats() -> dict[str, Any]:
+    """告警規則引擎統計摘要。"""
+    from src.services.alert_engine import get_alert_rule_engine
+
+    engine = get_alert_rule_engine()
+    rules = engine.rules
+    return {
+        "total": len(rules),
+        "enabled": sum(1 for r in rules if r.enabled),
+        "disabled": sum(1 for r in rules if not r.enabled),
+        "by_severity": {
+            "critical": sum(1 for r in rules if r.severity == "critical"),
+            "warning": sum(1 for r in rules if r.severity == "warning"),
+            "info": sum(1 for r in rules if r.severity == "info"),
+        },
+        "auto_work_order_count": sum(1 for r in rules if r.auto_create_work_order),
+    }
+
+
 # ── 應用程式啟動入口 ────────────────────────────────────────────
 
 if __name__ == "__main__":

@@ -906,6 +906,27 @@ class OrchestrationEngine:
                     except Exception:
                         pass
 
+                # 告警規則引擎：檢查分析結果是否觸發告警
+                if task_results:
+                    try:
+                        from src.services.alert_engine import get_alert_rule_engine
+
+                        rule_engine = get_alert_rule_engine()
+                        turbine_id = workflow.parameters.get("turbine_id")
+                        alert_ids = await rule_engine.process_and_alert(
+                            task_results, turbine_id=turbine_id, task_id=effective_id
+                        )
+                        if alert_ids:
+                            log = self._create_log(
+                                "system",
+                                "系統",
+                                f"⚠️ 規則引擎觸發 {len(alert_ids)} 個告警",
+                                "warning",
+                            )
+                            await ws_manager.broadcast_work_log(log)
+                    except Exception as exc:
+                        logger.warning(f"告警規則引擎執行失敗：{exc}")
+
                 # 廣播任務完成事件 — 前端據此封存 task session
                 await ws_manager.broadcast_task_lifecycle(
                     "task_completed",
