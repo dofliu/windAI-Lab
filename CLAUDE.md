@@ -99,6 +99,19 @@ wLab:director 接收並分析
 輸出最終結果予使用者
 ```
 
+### 派工與紀錄文件化（#96）
+
+所有總監派工決策與代理工作執行歷程，**必須**透過下列文件結構保存：
+
+| 文件 | 路徑 | 用途 |
+|------|------|------|
+| 總索引 | `docs/work-logs/README.md` | 月度派工檔案索引 |
+| 派工單 | `docs/work-logs/YYYY-MM/YYYY-MM-DD-allocation.md` | 每日總監派工決策 |
+| 工作紀錄 | `docs/work-logs/YYYY-MM/WLAB-YYYYMMDD-NN-{slug}.md` | 單一任務從接案到結案 |
+| 派工單模板 | `docs/templates/tmpl-work-assignment.md` | 派工單格式 |
+| 工作紀錄模板 | `docs/templates/tmpl-work-record.md` | 任務紀錄格式 |
+| 正式報告模板 | `docs/templates/tmpl-formal-report.md` | 對外交付格式（HTML/PDF） |
+
 ### Slash Commands 分類
 
 系統提供 32 個 slash commands，依功能分類如下：
