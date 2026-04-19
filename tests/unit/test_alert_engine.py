@@ -240,14 +240,15 @@ class TestAlertRuleEngine:
         mock_db.get_alert.return_value = {"id": "ALT-20260418-test1234", "severity": "warning"}
 
         mock_ws = AsyncMock()
+        mock_db_module = MagicMock()
+        mock_db_module.get_database.return_value = mock_db
 
-        with (
-            patch("src.services.alert_engine.get_database", return_value=mock_db),
-            patch("src.services.alert_engine.ws_manager", mock_ws, create=True),
-            patch.dict(
-                "sys.modules",
-                {"src.api.websocket_manager": MagicMock(manager=mock_ws)},
-            ),
+        with patch.dict(
+            "sys.modules",
+            {
+                "src.core.database": mock_db_module,
+                "src.api.websocket_manager": MagicMock(manager=mock_ws),
+            },
         ):
             results = {"health_score": 0.65}
             engine = AlertRuleEngine()
@@ -265,13 +266,15 @@ class TestAlertRuleEngine:
         mock_db.get_work_order.return_value = {"id": "WO-20260418-test9999"}
 
         mock_ws = AsyncMock()
+        mock_db_module = MagicMock()
+        mock_db_module.get_database.return_value = mock_db
 
-        with (
-            patch("src.services.alert_engine.get_database", return_value=mock_db),
-            patch.dict(
-                "sys.modules",
-                {"src.api.websocket_manager": MagicMock(manager=mock_ws)},
-            ),
+        with patch.dict(
+            "sys.modules",
+            {
+                "src.core.database": mock_db_module,
+                "src.api.websocket_manager": MagicMock(manager=mock_ws),
+            },
         ):
             results = {"health_score": 0.4}
             engine = AlertRuleEngine()
