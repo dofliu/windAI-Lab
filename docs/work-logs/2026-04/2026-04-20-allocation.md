@@ -1,8 +1,8 @@
 # 總監派工單 — 2026-04-20
 
-> **派工日期**：2026-04-20（週一）
+> **派工日期**：2026-04-20（週一，更新至第四輪）
 > **派工總監**：wLab:director
-> **本日任務數**：2（進行中 2）
+> **本日任務數**：3（#42 設計 ✅ / 例行掃描 ✅ / #96 階段二設計 ✅）
 > **Hackathon 倒數**：剩餘 28 天
 
 ---
@@ -68,7 +68,29 @@
 | **預估工時** | 0.5 h |
 | **依賴** | 無 |
 | **驗收標準** | Phase 1-7 全程執行、日報更新、寄送 Email 通知 |
-| **狀態** | 🔨 進行中 |
+| **狀態** | ✅ 第四輪同步進行 |
+
+### 任務 3：WLAB-20260420-03 — #96 階段二 `DirectorAllocationService` 服務層設計文件
+
+| 欄位 | 內容 |
+|------|------|
+| **Task ID** | WLAB-20260420-03 |
+| **GitHub Issue** | #96 |
+| **指派代理** | wLab:director（主責）+ wEng:backend-dev（介面規劃） |
+| **協作代理** | wRes:rag-curator（文件格式） |
+| **優先序** | **P1** — 使用者核心需求（AI 輔助派工 + 結構化紀錄 + 正式美觀報告） |
+| **預估工時** | 1.5 h（設計文件） |
+| **依賴** | ✅ #96 階段一已完成；階段二實作時程建議 Epic E 完工後（04-26 啟動） |
+| **截止日** | 2026-04-20（本日） |
+| **驗收標準** | (1) `docs/design/director-allocation-service.md` v0.1 建立；(2) 覆蓋模型 / DB / 演算法 / 11 API / 雙向同步 / 測試 / 安全 / 時程；(3) 6 個 PR 切分明確；(4) 與既有系統整合點清楚 |
+| **工作紀錄連結** | [WLAB-20260420-03-allocation-service-design.md](./WLAB-20260420-03-allocation-service-design.md) |
+
+**派工理由**：
+
+- **使用者反覆強調的核心需求**：使用者於本輪再次強調「AI 輔助派工 + 結構化紀錄 + 正式美觀報告」，該需求經兩輪實戰驗證階段一文件層已穩定，階段二規劃時機成熟。
+- **依賴解除**：#42 設計文件本日完成，wEng 負載可容納下一個設計任務；Epic E 實作預計 04-21 啟動、04-25 完工，階段二實作恰可接續。
+- **風險管控**：先以設計文件固化介面 / 模型 / API 契約，可避免後續 6 個 PR 的反覆修改。
+- **實戰檢核**：本派工單同時為 #96 派工系統的第三次實戰使用，可觀察跨日 / 跨階段任務的紀錄鏈結可靠度。
 
 ---
 
@@ -76,27 +98,28 @@
 
 | 建議項目 | 說明 |
 |----------|------|
-| **瓶頸分析** | wEng 團隊仍承擔 5 個待辦（#42, #43, #44, #69, #75），本輪以「設計文件先行」分散實作壓力 |
+| **瓶頸分析** | wEng 團隊仍承擔 5 個待辦（#42, #43, #44, #69, #75），本輪以「設計文件先行」分散實作壓力；#96 階段二同樣採設計先行，拆 6 個小 PR |
 | **風險預警** | Hackathon 剩 28 天，Epic D（0%）尚未啟動，建議本週啟動 #44 報告排程 |
 | **資源建議** | wAI / wDomain 持續閒置，建議排入非阻塞性前期工作（#48 / #50 設計稿） |
-| **排程建議** | 4/21-4/22 啟動 #42 實作（PR A：Base + Email）；4/23-4/24 PR B（Webhook + LINE） |
-| **學習回饋** | 4/19 連續 CI 失敗已透過文件強化預警，本輪無 CI 風險（純文件變更） |
+| **排程建議** | 4/21-4/22 啟動 #42 實作（PR A：Base + Email）；4/23-4/24 PR B（Webhook + LINE）；4/26 啟動 #96 階段二 PR 1（共 6 個 PR / 14 h） |
+| **學習回饋** | 4/19 連續 CI 失敗已透過文件強化預警，本輪無 CI 風險（純文件變更）；設計文件先行策略連續三輪驗證有效 |
 
 ---
 
 ## 5. 派工系統自我檢核（#96 閉環驗證）
 
-本派工單為 #96 派工系統文件層的 **第二次實戰使用**，檢核結果：
+本派工單為 #96 派工系統文件層的 **第三次實戰使用**（本日第四輪），檢核結果：
 
 | 項目 | 狀態 | 備註 |
 |------|------|------|
-| 派工單模板可用性 | ✅ 良好 | 沿用 4/19 格式，無需修改 |
-| 工作紀錄模板可用性 | ✅ 良好 | 本輪 WLAB-20260420-01 沿用 |
-| 目錄索引維護 | ✅ | 本輪將更新 `docs/work-logs/README.md` 月索引 |
+| 派工單模板可用性 | ✅ 良好 | 本輪追加任務 3，沿用既有格式新增無衝突 |
+| 工作紀錄模板可用性 | ✅ 良好 | WLAB-20260420-01 / -03 同一模板穩定 |
+| 目錄索引維護 | ✅ | 本輪將更新 `docs/work-logs/README.md` 月索引（附註第四輪） |
 | 正式報告模板 | ⏸ 暫未使用 | 留待週報 / 月報階段啟用 |
 | 與日報整合 | ✅ | `daily_report.md` 已引用派工單路徑 |
+| 跨階段任務鏈結 | ✅ | 階段一（文件層）→ 階段二（服務層設計）連結清楚 |
 
-**回饋**：模板設計經兩輪實戰後穩定可用，可進入 #96 階段二（服務層 `DirectorAllocationService`）規劃。
+**回饋**：模板設計經三次實戰後穩定可用，階段二規劃已啟動（`docs/design/director-allocation-service.md`），實作待 Epic E 完工後於 04-26 啟動。
 
 ---
 
@@ -111,12 +134,16 @@
 
 ## 7. 連結
 
-- **本日工作紀錄**：[WLAB-20260420-01-notification-design.md](./WLAB-20260420-01-notification-design.md)
-- **設計文件產出**：[../../design/notification-channels.md](../../design/notification-channels.md)
+- **本日工作紀錄**：
+  - [WLAB-20260420-01-notification-design.md](./WLAB-20260420-01-notification-design.md)（#42 設計）
+  - [WLAB-20260420-03-allocation-service-design.md](./WLAB-20260420-03-allocation-service-design.md)（#96 階段二設計）
+- **設計文件產出**：
+  - [../../design/notification-channels.md](../../design/notification-channels.md)
+  - [../../design/director-allocation-service.md](../../design/director-allocation-service.md)
 - **相關 Issue**：[#42](https://github.com/dofliu/windai-lab/issues/42)、[#33 Epic E](https://github.com/dofliu/windai-lab/issues/33)、[#96 派工系統](https://github.com/dofliu/windai-lab/issues/96)
 - **每日報告**：[../../daily_report.md](../../daily_report.md)
 - **目錄索引**：[../README.md](../README.md)
 
 ---
 
-*本派工單由 wLab:director（Claude Code 輔助）產出於 2026-04-20，依循 `docs/templates/tmpl-work-assignment.md` 格式。*
+*本派工單由 wLab:director（Claude Code 輔助）產出於 2026-04-20（第四輪更新），依循 `docs/templates/tmpl-work-assignment.md` 格式。*
