@@ -78,6 +78,14 @@
 |------|--------|------|----------|
 | — | 高/中/低 | 高/中/低 | — |
 
+### 5.1 排程滑移追蹤（選用）
+
+> 適用情境：本期出現未預期空窗、任務延後、PR 重排時納入。若無滑移可省略本子節。
+
+| 原訂任務 | 原訂日期 | 實際/新日期 | 滑移 (天) | 根因 | 後續追蹤 |
+|----------|----------|-------------|-----------|------|----------|
+| — | — | — | — | — | — |
+
 ---
 
 ## 6. 下期規劃
@@ -110,7 +118,31 @@
 
 ### C. 圖表
 
-{若有圖表，於此插入或引用 `assets/` 目錄下的圖檔}
+{若有圖表，請放置於 `docs/reports/assets/` 目錄，並以 Markdown 圖片語法引用。範例：}
+
+```markdown
+![Epic E 進度趨勢](./assets/2026-W17-epic-e-progress.png)
+![團隊工時分佈](./assets/2026-W17-team-hours.svg)
+```
+
+> **資產命名慣例**：`{report-id}-{figure-slug}.{png|svg|jpg}`，例如 `2026-W17-epic-e-progress.png`。
+> **尺寸建議**：寬度 ≤ 1200px（PDF 列印友善），SVG 優先以利向量化。
+
+---
+
+## 檔名規範
+
+正式報告歸檔於 `docs/reports/`，檔名**強制**遵循下列格式以利歸檔與 #44 報告排程自動化查找：
+
+| 報告類型 | 檔名格式 | 範例 |
+|----------|----------|------|
+| 週報 | `YYYY-WNN-weekly-report.md` | `2026-W17-weekly-report.md` |
+| 月報 | `YYYY-MM-monthly-report.md` | `2026-04-monthly-report.md` |
+| 季報 | `YYYY-QN-quarterly-report.md` | `2026-Q2-quarterly-report.md` |
+| 專案完成報告 | `{project-slug}-completion-report.md` | `phase-14-completion-report.md` |
+| 客戶交付報告 | `{customer-slug}-YYYY-MM-delivery.md` | `windfarm-demo-2026-04-delivery.md` |
+
+`WNN` 為 ISO 8601 週編號（W01-W53），以週四所在週定義。建議用 `date -u +%G-W%V` 取得。
 
 ---
 
@@ -122,6 +154,18 @@
 | 總監審閱 | wLab:director | — | — |
 | 技術主管審閱 | wLab:tech-lead | — | — |
 
+### 工時摘要
+
+| 團隊 | 工時 (h) | 主要貢獻 |
+|------|----------|----------|
+| wLab: Leadership | — | — |
+| wData: Data Engineering | — | — |
+| wAI: AI/ML | — | — |
+| wDomain: Domain Knowledge | — | — |
+| wEng: Software Engineering | — | — |
+| wRes: Research & Docs | — | — |
+| **合計** | **—** | — |
+
 ---
 
-*本報告由 WindAI Lab 自動化報告系統產出，依循 `docs/templates/tmpl-formal-report.md` 模板。如需 HTML / PDF 輸出，請執行 `/lab:report --format=pdf`（待 #44 完成後可用）。*
+*本報告由 WindAI Lab 自動化報告系統產出，依循 `docs/templates/tmpl-formal-report.md` v1.1 模板。如需 HTML / PDF 輸出，請執行 `/lab:report --format=pdf`（待 #44 完成後可用）。*
