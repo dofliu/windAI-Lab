@@ -75,10 +75,12 @@ docs/work-logs/
 | 04-21 | — | 空窗（無 commit） | ⚠ |
 | 04-22 | — | 空窗（無 commit） | ⚠ |
 | 04-23 | [allocation](2026-04/2026-04-23-allocation.md) | 空窗恢復 + **首份正式週報產出（2026-W17）** + Epic E 排程重整 | ✅ |
+| 04-24 | [allocation](2026-04/2026-04-24-allocation.md) | W17 收尾 · 輕量維運 + **`tmpl-formal-report.md` v1.0 → v1.1 升版**（4 項回饋落地） | ✅ |
 
 ### 2026-W17 正式週報
 
 - [docs/reports/2026-W17-weekly-report.md](../reports/2026-W17-weekly-report.md) — 首份正式週報實例（對應 `tmpl-formal-report.md` 驗證）
+- 驗證回饋 → 2026-04-24 已將 4 項改進建議落地為 **`tmpl-formal-report.md` v1.1**（詳見 [WLAB-20260424-02](2026-04/WLAB-20260424-02-formal-report-template-v1-1.md)）
 
 ---
 
@@ -92,4 +94,4 @@ docs/work-logs/
 
 ---
 
-*由 Claude Code 自動建立並維護，最後更新：2026-04-23（空窗恢復 + 首份正式週報落地）*
+*由 Claude Code 自動建立並維護，最後更新：2026-04-24（W17 收尾 + `tmpl-formal-report.md` v1.1 升版）*
