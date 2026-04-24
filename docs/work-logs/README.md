@@ -72,16 +72,24 @@ docs/work-logs/
 |------|--------|----------|--------|
 | 04-19 | [allocation](2026-04/2026-04-19-allocation.md) | #41 告警規則引擎 + 派工系統文件基礎建設 | ✅ |
 | 04-20 | [allocation](2026-04/2026-04-20-allocation.md) | #42 通知渠道設計文件 + #96 階段二服務層設計（Epic E 推進 + 派工系統進階） | ✅ |
+| 04-21 | — | 空窗（無 commit） | ⚠ |
+| 04-22 | — | 空窗（無 commit） | ⚠ |
+| 04-23 | [allocation](2026-04/2026-04-23-allocation.md) | 空窗恢復 + **首份正式週報產出（2026-W17）** + Epic E 排程重整 | ✅ |
+
+### 2026-W17 正式週報
+
+- [docs/reports/2026-W17-weekly-report.md](../reports/2026-W17-weekly-report.md) — 首份正式週報實例（對應 `tmpl-formal-report.md` 驗證）
 
 ---
 
 ## 5. 整合點
 
 - **日報整合**：每日 `docs/daily_report.md` 會引用當日派工單
+- **週報整合**：每週四產出 `docs/reports/YYYY-WNN-weekly-report.md`，彙整該週派工單與工作紀錄
 - **Issue 連結**：每份工作紀錄須引用對應 GitHub Issue 編號
 - **Commit 連結**：以 commit hash 反查實際變更
 - **PR 連結**：附上 PR 連結以利審核追蹤
 
 ---
 
-*由 Claude Code 自動建立並維護，最後更新：2026-04-20（第四輪 — #96 階段二設計文件落地）*
+*由 Claude Code 自動建立並維護，最後更新：2026-04-23（空窗恢復 + 首份正式週報落地）*
