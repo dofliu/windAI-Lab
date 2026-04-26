@@ -111,6 +111,21 @@ wLab:director 接收並分析
 | 派工單模板 | `docs/templates/tmpl-work-assignment.md` | 派工單格式 |
 | 工作紀錄模板 | `docs/templates/tmpl-work-record.md` | 任務紀錄格式 |
 | 正式報告模板 | `docs/templates/tmpl-formal-report.md` | 對外交付格式（HTML/PDF） |
+| **每日工作流 routines** | `docs/routines/daily-workflow.md` | **每日工作流改善機制（拆 session、cursor 快照、續行守則）** |
+
+### 每日工作流 routines（v1.0，2026-04-26 起生效）
+
+執行每日工作流時，**必須**遵循 `docs/routines/daily-workflow.md` 的改善機制：
+
+1. **拆 session（A/B/C）**：避免單回合過載觸發 API Stream idle timeout
+   - Session A：Phase 1-3（讀取 + 掃描 + Issue）
+   - Session B：Phase 4（主動工作 + 文件產出）
+   - Session C：Phase 5-7（更新主要文件 + commit/push + email）
+2. **以 `docs/cursor.md` 為段間交接介面**：後段 session 不重讀整篇 daily_report
+3. **單回合限制**：≤ 20 個工具呼叫、≤ 250 行 markdown 新增、≤ 2 份新檔案
+4. **長文件 ≥ 200 行**：交 subagent 並行產出（如週報、啟動備忘錄）
+5. **例行維運日**：採 `tmpl-work-assignment-lite.md`（精簡版，待 4/28 抽出）
+6. **失敗續行守則**：若中斷，依 routines 第 8 節步驟恢復；不重做、不 reset
 
 ### Slash Commands 分類
 
