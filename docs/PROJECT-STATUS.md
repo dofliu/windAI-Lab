@@ -248,10 +248,10 @@ POST /api/alerts/ingest
 
 | 文件 | 說明 |
 |------|------|
-| [FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) | 願景定位 + Phase 11-19 三步走路線圖 |
-| [EVOLUTION-PLAN.md](EVOLUTION-PLAN.md) | 詳細執行計畫（70+ 工作項目） |
+| [FUTURE-ROADMAP.md](archived/FUTURE-ROADMAP.md) ⚠️ 已歸檔 | 願景定位 + Phase 11-19 三步走路線圖 |
+| [EVOLUTION-PLAN.md](archived/EVOLUTION-PLAN.md) ⚠️ 已歸檔 | 詳細執行計畫（70+ 工作項目） |
 | [TODO-roadmap.md](TODO-roadmap.md) | 總覽路線圖 + 待辦清單 |
-| [progress-report.md](progress-report.md) | Phase 1-10 開發歷程 |
+| [progress-report.md](archived/progress-report.md) ⚠️ 已歸檔 | Phase 1-10 開發歷程 |
 | [architecture-design.md](architecture-design.md) | 系統架構設計 |
 
-詳細開發記錄見 [progress-report.md](progress-report.md)。
+詳細開發記錄見 [progress-report.md](archived/progress-report.md) ⚠️ 已歸檔。
