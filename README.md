@@ -1,6 +1,6 @@
 # WindAI Lab — 風力發電 AI 研究協作系統
 
-> **版本**：0.1.0 | **最後更新**：2026-04-19 | **進度**：Phase 14 進行中（Step 1 完成 + Epic C ✅ + #64 ✅ + #41 ✅ 已合併關閉）
+> **版本**：0.1.0 | **最後更新**：2026-04-24 | **進度**：Phase 14 進行中（Step 1 完成 + Epic C ✅ + #64 ✅ + #41 ✅ + #96 派工系統文件層 ✅ + #42 通知渠道設計文件 ✅ + #96 階段二服務層設計 ✅ + 首份正式週報 2026-W17 ✅ + **`tmpl-formal-report.md` v1.1 ✅**）
 
 多代理協作平台，結合虛擬辦公室介面與真實 SCADA 資料分析，專為風力發電研究設計。
 
@@ -274,6 +274,8 @@ curl -X POST http://localhost:8000/api/knowledge-base/search \
 | [docs/PROJECT-STATUS.md](docs/PROJECT-STATUS.md) | 專案現況總覽（一頁式摘要） |
 | [docs/use-cases.md](docs/use-cases.md) | 6 大使用場景與操作範例 |
 | [docs/data-integration-guide.md](docs/data-integration-guide.md) | 多來源資料整合指南 |
+| [docs/work-logs/README.md](docs/work-logs/README.md) | 總監派工與工作紀錄總索引（#96） |
+| [docs/templates/](docs/templates/) | 文件模板（派工單 / 工作紀錄 / 正式報告 / 論文 / 實驗計畫） |
 
 ---
 
