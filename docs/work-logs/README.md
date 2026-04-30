@@ -123,7 +123,8 @@ docs/work-logs/
 | 04-22 | — | 空窗（無 commit） | ⚠ |
 | 04-23 | [allocation](2026-04/2026-04-23-allocation.md) | 空窗恢復 + **首份正式週報產出（2026-W17）** + Epic E 排程重整 | ✅ |
 | 04-24 | [allocation](2026-04/2026-04-24-allocation.md) | W17 收尾 · 輕量維運 + **`tmpl-formal-report.md` v1.0 → v1.1 升版**（4 項回饋落地） | ✅ |
-| 04-26 | [allocation](2026-04/2026-04-26-allocation.md) | W17→W18 過渡日 · 輕量維運 + **W18 啟動就緒備忘錄**（4 軌啟動盤點 + fallback 決策樹） | ✅ |
+| 04-26 | [allocation](2026-04/2026-04-26-allocation.md) | W17→W18 過渡日 · 輕量維運 + W18 啟動就緒備忘錄 | ✅ |
+| 04-27 | [allocation](2026-04/2026-04-27-allocation.md) | **W18 Day 1 · OMC 整合啟動**（AGENTS.md + 速查表 + 整合指南） + daily_report 瘦身 | ✅ |
 
 ### 2026-W17 正式週報
 
@@ -142,4 +143,4 @@ docs/work-logs/
 
 ---
 
-*由 Claude Code 自動建立並維護，最後更新：2026-04-26（W17→W18 過渡日 + W18 啟動就緒備忘錄）*
+*由 Claude Code 自動建立並維護，最後更新：2026-04-27（W18 Day 1 · OMC 整合啟動）*

@@ -200,4 +200,109 @@ src/
 
 ---
 
-> 工作前先看 `docs/daily_report.md` 知道現在在做什麼。修改 agent / 技能前先看對應的 `src/agents/` 與 `src/skills/` 模組註解。所有破壞性操作（刪檔、改 schema、跑 migration）執行前須先請使用者確認。
+## 9. 整合規則
+
+### 與 iWrite 代理系統整合
+
+WindAI 代理與既有的 iWrite 代理系統共存，整合規則如下：
+
+- **命名空間隔離**：WindAI 代理使用 `w` 開頭的 namespace（`wLab:`, `wData:` 等），與 iWrite 系統的命名空間互不衝突
+- **共用基礎設施**：共用 message bus 與 task queue，透過 namespace prefix 路由訊息
+- **跨系統呼叫**：WindAI 代理可透過標準化 API 呼叫 iWrite 代理的寫作功能（如論文潤稿、翻譯）
+- **權限管理**：跨系統呼叫須經由各自的 Leadership 層級代理授權
+
+### 與 PLC 代理整合
+
+- WindAI 的 `wData:` 代理可透過 OPC UA protocol 接收 PLC 代理轉發的即時資料
+- PLC 資料流入 WindAI 系統前須經過 `wData:quality-checker` 驗證
+- 即時控制指令（如降載、停機）**禁止**由 WindAI 代理直接發送，必須透過 PLC 代理執行
+
+### 訊息格式
+
+代理間通訊使用統一的 JSON 格式：
+
+```json
+{
+  "message_id": "msg-uuid",
+  "from": "wAI:model-trainer",
+  "to": "wLab:project-manager",
+  "type": "task_complete",
+  "payload": { ... },
+  "timestamp": "2026-03-24T10:30:00Z"
+}
+```
+
+---
+
+## 10. 虛擬辦公室
+
+### 概念說明
+
+虛擬辦公室 (Virtual Office) 是 WindAI Lab 的即時協作介面，以視覺化方式呈現所有 42 個代理的狀態與互動。使用者可透過 React 前端即時監控代理活動、下達指令、檢視任務進度。
+
+### 代理狀態 (Agent Status)
+
+| 狀態 | 英文 | 圖示顏色 | 說明 |
+|------|------|----------|------|
+| **待命** | Idle | 灰色 | 代理閒置，等待任務指派 |
+| **工作中** | Working | 綠色 | 代理正在執行任務 |
+| **等待確認** | Awaiting Confirmation | 黃色 | 代理已完成計畫擬定，等待使用者或上級確認 |
+| **完成** | Completed | 藍色 | 任務已完成，等待結果被提取 |
+| **錯誤** | Error | 紅色 | 執行過程發生錯誤，需人工介入 |
+
+### 辦公室佈局
+
+虛擬辦公室依團隊劃分區域：
+
+```
+┌─────────────────────────────────────────────┐
+│              Leadership 指揮中心              │
+│  wLab:director  wLab:project-manager  ...   │
+├──────────────┬──────────────┬───────────────┤
+│  Data Eng.   │   AI/ML      │  Domain       │
+│  資料工程室   │  模型實驗室   │  領域知識庫    │
+│  wData:*     │  wAI:*       │  wDomain:*    │
+├──────────────┴──────────────┴───────────────┤
+│  Software Eng. 軟體工程室  │  Research 研究室 │
+│  wEng:*                   │  wRes:*         │
+└───────────────────────────┴─────────────────┘
+```
+
+### 即時功能
+
+- **WebSocket 推播**：代理狀態變更、任務進度即時更新至前端
+- **訊息流 (Message Feed)**：顯示代理間的通訊記錄，可依 namespace 篩選
+- **任務看板 (Task Board)**：Kanban 風格的任務追蹤面板
+- **代理對話 (Agent Chat)**：使用者可直接與特定代理對話互動
+- **儀表板 (Dashboard)**：系統資源使用狀況、模型訓練進度、資料處理統計
+
+---
+
+## 11. oh-my-claudecode (OMC) 整合（2026-04-27 啟動）
+
+WindAI Lab 已整合 [oh-my-claudecode (OMC)](https://github.com/Yeachan-Heo/oh-my-claudecode) 作為通用型代理框架，與既有 22 位 windAI 領域代理互補。
+
+### 整合原則
+
+1. **命名空間隔離**：OMC agent 無前綴（`scientist`, `analyst`, `writer`...），windAI agent 一律 `w*:` 前綴，互不衝突。
+2. **互補而非取代**：OMC 提供通用型 agent / smart routing，windAI 提供風電領域知識與 skill 管線。
+3. **總監統籌不變**：所有 OMC 子代理產出仍須通過 `wLab:director` Checkpoint 才可 commit / PR。
+4. **派工紀錄必填**：OMC 自動完成的任務也須回填 `docs/work-logs/YYYY-MM/WLAB-*.md`。
+
+### 對應文件
+
+| 文件 | 用途 |
+|------|------|
+| [`AGENTS.md`](AGENTS.md) | OMC 子代理協作組態（agent workflow / domain hints / cost routing） |
+| [`.claude/windailab-skills.md`](.claude/windailab-skills.md) | OMC 常用指令速查表（開發者速查卡） |
+| [`docs/omc-integration-guide.md`](docs/omc-integration-guide.md) | 完整整合指南（含安裝步驟 / 環境需求 / 工作流範例） |
+
+### 推薦工作流
+
+```
+研究類：    explore → analyst → scientist → critic → executor → verifier
+程式碼類：  explore → planner → architect → executor → verifier
+論文類：    analyst → writer → critic → writer (revision loop)
+```
+
+詳見 [`AGENTS.md`](AGENTS.md)。

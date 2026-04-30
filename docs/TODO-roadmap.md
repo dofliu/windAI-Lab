@@ -1,9 +1,9 @@
 # WindAI Lab — TODO 路線圖與下一步工作規劃
 
-> 最後更新：2026-04-18
-> 目前進度：Phase 14 進行中（14a ✅、14b ✅、14c ✅ #64 PR #90）+ Epic C 完成
+> 最後更新：2026-04-27（W18 啟動日 + OMC 整合啟動）
+> 目前進度：Phase 14 進行中（14a ✅、14b ✅、14c ✅ #64 PR #90）+ Epic C 完成 + OMC 文件層整合 ✅
 > **核心願景：打造一間真實的風場運維 AI 服務公司**
-> **追蹤方式**：GitHub Issues（6 Epic / 15 子 Issue）
+> **追蹤方式**：GitHub Issues（6 Epic / 15 子 Issue）+ 派工系統（#96）
 
 ---
 
@@ -186,6 +186,27 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | 自動報告排程 | 週報/月報自動產生 + 寄送客戶 | ⬜ |
 | SLA 追蹤 | 回應時間/解決時間/可利用率保證 | ⬜ |
 | 客戶入口 | 客戶登入看風場狀態/報告/工單 | ⬜ |
+
+---
+
+### 🛠 研發工具基礎建設（Tooling）
+
+> 提升內部開發效率與多代理協作品質的工具整合
+
+#### oh-my-claudecode (OMC) 整合（2026-04-27 啟動）
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| AGENTS.md 協作組態 | 定義 OMC agent 與 windAI 6 層 namespace 的對應 | ✅ |
+| `.claude/windailab-skills.md` 速查 | 開發者常用 OMC 指令速查表 | ✅ |
+| `docs/omc-integration-guide.md` 整合指南 | 安裝步驟 / 環境需求 / 工作流範例 | ✅ |
+| Plugin 安裝（互動式） | `/plugin install oh-my-claudecode` | ⬜（需人工執行） |
+| omc-doctor 驗證 | 全項目綠燈 | ⬜（需人工執行） |
+| Smoke test 模組地圖 | scientist agent 跑首個任務 | ⬜（需人工執行） |
+| OMC `wiki` ↔ windAI RAG 對接 | 持久化記憶銜接 ChromaDB | ⬜（W19+ 評估） |
+| 自訂 Skill：故障報告自動化 | skillify 包裝既有工作流 | ⬜（W19+ 評估） |
+
+詳見 [`docs/omc-integration-guide.md`](omc-integration-guide.md) 與 [`AGENTS.md`](../AGENTS.md)。
 
 ---
 
