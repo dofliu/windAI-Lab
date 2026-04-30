@@ -3,7 +3,7 @@ name_zh: 風力發電AI研究平台
 category: wind_energy
 progress: 92
 status: active
-last_updated: "2026-04-16"
+last_updated: "2026-04-21"
 next_milestone: "Phase 14c - 診斷報告輸出與資料連接器"
 technologies:
   - Python
