@@ -1,107 +1,71 @@
-# WindAI Lab — 風力發電 AI 研究協作系統
+# WindAI Lab — Claude 工作守則
 
-## 1. 專案概述
+> 給 Claude 在這個 repo 工作時用的精簡指引。專案完整介紹見 `README.md`、現況見 `docs/PROJECT-STATUS.md`、近況見 `docs/daily_report.md`。
 
-WindAI Lab 是一個風力發電領域的 AI 研究協作系統，整合 **42 個專業代理 (agents)** 與 **32 個 slash commands**，透過虛擬辦公室 (Virtual Office) 介面進行即時協作。系統目標為加速風力發電相關的資料分析、機器學習建模、論文撰寫及軟體工程開發流程。
+## 1. 專案一句話
 
-核心能力：
-- 風力發電 SCADA 資料清洗與分析
-- 風機健康監測與預測性維護 (Predictive Maintenance)
-- 功率曲線建模 (Power Curve Modeling)
-- 尾流效應模擬 (Wake Effect Simulation)
-- RAG 驅動的風能文獻搜尋與知識管理
-- 多代理協作的研究論文撰寫
+風力發電 AI 研究協作平台：多代理 + 技能模組 + 虛擬辦公室 UI，協助風場資料清洗、模型訓練、診斷報告產出。Python 3.11 後端 (FastAPI) + React TS 前端。
 
----
+## 2. 真實 agent / command 清單
 
-## 2. 系統架構
+**6 個團隊、25 個 Python agent**（檔案位於 `src/agents/{tier}/`）：
 
-系統採用 **6 層代理階層 (6-Tier Agent Hierarchy)**：
+| Tier | 路徑 | Agent 檔名 (去 .py) |
+|---|---|---|
+| Leadership | `src/agents/leadership/` | director, project_manager, research_lead, tech_lead |
+| Data | `src/agents/data/` | scada_processor, quality_checker, etl_engineer |
+| AI/ML | `src/agents/ai/` | anomaly_detector, experiment_tracker, fault_diagnostician, feature_engineer, hyperparameter_tuner, predictive_modeler, rag_architect |
+| Domain | `src/agents/domain/` | maintenance_planner, power_curve_expert, wake_analyst |
+| Engineering | `src/agents/engineering/` | backend_dev, devops_engineer, frontend_dev, test_engineer |
+| Research | `src/agents/research/` | literature_reviewer, paper_writer, rag_curator, report_generator |
 
-| 層級 | 命名空間 | 職責 | 代理數量 |
-|------|----------|------|----------|
-| **Tier 1 — Leadership** | `wLab:` | 專案統籌、任務分派、進度追蹤 | 4 |
-| **Tier 2 — Data Engineering** | `wData:` | 資料蒐集、清洗、ETL pipeline、資料驗證 | 8 |
-| **Tier 3 — AI/ML** | `wAI:` | 模型訓練、實驗追蹤、超參數調整、推論部署 | 10 |
-| **Tier 4 — Domain Knowledge** | `wDomain:` | 風力發電領域知識、IEC 標準、法規合規 | 6 |
-| **Tier 5 — Software Engineering** | `wEng:` | 後端/前端開發、CI/CD、基礎設施管理 | 8 |
-| **Tier 6 — Research & Docs** | `wRes:` | 論文撰寫、文獻管理、報告生成、RAG 知識庫 | 6 |
+註：`src/agents/` 下還有共用基礎設施 `base.py`、`registry.py`、`dynamic_registry.py`、`message_bus.py`、`skill_composing_agent.py`、`orchestrator/`，不算單一 agent。
 
-### 指揮鏈
+**Claude Code sub-agent (8 個)**：`.claude/agents/{leadership,ai-ml,research-docs}/*.md`
+**Slash commands (5 個)**：`/build-rag`, `/diagnose`, `/lit-search`, `/onboard-student`, `/write-paper`（定義於 `.claude/commands/`）
 
-```
-wLab:director (總監)
-├── wLab:project-manager (專案經理)
-│   ├── wData:* (資料工程團隊)
-│   ├── wAI:* (AI/ML 團隊)
-│   └── wDomain:* (領域知識團隊)
-├── wLab:tech-lead (技術主管)
-│   └── wEng:* (軟體工程團隊)
-└── wLab:research-lead (研究主管)
-    └── wRes:* (研究文件團隊)
-```
+## 3. 開發環境與常用指令
 
----
+```bash
+# 安裝
+pip install -r requirements.txt
 
-## 3. 代理命名規範
+# Lint / Format / Type check（pre-commit 會跑這順序）
+ruff check --fix .
+black .
+mypy src/
 
-所有代理遵循統一的 namespace convention：
+# 測試
+pytest                    # 全部
+pytest tests/unit/ -x     # 單元測試，遇錯即停
+pytest -k "scada"         # 篩名稱
 
-```
-{namespace}:{role-name}
+# 啟動服務
+uvicorn src.api.main:app --reload    # backend
+cd frontend && npm run dev           # frontend
 ```
 
-### Namespace 定義
+工具設定均在 `pyproject.toml`：ruff line-length=99、mypy strict、pytest asyncio。
 
-| Namespace | 全稱 | 範例 |
-|-----------|------|------|
-| `wLab:` | WindAI Lab Leadership | `wLab:director`, `wLab:project-manager` |
-| `wData:` | WindAI Data Engineering | `wData:scada-processor`, `wData:quality-checker` |
-| `wAI:` | WindAI AI/ML | `wAI:model-trainer`, `wAI:experiment-tracker` |
-| `wDomain:` | WindAI Domain Knowledge | `wDomain:iec-specialist`, `wDomain:wake-analyst` |
-| `wEng:` | WindAI Software Engineering | `wEng:backend-dev`, `wEng:frontend-dev` |
-| `wRes:` | WindAI Research & Docs | `wRes:paper-writer`, `wRes:rag-curator` |
+## 4. Coding 規範（精簡）
 
-### 命名規則
+- Python：所有 def/method 加 type hints；docstring 用 Google style，說明文字繁中
+- 命名：變數/函式 `snake_case`、Class `PascalCase`、常數 `UPPER_SNAKE_CASE`
+- 禁止 `Any` 型別（必要時加 `# type: ignore` 並註明原因）
+- 對使用者輸出用繁體中文，技術術語保留英文
+- 修改檔案前先 Read；遇到舊檔有 CRLF 行尾，照原樣保留別動
 
-- 使用小寫英文，單字間以 hyphen (`-`) 連接
-- 名稱須反映代理的主要職責
-- 禁止使用底線 (`_`) 或大寫字母
-- 每個代理須在 `configs/agents/` 目錄下有對應的 YAML 設定檔
+## 5. Git / PR 工作流
 
----
+- 主分支：`master`（直接 push 前先 `git pull --rebase`）
+- Feature 開發：`feat/*`；Claude Code 自動分支：`claude/*`
+- Commit 訊息規範：`type(#issue): 描述`，type ∈ {feat, fix, docs, chore, refactor, test}
+- 帶 `#issue` 編號可自動關聯 GitHub Issue
+- CI 在 `.github/workflows/ci.yml`，PR 必須過 CI
 
-## 4. 工作流程規範
+## 6. 任務追蹤與派工紀錄
 
-### 核心原則
-
-1. **確認後執行 (Confirm Before Execute)**：所有代理在執行任何修改性操作前，**必須**向使用者或上級代理請求確認。
-2. **繁體中文輸出**：所有面向使用者的輸出均使用繁體中文，技術術語保留英文原文。
-3. **任務追蹤**：每個任務須有明確的 task ID，格式為 `WLAB-{YYYYMMDD}-{seq}`。
-
-### 標準工作流程
-
-```
-使用者下達指令
-    ↓
-wLab:director 接收並分析
-    ↓
-分派至對應團隊負責代理
-    ↓
-執行代理擬定執行計畫
-    ↓
-【等待確認】→ 使用者/上級確認
-    ↓
-執行任務並回報進度
-    ↓
-結果回傳至 wLab:director 整合
-    ↓
-輸出最終結果予使用者
-```
-
-### 派工與紀錄文件化（#96）
-
-所有總監派工決策與代理工作執行歷程，**必須**透過下列文件結構保存：
+任務 ID 格式：`WLAB-{YYYYMMDD}-{NN}`。派工/紀錄文件：
 
 | 文件 | 路徑 | 用途 |
 |------|------|------|
@@ -111,6 +75,21 @@ wLab:director 接收並分析
 | 派工單模板 | `docs/templates/tmpl-work-assignment.md` | 派工單格式 |
 | 工作紀錄模板 | `docs/templates/tmpl-work-record.md` | 任務紀錄格式 |
 | 正式報告模板 | `docs/templates/tmpl-formal-report.md` | 對外交付格式（HTML/PDF） |
+| **每日工作流 routines** | `docs/routines/daily-workflow.md` | **每日工作流改善機制（拆 session、cursor 快照、續行守則）** |
+
+### 每日工作流 routines（v1.0，2026-04-26 起生效）
+
+執行每日工作流時，**必須**遵循 `docs/routines/daily-workflow.md` 的改善機制：
+
+1. **拆 session（A/B/C）**：避免單回合過載觸發 API Stream idle timeout
+   - Session A：Phase 1-3（讀取 + 掃描 + Issue）
+   - Session B：Phase 4（主動工作 + 文件產出）
+   - Session C：Phase 5-7（更新主要文件 + commit/push + email）
+2. **以 `docs/cursor.md` 為段間交接介面**：後段 session 不重讀整篇 daily_report
+3. **單回合限制**：≤ 20 個工具呼叫、≤ 250 行 markdown 新增、≤ 2 份新檔案
+4. **長文件 ≥ 200 行**：交 subagent 並行產出（如週報、啟動備忘錄）
+5. **例行維運日**：採 `tmpl-work-assignment-lite.md`（精簡版，待 4/28 抽出）
+6. **失敗續行守則**：若中斷，依 routines 第 8 節步驟恢復；不重做、不 reset
 
 ### Slash Commands 分類
 
@@ -202,81 +181,22 @@ src/
 
 ### Python 規範
 
-- **Linter**：ruff（取代 flake8 + isort）
-- **Formatter**：black（行寬上限 99 字元）
-- **型別檢查**：mypy（strict mode）
-- **所有函式與方法必須加上 type hints**
+模板：`docs/templates/tmpl-work-assignment.md`、`tmpl-work-record.md`、`tmpl-formal-report.md`
 
-```python
-# 正確範例
-def calculate_power_curve(
-    wind_speed: np.ndarray,
-    air_density: float = 1.225,
-    rotor_diameter: float = 126.0,
-) -> pd.DataFrame:
-    """計算風機功率曲線。
+## 7. 資料規範要點
 
-    Args:
-        wind_speed: 風速陣列 (m/s)。
-        air_density: 空氣密度 (kg/m³)，預設為海平面標準值。
-        rotor_diameter: 轉子直徑 (m)。
+- SCADA 標準：`timestamp` (ISO 8601 UTC) + 必要欄位 `wind_speed`, `power_output`, `rotor_speed`, `blade_pitch_angle`, `nacelle_direction`，10 分鐘平均
+- 檔案格式：Parquet 優先、CSV 備用
+- `data/raw/` **唯讀**，處理結果落 `data/processed/` 或 `data/features/`
+- 敏感資料（風場座標、發電量）**禁止** commit
 
-    Returns:
-        包含風速與對應功率的 DataFrame。
-    """
-    ...
-```
+## 8. 哪裡找更多資訊
 
-### 程式碼風格要求
-
-- Docstring 使用 Google style，說明文字以繁體中文撰寫
-- 變數與函式名稱使用英文 `snake_case`
-- Class 名稱使用英文 `PascalCase`
-- 常數使用 `UPPER_SNAKE_CASE`
-- import 排序：標準庫 → 第三方套件 → 本地模組（由 ruff 自動處理）
-- 禁止使用 `Any` 型別，除非有明確理由並加上 `# type: ignore` 註解說明
-
-### 預提交檢查 (Pre-commit)
-
-```yaml
-# 執行順序
-1. ruff check --fix     # lint 與自動修正
-2. black .              # 格式化
-3. mypy src/            # 型別檢查
-4. pytest tests/ -x     # 測試（失敗即中止）
-```
-
----
-
-## 8. 資料規範
-
-### SCADA 資料格式
-
-- 標準時間欄位：`timestamp`（ISO 8601 格式，UTC 時區）
-- 取樣頻率：預設 10 分鐘平均值
-- 必要欄位：`wind_speed`, `power_output`, `rotor_speed`, `blade_pitch_angle`, `nacelle_direction`
-- 檔案格式：Parquet（首選）、CSV（相容性備用）
-
-### 感測器資料 (Sensor Data)
-
-- 振動資料取樣率：至少 1 kHz
-- SCADA 警報碼須對照 IEC 61400 標準分類
-- 所有感測器資料須包含品質標記 (quality flag)：`0=正常`, `1=可疑`, `2=無效`
-
-### 資料處理規則
-
-1. 原始資料 (`data/raw/`) **唯讀**，禁止就地修改
-2. 處理後資料存放於 `data/processed/`，須記錄處理步驟的 metadata
-3. 特徵工程輸出存放於 `data/features/`
-4. 所有資料處理步驟須可重現 (reproducible)，透過 DVC 追蹤 pipeline
-5. 敏感資料（風場位置、發電量等商業資訊）**禁止**提交至版本控制
-
-### 資料命名慣例
-
-```
-{wind_farm_id}_{data_type}_{start_date}_{end_date}.parquet
-# 範例：WF001_scada_20240101_20240331.parquet
-```
+- 完整功能與架構：`README.md`、`docs/architecture-design.md`
+- 當前 Phase 與待辦：`docs/PROJECT-STATUS.md`（每週更新）
+- 今日進度：`docs/daily_report.md`
+- 願景與三步走演進路線：`docs/product-overview.md`
+- 已歸檔（不再維護）：`docs/archived/`
 
 ---
 

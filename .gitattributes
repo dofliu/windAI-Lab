@@ -1,0 +1,40 @@
+# 統一行尾規範 — 避免 Windows / macOS / Linux 之間 CRLF/LF 來回翻動產生雜訊
+
+# 預設：自動偵測為文字檔的，正規化為 LF 進 repo
+* text=auto eol=lf
+
+# 文字檔強制 LF
+*.md      text eol=lf
+*.py      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.toml    text eol=lf
+*.cfg     text eol=lf
+*.ini     text eol=lf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.js      text eol=lf
+*.jsx     text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.sh      text eol=lf
+*.sql     text eol=lf
+Dockerfile text eol=lf
+
+# 二進位檔不要動
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.xlsx    binary
+*.docx    binary
+*.pptx    binary
+*.parquet binary
+*.db      binary
+*.sqlite  binary
+*.zip     binary
+*.gz      binary
+*.tar     binary

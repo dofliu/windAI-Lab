@@ -225,7 +225,7 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | 9 | 資料泛化 | TurbineProfile、BatchLoad、AutoExperiment |
 | 10 | UI 抽象+品控 | 3 Renderers、統一 Workflow、Checkpoint、重試/降級 |
 
-詳細記錄見 [progress-report.md](progress-report.md)。
+詳細記錄見 [progress-report.md](archived/progress-report.md) ⚠️ 已歸檔。
 
 ---
 
@@ -270,8 +270,8 @@ class MySkill(BaseSkill):
 
 | 文件 | 說明 |
 |------|------|
-| [FUTURE-ROADMAP.md](FUTURE-ROADMAP.md) | 願景定位 + 三步走路線圖 + 決策記錄 |
-| [EVOLUTION-PLAN.md](EVOLUTION-PLAN.md) | 詳細執行計畫（70+ 工作項目，含檔案位置與驗收標準） |
+| [FUTURE-ROADMAP.md](archived/FUTURE-ROADMAP.md) ⚠️ 已歸檔 | 願景定位 + 三步走路線圖 + 決策記錄 |
+| [EVOLUTION-PLAN.md](archived/EVOLUTION-PLAN.md) ⚠️ 已歸檔 | 詳細執行計畫（70+ 工作項目，含檔案位置與驗收標準） |
 | [PROJECT-STATUS.md](PROJECT-STATUS.md) | 專案現況一頁式摘要 |
 | [architecture-design.md](architecture-design.md) | 系統架構設計 |
-| [progress-report.md](progress-report.md) | Phase 1-10 開發歷程 |
+| [progress-report.md](archived/progress-report.md) ⚠️ 已歸檔 | Phase 1-10 開發歷程 |
