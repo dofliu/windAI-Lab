@@ -36,39 +36,7 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | 系統 | 狀態 | 說明 |
 |------|------|------|
 | 舊系統（42 人固定） | ⚠️ 並行中 | 仍在運行，待切換 |
-| 新系統（12 核心 + 聘用制） | ✅ 就緒 | DynamicRegistry + Skills + YAML |
-
----
-
-## 2. 三步走演進路線
-
-### 🔴 Step 1：打地基 — 持久化 + 服務閉環（Phase 11-13）
-
-> 讓系統「記得住」、「能追蹤」、「會通知」
-
-#### Phase 11 — 前端戰情中心 + 分析面板
-
-| 項目 | 說明 | 狀態 |
-|------|------|------|
-| MissionAgentPanel 代理面板 | 任務中只顯示參與代理 + 即時進度 | ✅ |
-| WorkflowProgress 三欄佈局 | 代理面板 / 進度+日誌 / 即時分析圖表 | ✅ |
-| ViewSwitcher 自動切換 | header 狀態標籤 + 「返回辦公室」按鈕 | ✅ |
-| 技能管線進度條 | 步驟條 + 代理個別進度條 | ✅ |
-
-#### Phase 12 — 持久化儲存
-
-| 項目 | 說明 | 狀態 |
-|------|------|------|
-| SQLite 資料庫模組 | 3 張表 + CRUD + WAL 模式（零新依賴） | ✅ |
-| 引擎整合持久化 | workflow 自動寫入/更新任務記錄 | ✅ |
-| 歷史查詢 API | history / detail / stats 三個端點 | ✅ |
-| 前端歷史合併 | localStorage + 後端 API 雙層去重 | ✅ |
-
-#### Phase 13 — 告警系統 + 工單管理 ✅
-
-| 項目 | 說明 | 狀態 |
-|------|------|------|
-| alerts + work_orders 資料表 | SQLite 含完整索引、外部去重 | ✅ |
+| 新系�| alerts + work_orders 資料表 | SQLite 含完整索引、外部去重 | ✅ |
 | 告警 REST API（6 端點） | CRUD + Ingest + stats + 從告警建工單 | ✅ |
 | 工單 REST API（6 端點） | CRUD + notes + stats | ✅ |
 | AlertIngestRequest | 標準化外部推送格式（source_alert_id 去重） | ✅ |
@@ -78,8 +46,8 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | DashboardView 整合 | 新增「警報」tab + 活躍告警數量 badge | ✅ |
 | TaskLauncher 重構 | 精簡底部列 + 向上滑出抽屜（釋放主內容空間） | ✅ |
 | **告警規則引擎核心 (#41)** | **閾值規則 + 複合條件 + 靜默期 + 自動工單 + 5 API** | **✅ 完成** |
-| ~~通知渠道~~ | ~~Email / Webhook / LINE Notify~~ | 🔜 #42 待啟動 |
-| ~~告警規則 YAML 設定~~ | ~~YAML 定義規則，熱更新~~ | 🔜 #43 待啟動 |
+| 通知渠道 | Email / Webhook / LINE Notify | ✅ 完成 |
+| 告警規則 YAML 設定 | YAML 定義規則，熱更新 | ✅ 完成 |
 
 ---
 
@@ -90,6 +58,56 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | 項目 | 說明 | 狀態 |
 |------|------|------|
 | C1: LSTM skill pipeline 整合 | R² 指標 + 模型持久化 + JSONL/MLflow 實驗記錄 | ✅ |
+| C2: PatchTST Transformer | 官方簡化版 PatchTST (ICLR 2023) + skill 封裝 | ✅ |
+| C3: 模型對比實驗框架 | ModelBenchmark + LaTeX 表格 + 統一評估 | ✅ |
+
+---
+
+### 待辦 Epics（以 GitHub Issues 追蹤）
+
+| Epic | Issue | 優先度 | 子任務 |
+|------|-------|--------|--------|
+| [Epic E] 告警規則引擎 | #33 | High | #41 規則核心 ✅ / #42 通知渠道 ✅ / #43 YAML 設定 ✅ |
+| [Epic D] 報告與追蹤 | #34 | High | #44 報告排程 ✅ / #45 效能追蹤 / #46 儀表板 |
+| [Epic A] 案例學習系統 | #35 | Medium | #47 自動記錄 / #48 案例推薦 / #49 API+前端 |
+| [Epic B] 故障知識體系 | #36 | Medium | #50 知識圖譜 / #51 維護效果追蹤 |
+| [Epic F] 學術論文規劃 | #37 | Ongoing | #52 投稿策略 |
+
+---
+
+### 🟡 Step 2：接真實風場 — 即時串接 + 多風場管理（Phase 14-16）
+
+> 讓系統「看得到」真實風場、「管得了」多個客戶
+
+#### Phase 14 — WindGuard AI 整合 + 即時資料連接器
+
+**Phase 14a：WindGuard AI 整合 ✅**
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| WindGuard 診斷推理 | LLM 深層推理，產出故障類型、物理機制、維護建議 | ✅ |
+| Agentic Function Calling | LLM 自主決定呼叫診斷工具，多輪對話式調查 | ✅ |
+| 風場級別掃描 | 多執行緒並行掃描多台風機，自動風險排序 | ✅ |
+| 功率曲線散佈圖 | NBM 訓練後產出風速 vs 功率散佈圖 | ✅ |
+| 報告下載 API | `GET /api/reports/{id}/download` | ✅ |
+
+**Phase 14b：前端任務生命週期重構 ✅ (#61)**
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| Task Session 架構 | 後端事件驅動，解決重複紀錄/圖表累積/進度異常 | ✅ |
+| 圖表持久化 | broadcast_analysis_result 同時存入 SQLite | ✅ |
+| 工作日誌保留 | WebSocketManager 內建 log buffer | ✅ |
+
+**Phase 14c：診斷報告輸出 ✅ + 即時資料連接器 ✅ (#64 ✅, #75 ✅)**
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| 診斷報告輸出功能 | P0 context 扁平化 + P1 報告預覽 Modal + P2 SQLite 持久化 + P3 PDF 列印 (#64 PR #90) | ✅ |
+| DataConnector 抽象層 | 統一介面（File / REST / OPC UA / MQTT）(#75) | ✅ |
+| 串流處理管線 | 定時拉取 → 清洗 → 分析 → 告警 | ✅ |
+| 連線健康監控 | 斷線偵測 + 自動重連 | ✅ |
+| Connector YAML 設定 | 一個資料來源一個 YAML | ✅ |flow 實驗記錄 | ✅ |
 | C2: PatchTST Transformer | 簡化版 PatchTST (ICLR 2023) + skill 封裝 | ✅ |
 | C3: 模型對比實驗框架 | ModelBenchmark + LaTeX 表格 + 統一評估 | ✅ |
 

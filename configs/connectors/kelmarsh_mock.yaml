@@ -1,0 +1,7 @@
+id: "kelmarsh_mock"
+name: "Kelmarsh WT-01 模擬拉取數據源"
+type: "mock"
+enabled: true
+interval_seconds: 60
+config:
+  turbine_id: "WT-01"

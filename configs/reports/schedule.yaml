@@ -1,0 +1,27 @@
+# WindAI Lab 報告排程設定檔
+# 支援配置不同時間頻率、報告類型與涵蓋風機
+
+schedules:
+  - id: weekly_fleet_report
+    name: 全風場維運週報
+    enabled: true
+    interval_seconds: 3600  # 每小時檢查，若跨過不同週則自動生成
+    report_type: weekly
+    turbine_id: all
+    description: "每週自動彙整全風場 SCADA、告警與工單維運統計週報"
+
+  - id: monthly_wt01_report
+    name: 風機 WT-01 維運月報
+    enabled: true
+    interval_seconds: 86400  # 每天檢查，若跨過不同月則自動生成
+    report_type: monthly
+    turbine_id: WT-01
+    description: "每月自動彙整 WT-01 單機健康度與效能指標月報"
+
+  - id: demo_quick_report
+    name: 快速演示測試報告
+    enabled: false  # 預設停用，需要時手動啟用或透過 API 觸發
+    interval_seconds: 60  # 每分鐘生成一次，用於展示自動生成功能
+    report_type: weekly
+    turbine_id: all
+    description: "定時一分鐘自動生成的快速測試用報告"

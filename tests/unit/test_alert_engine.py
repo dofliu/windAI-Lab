@@ -329,6 +329,53 @@ class TestAlertRuleOperators:
     def test_invalid_operator(self) -> None:
         assert self._add_and_test("~", 10, 5) is False
 
+    def test_load_rules_from_yaml(self, tmp_path) -> None:
+        """測試從 YAML 載入自訂告警規則與格式異常時的 Fallback。"""
+        yaml_file = tmp_path / "custom_rules.yaml"
+        
+        # 1. 寫入自訂 YAML 內容
+        custom_yaml = """
+rules:
+  - id: custom_rule_1
+    name: 自訂測試規則
+    enabled: true
+    severity: warning
+    silence_minutes: 50
+    auto_create_work_order: false
+    notify_channels:
+      - webhook
+    conditions:
+      - metric: temp_val
+        operator: ">"
+        threshold: 45.0
+    description_template: "溫度超過 {temp_val:.1f} 度"
+"""
+        yaml_file.write_text(custom_yaml, encoding="utf-8")
+        
+        # 2. 載入自訂規則
+        self.engine.load_rules(yaml_file)
+        
+        assert len(self.engine.rules) == 1
+        rule = self.engine.get_rule("custom_rule_1")
+        assert rule is not None
+        assert rule.name == "自訂測試規則"
+        assert rule.silence_minutes == 50
+        assert len(rule.conditions) == 1
+        assert rule.conditions[0].metric == "temp_val"
+        assert rule.conditions[0].operator == ">"
+        assert rule.conditions[0].threshold == 45.0
+        assert rule.notify_channels == ["webhook"]
+
+        # 3. 測試當 YAML 格式損壞時的 Fallback 防護
+        bad_yaml = "invalid: yaml: [unbalanced"
+        bad_yaml_file = tmp_path / "bad_rules.yaml"
+        bad_yaml_file.write_text(bad_yaml, encoding="utf-8")
+        
+        # 呼叫 load_rules 應捕捉 Exception，且維持舊的 custom_rule_1 規則不崩潰
+        self.engine.load_rules(bad_yaml_file)
+        assert len(self.engine.rules) == 1
+        assert self.engine.get_rule("custom_rule_1") is not None
+
 
 class TestGetAlertRuleEngine:
     """全域單例測試。"""

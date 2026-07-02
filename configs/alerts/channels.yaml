@@ -1,0 +1,27 @@
+# 通知渠道設定
+# 機密敏感資訊一律由環境變數注入
+channels:
+  email:
+    enabled: false
+    smtp_host: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: "${SMTP_USER}"
+    smtp_password: "${SMTP_PASSWORD}"
+    from_address: "windailab-alert@example.com"
+    default_recipients:
+      - "ops-team@example.com"
+    use_tls: true
+    timeout_seconds: 10
+
+  webhook:
+    enabled: false
+    default_url: "${WEBHOOK_URL}"
+    default_headers:
+      Content-Type: "application/json"
+    timeout_seconds: 5
+    retry: 2
+
+  line:
+    enabled: false
+    access_token: "${LINE_NOTIFY_TOKEN}"
+    timeout_seconds: 5

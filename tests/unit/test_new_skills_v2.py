@@ -19,8 +19,9 @@ class TestDirectorReviewSkill:
     @pytest.fixture()
     def skill(self):
         from src.skills.leadership.director_review import DirectorReviewSkill
-
-        return DirectorReviewSkill()
+        # 強制 mock LLM 服務拋出異常以使單元測試穩定回落到規則式審查，避免真實調用
+        with patch("src.services.llm_service.LLMService.generate", side_effect=Exception("Mock LLM Unavailable")):
+            yield DirectorReviewSkill()
 
     def test_skill_id(self, skill) -> None:
         assert skill.skill_id == "director_review"

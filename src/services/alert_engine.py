@@ -4,15 +4,18 @@
 當指標超過閾值時建立告警並可選自動建立工單。
 """
 
-from __future__ import annotations
-
+import asyncio
 import contextlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
+import yaml
 
 logger = logging.getLogger(__name__)
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 OPERATORS: dict[str, Any] = {
     "<": lambda a, b: a < b,
@@ -75,8 +78,135 @@ class AlertRuleEngine:
     def __init__(self) -> None:
         self._rules: list[AlertRule] = []
         self._silence_tracker: dict[str, datetime] = {}
-        self._load_default_rules()
-        logger.info(f"告警規則引擎初始化完成，載入 {len(self._rules)} 條預設規則")
+        self.load_rules()
+        logger.info(f"告警規則引擎初始化完成，載入 {len(self._rules)} 條規則")
+
+    def load_rules(self, file_path: Path | str | None = None) -> None:
+        """從 YAML 設定檔載入告警規則。若檔案不存在則會自動建立預設檔。"""
+        if file_path is None:
+            file_path = _PROJECT_ROOT / "configs" / "alerts" / "rules.yaml"
+        else:
+            file_path = Path(file_path)
+
+        if not file_path.exists():
+            logger.warning(f"告警規則檔不存在：{file_path}，將嘗試建立預設檔")
+            self._create_default_rules_yaml(file_path)
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+
+            rules_data = data.get("rules", [])
+            new_rules = []
+            for rd in rules_data:
+                conditions = []
+                for cond_data in rd.get("conditions", []):
+                    conditions.append(
+                        RuleCondition(
+                            metric=cond_data["metric"],
+                            operator=cond_data["operator"],
+                            threshold=float(cond_data["threshold"]),
+                        )
+                    )
+                new_rules.append(
+                    AlertRule(
+                        id=rd["id"],
+                        name=rd["name"],
+                        enabled=rd.get("enabled", True),
+                        conditions=conditions,
+                        severity=rd.get("severity", "warning"),
+                        silence_minutes=int(rd.get("silence_minutes", 360)),
+                        auto_create_work_order=rd.get("auto_create_work_order", False),
+                        notify_channels=rd.get("notify_channels", []),
+                        description_template=rd.get("description_template", ""),
+                    )
+                )
+            self._rules = new_rules
+            logger.info(f"成功從 YAML 載入 {len(self._rules)} 條告警規則")
+        except Exception as e:
+            logger.error(f"從 YAML 載入告警規則失敗：{e}。將維持既有規則。")
+            if not self._rules:
+                self._load_default_rules()
+
+    def _create_default_rules_yaml(self, file_path: Path) -> None:
+        """生成預設的 rules.yaml 檔案。"""
+        defaults = {
+            "rules": [
+                {
+                    "id": "health_score_critical",
+                    "name": "健康分數嚴重過低",
+                    "enabled": True,
+                    "severity": "critical",
+                    "silence_minutes": 120,
+                    "auto_create_work_order": True,
+                    "notify_channels": ["email", "line"],
+                    "conditions": [
+                        {"metric": "health_score", "operator": "<", "threshold": 0.5}
+                    ],
+                    "description_template": "風機健康分數 {health_score:.2f}，低於臨界值 0.5，需立即檢修"
+                },
+                {
+                    "id": "health_score_warning",
+                     "name": "健康分數過低",
+                     "enabled": True,
+                     "severity": "warning",
+                     "silence_minutes": 360,
+                     "auto_create_work_order": False,
+                     "notify_channels": ["email"],
+                     "conditions": [
+                         {"metric": "health_score", "operator": "<", "threshold": 0.7}
+                     ],
+                     "description_template": "風機健康分數 {health_score:.2f}，低於警戒值 0.7，建議排程檢查"
+                },
+                {
+                     "id": "power_deviation_high",
+                     "name": "功率偏差過大",
+                     "enabled": True,
+                     "severity": "critical",
+                     "silence_minutes": 120,
+                     "auto_create_work_order": True,
+                     "notify_channels": ["email", "line", "webhook"],
+                     "conditions": [
+                         {"metric": "power_deviation_pct", "operator": ">", "threshold": 15.0},
+                         {"metric": "wind_speed", "operator": ">", "threshold": 5.0}
+                     ],
+                     "description_template": "功率偏差 {power_deviation_pct:.1f}%（風速 {wind_speed:.1f} m/s），超過 15% 門檻"
+                },
+                {
+                     "id": "anomaly_count_high",
+                     "name": "異常數量過多",
+                     "enabled": True,
+                     "severity": "warning",
+                     "silence_minutes": 240,
+                     "auto_create_work_order": False,
+                     "notify_channels": ["webhook"],
+                     "conditions": [
+                         {"metric": "temperature_anomaly_count", "operator": ">", "threshold": 10.0}
+                     ],
+                     "description_template": "偵測到 {temperature_anomaly_count:.0f} 個溫度異常點，超過 10 個門檻"
+                },
+                {
+                     "id": "efficiency_loss_critical",
+                     "name": "效率損失嚴重",
+                     "enabled": True,
+                     "severity": "critical",
+                     "silence_minutes": 180,
+                     "auto_create_work_order": True,
+                     "notify_channels": ["email", "line"],
+                     "conditions": [
+                         {"metric": "efficiency_loss_pct", "operator": ">", "threshold": 20.0}
+                     ],
+                     "description_template": "效率損失 {efficiency_loss_pct:.1f}%，超過 20% 門檻，可能存在嚴重故障"
+                }
+            ]
+        }
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(defaults, f, allow_unicode=True, sort_keys=False)
+            logger.info(f"已生成預設 rules.yaml 於 {file_path}")
+        except Exception as e:
+            logger.error(f"生成預設 rules.yaml 失敗：{e}")
 
     @property
     def rules(self) -> list[AlertRule]:
@@ -227,6 +357,7 @@ class AlertRuleEngine:
                     "metric_values": metric_values,
                     "description": description,
                     "auto_create_work_order": rule.auto_create_work_order,
+                    "notify_channels": rule.notify_channels,
                 }
             )
             logger.info(f"規則觸發：{rule.name}（{turbine_id}）— {description}")
@@ -302,8 +433,47 @@ class AlertRuleEngine:
             except Exception as exc:
                 logger.warning(f"告警廣播失敗：{exc}")
 
+            wo_id = None
             if t["auto_create_work_order"]:
-                await self._auto_create_work_order(db, t, alert_id)
+                wo_id = await self._auto_create_work_order(db, t, alert_id)
+
+            # ── 派發通知 ──
+            notify_channels = t.get("notify_channels")
+            if notify_channels:
+                try:
+                    from src.services.notification_manager import get_notification_manager
+                    from src.services.notifiers.base import NotificationPayload
+
+                    metric_values = t.get("metric_values", {})
+                    metric_name = next(iter(metric_values.keys())) if metric_values else "unknown"
+                    metric_val = next(iter(metric_values.values())) if metric_values else 0.0
+
+                    threshold_val = 0.0
+                    rule = self.get_rule(t["rule_id"])
+                    if rule:
+                        for cond in rule.conditions:
+                            if cond.metric == metric_name:
+                                threshold_val = cond.threshold
+                                break
+
+                    payload = NotificationPayload(
+                        alert_id=alert_id,
+                        turbine_id=t["turbine_id"] or "unknown",
+                        rule_id=t["rule_id"],
+                        rule_name=t["rule_name"],
+                        severity=t["severity"],
+                        metric=metric_name,
+                        metric_value=metric_val,
+                        threshold=threshold_val,
+                        triggered_at=datetime.now(),
+                        recommended_action=t["description"],
+                        work_order_id=wo_id,
+                    )
+
+                    manager = get_notification_manager()
+                    asyncio.create_task(manager.dispatch(payload, notify_channels))
+                except Exception as n_exc:
+                    logger.warning(f"通知分派背景任務建立失敗：{n_exc}")
 
         if alert_ids:
             logger.info(f"規則引擎產生 {len(alert_ids)} 個告警：{alert_ids}")
@@ -315,7 +485,7 @@ class AlertRuleEngine:
         db: Any,
         trigger: dict[str, Any],
         alert_id: str,
-    ) -> None:
+    ) -> str | None:
         """從觸發的規則自動建立工單。"""
         severity_to_priority = {
             "critical": "critical",
@@ -340,8 +510,10 @@ class AlertRuleEngine:
             except Exception:
                 pass
             logger.info(f"自動建立工單：{wo_id}（告警 {alert_id}）")
+            return wo_id
         except Exception as exc:
             logger.warning(f"自動建立工單失敗：{exc}")
+            return None
 
 
 _engine: AlertRuleEngine | None = None

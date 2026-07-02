@@ -130,6 +130,57 @@ CREATE TABLE IF NOT EXISTS reports (
     FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
 CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at);
+
+-- ── #96 派工系統 ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS allocations (
+    task_id TEXT PRIMARY KEY,
+    sheet_date TEXT NOT NULL,
+    github_issue INTEGER,
+    title TEXT NOT NULL,
+    assignee_agent TEXT NOT NULL,
+    collaborators TEXT DEFAULT '[]',
+    priority TEXT NOT NULL,
+    estimated_hours REAL NOT NULL,
+    dependencies TEXT DEFAULT '[]',
+    deadline TEXT NOT NULL,
+    acceptance_criteria TEXT NOT NULL,
+    rationale TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_allocations_sheet_date ON allocations(sheet_date);
+CREATE INDEX IF NOT EXISTS idx_allocations_assignee ON allocations(assignee_agent);
+CREATE INDEX IF NOT EXISTS idx_allocations_status ON allocations(status);
+
+CREATE TABLE IF NOT EXISTS daily_sheets (
+    sheet_date TEXT PRIMARY KEY,
+    hackathon_days_remaining INTEGER NOT NULL,
+    decision_summary TEXT NOT NULL,
+    ai_advice TEXT NOT NULL,              -- JSON
+    load_snapshot TEXT NOT NULL,          -- JSON array
+    signed_off INTEGER DEFAULT 0,
+    markdown_path TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS work_records (
+    task_id TEXT PRIMARY KEY,
+    summary TEXT NOT NULL,
+    execution_steps TEXT NOT NULL,         -- JSON array
+    commits TEXT DEFAULT '[]',             -- JSON array
+    prs TEXT DEFAULT '[]',                 -- JSON array
+    test_results TEXT DEFAULT '{}',        -- JSON
+    deliverables TEXT NOT NULL,            -- JSON array
+    learnings TEXT DEFAULT '[]',           -- JSON array
+    follow_up_actions TEXT DEFAULT '[]',   -- JSON array
+    markdown_path TEXT NOT NULL,
+    closed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (task_id) REFERENCES allocations(task_id)
+);
 """
 
 
@@ -748,6 +799,184 @@ class Database:
                 "analysis_results_total": results_total,
             }
 
+    # ── #96 派工與紀錄 CRUD ──────────────────────────────────────────
+
+    def create_allocation(
+        self,
+        task_id: str,
+        sheet_date: str,
+        title: str,
+        assignee_agent: str,
+        priority: str,
+        estimated_hours: float,
+        deadline: str,
+        acceptance_criteria: list[str],
+        rationale: str,
+        github_issue: int | None = None,
+        collaborators: list[str] | None = None,
+        dependencies: list[str] | None = None,
+        status: str = "pending",
+    ) -> None:
+        """建立一筆派工。"""
+        self.initialize()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO allocations (task_id, sheet_date, github_issue, title, assignee_agent, "
+                "collaborators, priority, estimated_hours, dependencies, deadline, acceptance_criteria, "
+                "rationale, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    task_id,
+                    sheet_date,
+                    github_issue,
+                    title,
+                    assignee_agent,
+                    json.dumps(collaborators or []),
+                    priority,
+                    estimated_hours,
+                    json.dumps(dependencies or []),
+                    deadline,
+                    json.dumps(acceptance_criteria),
+                    rationale,
+                    status,
+                    datetime.now().isoformat(),
+                    datetime.now().isoformat(),
+                ),
+            )
+
+    def get_allocation(self, task_id: str) -> dict[str, Any] | None:
+        """取得單一派工。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM allocations WHERE task_id = ?", (task_id,)).fetchone()
+            return _row_to_allocation(row) if row else None
+
+    def list_allocations(self, sheet_date: str | None = None, assignee: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+        """列出派工。"""
+        self.initialize()
+        query = "SELECT * FROM allocations WHERE 1=1"
+        params = []
+        if sheet_date:
+            query += " AND sheet_date = ?"
+            params.append(sheet_date)
+        if assignee:
+            query += " AND assignee_agent = ?"
+            params.append(assignee)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY task_id DESC"
+        with self._connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [_row_to_allocation(r) for r in rows]
+
+    def update_allocation_status(self, task_id: str, status: str) -> bool:
+        """更新派工狀態。"""
+        self.initialize()
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE allocations SET status = ?, updated_at = ? WHERE task_id = ?",
+                (status, datetime.now().isoformat(), task_id),
+            )
+            return cur.rowcount > 0
+
+    def create_daily_sheet(
+        self,
+        sheet_date: str,
+        hackathon_days_remaining: int,
+        decision_summary: str,
+        ai_advice: dict[str, Any],
+        load_snapshot: list[dict[str, Any]],
+        signed_off: bool = False,
+        markdown_path: str = "",
+    ) -> None:
+        """建立一日派工單。"""
+        self.initialize()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO daily_sheets (sheet_date, hackathon_days_remaining, decision_summary, "
+                "ai_advice, load_snapshot, signed_off, markdown_path, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    sheet_date,
+                    hackathon_days_remaining,
+                    decision_summary,
+                    json.dumps(ai_advice),
+                    json.dumps(load_snapshot),
+                    1 if signed_off else 0,
+                    markdown_path,
+                    datetime.now().isoformat(),
+                ),
+            )
+
+    def get_daily_sheet(self, sheet_date: str) -> dict[str, Any] | None:
+        """取得一日派工單。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM daily_sheets WHERE sheet_date = ?", (sheet_date,)).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["ai_advice"] = json.loads(d.get("ai_advice") or "{}")
+            d["load_snapshot"] = json.loads(d.get("load_snapshot") or "[]")
+            d["signed_off"] = bool(d.get("signed_off"))
+            return d
+
+    def create_work_record(
+        self,
+        task_id: str,
+        summary: str,
+        execution_steps: list[str],
+        deliverables: list[str],
+        markdown_path: str = "",
+        commits: list[str] | None = None,
+        prs: list[int] | None = None,
+        test_results: dict[str, str] | None = None,
+        learnings: list[str] | None = None,
+        follow_up_actions: list[str] | None = None,
+        closed_at: str | None = None,
+    ) -> None:
+        """建立或更新工作紀錄。"""
+        self.initialize()
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO work_records (task_id, summary, execution_steps, commits, prs, "
+                "test_results, deliverables, learnings, follow_up_actions, markdown_path, closed_at, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    task_id,
+                    summary,
+                    json.dumps(execution_steps),
+                    json.dumps(commits or []),
+                    json.dumps(prs or []),
+                    json.dumps(test_results or {}),
+                    json.dumps(deliverables),
+                    json.dumps(learnings or []),
+                    json.dumps(follow_up_actions or []),
+                    markdown_path,
+                    closed_at,
+                    datetime.now().isoformat(),
+                    datetime.now().isoformat(),
+                ),
+            )
+
+    def get_work_record(self, task_id: str) -> dict[str, Any] | None:
+        """取得工作紀錄。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM work_records WHERE task_id = ?", (task_id,)).fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["execution_steps"] = json.loads(d.get("execution_steps") or "[]")
+            d["commits"] = json.loads(d.get("commits") or "[]")
+            d["prs"] = json.loads(d.get("prs") or "[]")
+            d["test_results"] = json.loads(d.get("test_results") or "{}")
+            d["deliverables"] = json.loads(d.get("deliverables") or "[]")
+            d["learnings"] = json.loads(d.get("learnings") or "[]")
+            d["follow_up_actions"] = json.loads(d.get("follow_up_actions") or "[]")
+            return d
+
 
 # ── 輔助函式 ─────────────────────────────────────────────────────
 
@@ -767,6 +996,15 @@ def _row_to_task(row: sqlite3.Row) -> dict[str, Any]:
     d["parameters"] = json.loads(d.get("parameters") or "{}")
     d["agent_ids"] = json.loads(d.get("agent_ids") or "[]")
     d["agent_names"] = json.loads(d.get("agent_names") or "[]")
+    return d
+
+
+def _row_to_allocation(row: sqlite3.Row) -> dict[str, Any]:
+    """將 sqlite3.Row 轉為 allocation dict，解析 JSON 欄位。"""
+    d = dict(row)
+    d["collaborators"] = json.loads(d.get("collaborators") or "[]")
+    d["dependencies"] = json.loads(d.get("dependencies") or "[]")
+    d["acceptance_criteria"] = json.loads(d.get("acceptance_criteria") or "[]")
     return d
 
 

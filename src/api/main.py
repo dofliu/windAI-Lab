@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -46,19 +46,21 @@ _work_logs: list[WorkLogEntry] = []
 # 檔案監控服務全域實例
 _file_watcher: Any = None
 
+# 資料對接連接器管理器全域實例
+_connector_manager: Any = None
+
 
 async def _auto_dispatch_workflow(turbine_id: str, event: Any) -> None:
     """檔案偵測後自動派任代理工作流程。
 
     根據偵測到的欄位自動選擇合適的工作流程：
-    - 有 wind_speed + power → 資料清洗 + 功率曲線分析
-    - 有 generator_temp / vibration → 故障診斷
+    - 有 wind_speed + power → 執行完整故障診斷工作流（含清洗、分類、NBM 與 RUL）
     - 其他 → 基本資料載入 + 特徵探索
     """
     from src.agents.orchestrator.engine import engine as orch_engine
     from src.agents.orchestrator.workflows import (
-        create_data_clean_workflow,
         create_data_load_workflow,
+        create_diagnose_workflow,
     )
 
     detected = event.detected_fields or {}
@@ -66,13 +68,17 @@ async def _auto_dispatch_workflow(turbine_id: str, event: Any) -> None:
 
     try:
         if has_wind_power:
-            # 有風速+功率 → 執行完整資料清洗流程
-            workflow = create_data_clean_workflow(turbine_id)
-            logger.info(f"自動派任資料清洗工作流程：{turbine_id}")
+            # 有風速+功率 → 執行全面故障診斷工作流程，並帶入檔案路徑
+            workflow = create_diagnose_workflow(turbine_id)
+            if hasattr(event, "path") and event.path:
+                workflow.parameters["file_path"] = event.path
+            logger.info(f"自動派任故障診斷工作流程：{turbine_id}，資料源：{getattr(event, 'path', '未知')}")
         else:
             # 只做基本資料載入+特徵探索
             workflow = create_data_load_workflow(turbine_id)
-            logger.info(f"自動派任資料載入工作流程：{turbine_id}")
+            if hasattr(event, "path") and event.path:
+                workflow.parameters["file_path"] = event.path
+            logger.info(f"自動派任資料載入工作流程：{turbine_id}，資料源：{getattr(event, 'path', '未知')}")
 
         await orch_engine.run_workflow_background(workflow)
     except Exception as e:
@@ -107,20 +113,39 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     # 啟動檔案監控服務
+    from src.services.data_connector import ConnectorManager
     from src.services.file_watcher import FileWatcherService
 
     global _file_watcher  # noqa: PLW0603
+    global _connector_manager  # noqa: PLW0603
+
     _file_watcher = FileWatcherService()
     _file_watcher.set_broadcast(ws_manager.broadcast_file_event)
     _file_watcher.set_workflow_dispatcher(_auto_dispatch_workflow)
     await _file_watcher.start()
     logger.info("FileWatcher 已啟動")
 
+    # 啟動資料對接連接器管理器
+    _connector_manager = ConnectorManager()
+    await _connector_manager.start()
+    logger.info("ConnectorManager 資料對接背景任務已啟動")
+
+    # 啟動報告排程管理器
+    from src.services.report_scheduler import get_report_scheduler
+    get_report_scheduler().start()
+    logger.info("ReportScheduler 報告排程背景任務已啟動")
+
     yield
 
-    # 關閉檔案監控
+    # 關閉檔案監控與資料對接服務
     if _file_watcher:
         await _file_watcher.stop()
+    if _connector_manager:
+        await _connector_manager.stop()
+    
+    # 關閉報告排程
+    from src.services.report_scheduler import get_report_scheduler
+    get_report_scheduler().stop()
     logger.info("WindAI Lab API 正在關閉...")
 
 
@@ -147,6 +172,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from src.api.director import router as director_router
+app.include_router(director_router)
 
 
 # ── 資料夾批次載入背景任務 ────────────────────────────────────────
@@ -2092,6 +2120,168 @@ async def api_alert_rules_stats() -> dict[str, Any]:
         },
         "auto_work_order_count": sum(1 for r in rules if r.auto_create_work_order),
     }
+
+
+# ── 資料對接與自動分析 API ──────────────────────────────────────────
+
+
+@app.post("/api/data/upload", tags=["資料對接"])
+async def api_upload_data_file(
+    file: UploadFile = File(...),  # noqa: B008
+    auto_analyze: bool = True,
+) -> dict[str, Any]:
+    """上傳外界 SCADA 資料檔案，保存至 data/raw/ 並主動觸發自動分析工作流。"""
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    # 建立目標資料夾
+    target_dir = project_root / "data" / "raw"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    # 確保副檔名合法
+    from src.services.file_watcher import SUPPORTED_EXTENSIONS
+
+    suffix = Path(file.filename).suffix.lower()
+    if suffix not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支援的檔案格式，請上傳以下格式：{', '.join(SUPPORTED_EXTENSIONS)}",
+        )
+
+    file_path = target_dir / file.filename
+    # 將上傳的內容寫入實體檔案
+    import shutil
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # 主動觸發 FileWatcher 進行同步分析與派工
+    if _file_watcher:
+        rel_path = str(file_path.relative_to(project_root))
+        results = await _file_watcher.force_scan(rel_path)
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "path": rel_path,
+            "processed": len(results),
+            "results": results,
+            "detail": "檔案上傳成功且已主動觸發工作流程分析",
+        }
+    else:
+        return {
+            "status": "warning",
+            "filename": file.filename,
+            "path": str(file_path.relative_to(project_root)),
+            "detail": "檔案已成功保存，但 FileWatcher 未啟動，無法主動分析",
+        }
+
+
+@app.post("/api/alerts/rules/reload", tags=["告警管理"])
+async def reload_alert_rules() -> dict[str, Any]:
+    """熱重載告警規則設定檔 (rules.yaml)。"""
+    try:
+        from src.services.alert_engine import get_alert_rule_engine
+
+        engine = get_alert_rule_engine()
+        engine.load_rules()
+        return {
+            "status": "success",
+            "rules_count": len(engine.rules),
+            "detail": "告警規則已成功熱重載！",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}")
+
+
+@app.get("/api/reports", tags=["報告管理"])
+async def api_list_reports() -> list[dict[str, Any]]:
+    """取得所有歷史生成報告清單。"""
+    from src.services import report_store
+    return report_store.list_reports()
+
+
+@app.post("/api/reports/generate", tags=["報告管理"])
+async def api_generate_report(report_type: str = "weekly", turbine_id: str = "all") -> dict[str, Any]:
+    """即時手動觸發生成週報或月報。"""
+    from src.services.report_scheduler import get_report_scheduler
+    try:
+        scheduler = get_report_scheduler()
+        title_prefix = "全風場手動維運週報" if report_type == "weekly" else "全風場手動維運月報"
+        res = scheduler.generate_and_dispatch(report_type, turbine_id, title_prefix)
+        return {
+            "status": "success",
+            "detail": "維運報告生成成功！",
+            "report": res
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"即時生成報告失敗：{e}")
+
+
+@app.get("/api/connectors", tags=["資料對接"])
+async def api_get_connectors() -> list[dict[str, Any]]:
+    """取得所有資料連接器目前狀態。"""
+    if _connector_manager:
+        return _connector_manager.get_all_status()
+    return []
+
+
+@app.post("/api/connectors/{connector_id}/toggle", tags=["資料對接"])
+async def api_toggle_connector(connector_id: str, enabled: bool) -> dict[str, Any]:
+    """動態啟用或停用資料連接器。"""
+    if not _connector_manager:
+        raise HTTPException(status_code=500, detail="資料對接服務未啟動")
+
+    success = await _connector_manager.toggle_connector(connector_id, enabled)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"無法操作連接器 '{connector_id}'（可能找不到設定檔）")
+
+    return {"status": "success", "connector_id": connector_id, "enabled": enabled}
+
+
+class ConnectorCreateRequest(BaseModel):
+    id: str
+    name: str
+    type: str
+    interval_seconds: int = 60
+    enabled: bool = True
+    config: dict[str, Any] = {}
+
+
+@app.post("/api/connectors", tags=["資料對接"])
+async def api_create_connector(req: ConnectorCreateRequest) -> dict[str, Any]:
+    """新增資料連接器。"""
+    if not _connector_manager:
+        raise HTTPException(status_code=500, detail="資料對接服務未啟動")
+
+    import yaml
+
+    file_path = _connector_manager.configs_dir / f"{req.id}.yaml"
+    data = {
+        "id": req.id,
+        "name": req.name,
+        "type": req.type,
+        "enabled": req.enabled,
+        "interval_seconds": req.interval_seconds,
+        "config": req.config,
+    }
+
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"寫入設定檔失敗：{e}")
+
+    if req.enabled:
+        success = await _connector_manager.toggle_connector(req.id, True)
+        if not success:
+            raise HTTPException(status_code=500, detail="寫入設定檔成功，但動態啟動連接器失敗。")
+
+    return {
+        "status": "success",
+        "detail": f"連接器 '{req.id}' 已成功建立！",
+        "connector": data
+    }
+
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────

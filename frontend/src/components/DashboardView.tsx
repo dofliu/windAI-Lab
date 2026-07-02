@@ -11,9 +11,11 @@ import TaskHistoryList from './TaskHistoryList'
 import WorkflowDAG from './WorkflowDAG'
 import WorkLogPanel from './WorkLogPanel'
 import WorkOrderPanel from './WorkOrderPanel'
+import ConnectorManager from './ConnectorManager'
+import ReportManagementPanel from './ReportManagementPanel'
 
 export type DashTab = 'team' | 'analysis' | 'knowledge' | 'records' | 'alerts'
-type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history' | 'alert-list' | 'work-orders'
+type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history' | 'alert-list' | 'work-orders' | 'connectors' | 'reports'
 
 interface FileEventPayload {
   filename: string
@@ -83,6 +85,7 @@ const TABS: { id: DashTab; label: string; icon: string; subViews: { id: SubView;
     subViews: [
       { id: 'logs', label: '工作日誌' },
       { id: 'history', label: '歷史記錄' },
+      { id: 'reports', label: '維運報告' },
     ],
   },
   {
@@ -92,6 +95,7 @@ const TABS: { id: DashTab; label: string; icon: string; subViews: { id: SubView;
     subViews: [
       { id: 'alert-list', label: '警報列表' },
       { id: 'work-orders', label: '工單管理' },
+      { id: 'connectors', label: '資料對接' },
     ],
   },
 ]
@@ -226,6 +230,10 @@ export default function DashboardView({
           <AlertPanel alerts={alerts} onAlertsChange={onAlertsChange} />
         ) : activeSubView === 'work-orders' ? (
           <WorkOrderPanel workOrders={workOrders} allAgents={allAgents} />
+        ) : activeSubView === 'connectors' ? (
+          <ConnectorManager />
+        ) : activeSubView === 'reports' ? (
+          <ReportManagementPanel />
         ) : (
           <WorkLogPanel logs={workLogs} />
         )}
