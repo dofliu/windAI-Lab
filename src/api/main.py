@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from src.agents.orchestrator.engine import engine as orchestration_engine
 from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
