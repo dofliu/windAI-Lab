@@ -15,13 +15,15 @@ class NotificationPayload:
     turbine_id: str
     rule_id: str
     rule_name: str
-    severity: str          # info / warning / critical
+    severity: str  # info / warning / critical
     metric: str
     metric_value: float
     threshold: float
     triggered_at: datetime
     recommended_action: str | None = None
     work_order_id: str | None = None
+    message: str | None = None
+    """預先組好的完整通知內文；若提供，Notifier 應優先使用而非自行組裝欄位。"""
 
 
 @dataclass

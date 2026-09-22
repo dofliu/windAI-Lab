@@ -53,16 +53,19 @@ class TestAnomalyDetectionSkill:
         n = 500
         wind_speed = np.random.uniform(3, 25, n)
         power = np.where(
-            wind_speed < 3, 0,
-            np.where(wind_speed > 25, 0, wind_speed ** 3 * 0.13 + np.random.normal(0, 10, n))
+            wind_speed < 3,
+            0,
+            np.where(wind_speed > 25, 0, wind_speed**3 * 0.13 + np.random.normal(0, 10, n)),
         )
         gear_temp = 40 + power / 100 + np.random.normal(0, 2, n)
 
-        df = pd.DataFrame({
-            "Wind speed (m/s)_Mean": wind_speed,
-            "Active power (kW)_Mean": power,
-            "Gear oil temp (°C)_Mean": gear_temp,
-        })
+        df = pd.DataFrame(
+            {
+                "Wind speed (m/s)_Mean": wind_speed,
+                "Active power (kW)_Mean": power,
+                "Gear oil temp (°C)_Mean": gear_temp,
+            }
+        )
         df.index = pd.date_range("2024-01-01", periods=n, freq="10min")
 
         skill = AnomalyDetectionSkill()
@@ -243,7 +246,9 @@ class TestReportGeneratorSkill:
         # 低健康分數
         recs = _generate_recommendations(
             {"health_score": 50, "temperature_anomaly_count": 15, "efficiency_loss_pct": 12},
-            None, None, None,
+            None,
+            None,
+            None,
         )
         assert any("立即" in r for r in recs)
         assert any("軸承" in r or "溫度" in r for r in recs)
@@ -251,7 +256,9 @@ class TestReportGeneratorSkill:
         # 正常狀況
         recs = _generate_recommendations(
             {"health_score": 90, "temperature_anomaly_count": 0, "efficiency_loss_pct": 1},
-            None, None, None,
+            None,
+            None,
+            None,
         )
         assert any("正常" in r for r in recs)
 

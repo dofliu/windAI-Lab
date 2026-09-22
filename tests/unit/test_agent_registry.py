@@ -58,8 +58,14 @@ class TestGetAllAgents:
         agents = get_all_agents()
         agent_ids = {a.id for a in agents}
         data_ids = {
-            "scada-processor", "quality-checker", "etl-engineer", "data-validator",
-            "stream-processor", "storage-manager", "metadata-curator", "pipeline-monitor",
+            "scada-processor",
+            "quality-checker",
+            "etl-engineer",
+            "data-validator",
+            "stream-processor",
+            "storage-manager",
+            "metadata-curator",
+            "pipeline-monitor",
         }
         assert data_ids.issubset(agent_ids)
 
@@ -68,9 +74,16 @@ class TestGetAllAgents:
         agents = get_all_agents()
         agent_ids = {a.id for a in agents}
         ai_ml_ids = {
-            "model-trainer", "experiment-tracker", "hyperparameter-tuner",
-            "predictive-modeler", "fault-diagnostician", "rag-architect",
-            "feature-engineer", "model-evaluator", "inference-deployer", "anomaly-detector",
+            "model-trainer",
+            "experiment-tracker",
+            "hyperparameter-tuner",
+            "predictive-modeler",
+            "fault-diagnostician",
+            "rag-architect",
+            "feature-engineer",
+            "model-evaluator",
+            "inference-deployer",
+            "anomaly-detector",
         }
         assert ai_ml_ids.issubset(agent_ids)
 
@@ -163,18 +176,21 @@ class TestGetAgent:
         assert agent is not None
         assert agent.tier == AgentTier.AI_ML
 
-    @pytest.mark.parametrize("agent_id", [
-        "project-director",
-        "project-manager",
-        "tech-lead",
-        "research-lead",
-        "scada-processor",
-        "fault-diagnostician",
-        "paper-writer",
-        "rag-curator",
-        "backend-dev",
-        "iec-specialist",
-    ])
+    @pytest.mark.parametrize(
+        "agent_id",
+        [
+            "project-director",
+            "project-manager",
+            "tech-lead",
+            "research-lead",
+            "scada-processor",
+            "fault-diagnostician",
+            "paper-writer",
+            "rag-curator",
+            "backend-dev",
+            "iec-specialist",
+        ],
+    )
     def test_get_agent_all_valid_ids(self, agent_id: str) -> None:
         """確認多個已知的有效代理 ID 均可成功查詢。
 

@@ -407,8 +407,11 @@ class TestDegradationStrategies:
                 fallback_agent_ids=["backup-agent"],
             ),
         )
-        with patch.object(engine, "_create_log", return_value=MagicMock()), patch.object(
-            engine, "_run_step", new_callable=AsyncMock, return_value={"backup-agent": {}}
+        with (
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch.object(
+                engine, "_run_step", new_callable=AsyncMock, return_value={"backup-agent": {}}
+            ),
         ):
             results, should_continue = await engine._handle_degradation(
                 step, 0, 3, {}, RuntimeError("test error")
@@ -427,11 +430,14 @@ class TestDegradationStrategies:
                 fallback_agent_ids=["backup-agent"],
             ),
         )
-        with patch.object(engine, "_create_log", return_value=MagicMock()), patch.object(
-            engine,
-            "_run_step",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("backup also failed"),
+        with (
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch.object(
+                engine,
+                "_run_step",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("backup also failed"),
+            ),
         ):
             results, should_continue = await engine._handle_degradation(
                 step, 0, 3, {}, RuntimeError("test error")
@@ -457,9 +463,7 @@ class TestCheckpointFlow:
         results = {"trainer": {"r2_score": 0.95}}
 
         with patch.object(engine, "_create_log", return_value=MagicMock()):
-            final_results, action = await engine._run_checkpoint(
-                step, 0, 3, results, {}
-            )
+            final_results, action = await engine._run_checkpoint(step, 0, 3, results, {})
         assert action == CheckpointAction.PASS
         assert final_results == results
 
@@ -480,12 +484,11 @@ class TestCheckpointFlow:
         bad_results = {"trainer": {"r2_score": 0.5}}
         good_results = {"trainer": {"r2_score": 0.95}}
 
-        with patch.object(engine, "_create_log", return_value=MagicMock()), patch.object(
-            engine, "_run_step", new_callable=AsyncMock, return_value=good_results
+        with (
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch.object(engine, "_run_step", new_callable=AsyncMock, return_value=good_results),
         ):
-            final_results, action = await engine._run_checkpoint(
-                step, 0, 3, bad_results, {}
-            )
+            final_results, action = await engine._run_checkpoint(step, 0, 3, bad_results, {})
         assert action == CheckpointAction.PASS
         assert final_results == good_results
 
@@ -505,12 +508,11 @@ class TestCheckpointFlow:
         )
         bad_results = {"trainer": {"r2_score": 0.5}}
 
-        with patch.object(engine, "_create_log", return_value=MagicMock()), patch.object(
-            engine, "_run_step", new_callable=AsyncMock, return_value=bad_results
+        with (
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch.object(engine, "_run_step", new_callable=AsyncMock, return_value=bad_results),
         ):
-            final_results, action = await engine._run_checkpoint(
-                step, 0, 3, bad_results, {}
-            )
+            final_results, action = await engine._run_checkpoint(step, 0, 3, bad_results, {})
         assert action == CheckpointAction.RETRY  # 耗盡但未通過
 
     @pytest.mark.asyncio

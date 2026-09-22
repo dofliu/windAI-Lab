@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,6 +14,9 @@ from src.services.alert_engine import (
     RuleCondition,
     get_alert_rule_engine,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestRuleCondition:
@@ -60,8 +64,15 @@ class TestAlertRule:
 class TestAlertRuleEngine:
     """AlertRuleEngine 核心邏輯測試。"""
 
-    def setup_method(self) -> None:
+    @pytest.fixture(autouse=True)
+    def _isolated_engine(self, tmp_path: Path) -> None:
+        """以暫存路徑重新載入規則，與正式環境 configs/alerts/rules.yaml 的內容解耦。
+
+        路徑不存在時，引擎會自動生成並載入標準 5 條預設規則，
+        因此測試不受維運人員自行增修 rules.yaml（如新增第 6 條規則）影響。
+        """
         self.engine = AlertRuleEngine()
+        self.engine.load_rules(tmp_path / "rules.yaml")
 
     def test_default_rules_loaded(self) -> None:
         assert len(self.engine.rules) == 5
@@ -332,7 +343,7 @@ class TestAlertRuleOperators:
     def test_load_rules_from_yaml(self, tmp_path) -> None:
         """測試從 YAML 載入自訂告警規則與格式異常時的 Fallback。"""
         yaml_file = tmp_path / "custom_rules.yaml"
-        
+
         # 1. 寫入自訂 YAML 內容
         custom_yaml = """
 rules:
@@ -351,10 +362,10 @@ rules:
     description_template: "溫度超過 {temp_val:.1f} 度"
 """
         yaml_file.write_text(custom_yaml, encoding="utf-8")
-        
+
         # 2. 載入自訂規則
         self.engine.load_rules(yaml_file)
-        
+
         assert len(self.engine.rules) == 1
         rule = self.engine.get_rule("custom_rule_1")
         assert rule is not None
@@ -370,7 +381,7 @@ rules:
         bad_yaml = "invalid: yaml: [unbalanced"
         bad_yaml_file = tmp_path / "bad_rules.yaml"
         bad_yaml_file.write_text(bad_yaml, encoding="utf-8")
-        
+
         # 呼叫 load_rules 應捕捉 Exception，且維持舊的 custom_rule_1 規則不崩潰
         self.engine.load_rules(bad_yaml_file)
         assert len(self.engine.rules) == 1

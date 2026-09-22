@@ -1,18 +1,15 @@
 """資料連接器與斷線告警整合測試。"""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import pandas as pd
 import yaml
-from pathlib import Path
 
 from src.services.data_connector import (
-    BaseConnector,
-    MockConnector,
-    MQTTConnector,
     ConnectorManager,
+    MQTTConnector,
 )
+
 
 class TestMQTTConnector:
     """MQTTConnector 雙軌與數據流測試。"""
@@ -61,9 +58,7 @@ class TestConnectorManagerHealth:
             "type": "mock",
             "enabled": True,
             "interval_seconds": 1,
-            "config": {
-                "turbine_id": "WT-01"
-            }
+            "config": {"turbine_id": "WT-01"},
         }
         with open(configs_dir / "bad_connector.yaml", "w", encoding="utf-8") as f:
             yaml.safe_dump(conn_yaml, f)

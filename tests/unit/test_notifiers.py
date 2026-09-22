@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
+from src.services.notification_manager import NotificationManager
 from src.services.notifiers.base import NotificationPayload, NotificationResult
 from src.services.notifiers.email import EmailNotifier
-from src.services.notifiers.webhook import WebhookNotifier
 from src.services.notifiers.line import LineNotifier
-from src.services.notification_manager import NotificationManager
+from src.services.notifiers.webhook import WebhookNotifier
 
 
 @pytest.fixture
@@ -43,9 +43,9 @@ async def test_email_notifier_send(sample_payload):
         "use_tls": True,
         "timeout_seconds": 5,
     }
-    
+
     notifier = EmailNotifier(config)
-    
+
     # Mock to_thread 以避免真實發送郵件
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         result = await notifier.send(sample_payload)
@@ -62,13 +62,13 @@ async def test_webhook_notifier_send(sample_payload):
         "timeout_seconds": 2,
         "retry": 0,
     }
-    
+
     notifier = WebhookNotifier(config)
-    
+
     # Mock httpx.AsyncClient.post
     mock_response = MagicMock()
     mock_response.status_code = 200
-    
+
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
         result = await notifier.send(sample_payload)
@@ -83,13 +83,13 @@ async def test_line_notifier_send(sample_payload):
         "access_token": "LINE_TOKEN_123",
         "timeout_seconds": 2,
     }
-    
+
     notifier = LineNotifier(config)
-    
+
     # Mock httpx.AsyncClient.post
     mock_response = MagicMock()
     mock_response.status_code = 200
-    
+
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
         result = await notifier.send(sample_payload)
@@ -101,24 +101,26 @@ async def test_line_notifier_send(sample_payload):
 @pytest.mark.asyncio
 async def test_notification_manager_dispatch(sample_payload):
     manager = NotificationManager()
-    
+
     # 建立三個 mock notifiers
     mock_email = AsyncMock()
     mock_email.channel_name = "email"
     mock_email.send.return_value = NotificationResult(channel="email", success=True, latency_ms=10)
-    
+
     mock_webhook = AsyncMock()
     mock_webhook.channel_name = "webhook"
-    mock_webhook.send.return_value = NotificationResult(channel="webhook", success=True, latency_ms=15)
-    
+    mock_webhook.send.return_value = NotificationResult(
+        channel="webhook", success=True, latency_ms=15
+    )
+
     manager.register(mock_email)
     manager.register(mock_webhook)
-    
+
     # 分派到這兩個 channels
     results = await manager.dispatch(sample_payload, ["email", "webhook"])
     assert len(results) == 2
     assert results[0].success is True
     assert results[1].success is True
-    
+
     mock_email.send.assert_called_once()
     mock_webhook.send.assert_called_once()

@@ -1,6 +1,6 @@
 # WindAI Lab — 專案現況總覽
 
-> 最後更新：2026-07-03 | Phase 14 完成 (#42, #96, #43, #75, #44 全數大功告成)
+> 最後更新：2026-09-22（專案健檢 + 文件校準） | Phase 14 功能完成，但 **CI 紅燈待修**
 > **核心願景：打造一間真實的風場運維 AI 服務公司**
 
 ---
@@ -9,7 +9,78 @@
 
 **WindAI Lab** 是一個風力發電 AI 研究協作平台，採用「技能拆分 + 聘用制」多代理架構，搭配虛擬辦公室 UI，讓研究人員可以丟入任意格式 of 風場資料，由 AI 代理自動執行清洗、特徵工程、模型訓練與報告生成。
 
-系統正從「研究平台」演進為「風場運維服務公司」，**Step 1（打地基）已完成**，Phase 11-13 全數到位。Phase 14 已大功告成：整合了 WindGuard AI、通知與派工、YAML 熱重載、MQTT 雙軌對接與自動報告排程生成！
+系統正從「研究平台」演進為「風場運維服務公司」，**Step 1（打地基）已完成**，Phase 11-13 全數到位。Phase 14 功能面已大功告成：整合了 WindGuard AI、通知與派工、YAML 熱重載、MQTT 雙軌對接與自動報告排程生成。
+
+**但功能完成 ≠ 可交付**：2026-07-03 的大型功能 commit（5,315 行）直接進入 master 且未通過 CI，導致主幹自 2026-07-10 起持續紅燈至今（73 天）。下一階段的第一優先事項是恢復 CI 綠燈與修掉隨之暴露的實際缺陷，而非新增功能。
+
+---
+
+## 專案健康度（2026-09-22 實測）
+
+> 以下數據皆由指令實測產出，非人工估計。
+
+### 🔴 CI 狀態：紅燈（自 2026-07-10 起）
+
+| Job | 結果 | 說明 |
+|-----|------|------|
+| Lint & Format | ❌ **failure** | `ruff check src/` 失敗 → `black --check` 被 skip |
+| Tests | ⏭️ **skipped** | 因 `needs: lint`，**自 2026-04-30 起未曾在 CI 執行過** |
+| Frontend Build | ✅ success | `tsc --noEmit` + `vite build` 皆通過 |
+
+最後一次綠燈：`7069ced`（2026-04-30）。相關 run：[#303](https://github.com/dofliu/windAI-Lab/actions/runs/29087577821)
+
+### 程式碼品質實測
+
+| 指標 | 文件先前聲稱 | 2026-09-22 實測 | 落差 |
+|------|-------------|----------------|------|
+| `ruff check .` | 0 錯誤（連續 7 日綠燈） | **185 錯誤**（src/ 146、tests/ 39） | 🔴 |
+| `black --check src/` | 通過 | **13 檔需重新格式化** | 🔴 |
+| `pytest tests/` | 849 案例通過 | **877 案例：868 pass / 4 fail / 5 skip** | 🟡 |
+| Python TODO/FIXME | 0 | 0 | ✅ |
+| 前端 TODO | 1 | 1（`useWebSocket.ts`） | ✅ |
+
+ruff 錯誤分佈：`W293` 空白行尾空格 122、`F401` 未使用 import 17、`I001` import 排序 15、`N815` 命名 6、`F841` 未使用區域變數 5、`E741` 模糊變數名 4、其餘 16。**其中 158 項可由 `ruff check --fix` 自動修復**。
+
+### 實測資產盤點
+
+| 項目 | 文件先前聲稱 | 實測 |
+|------|-------------|------|
+| REST API 端點 | 56 | **73**（main.py 62 + director.py 11）+ 1 WebSocket |
+| 前端元件 | 32 | **40** 個 `.tsx` |
+| 技能模組 | 28 | **29** 個 BaseSkill 實作（28 模組） |
+| Agent 模組 | 25（CLAUDE.md §2） | **25** ✅ |
+| DB 資料表 | 6 | **9**（新增 allocations / daily_sheets / work_records） |
+| 測試檔案 | 33 | **35** |
+| 後端規模 | — | 141 個 `.py` / 30,302 行 |
+
+### 🐛 CI 紅燈底下暴露的實際缺陷
+
+以下皆為 2026-07-03 commit `bfca6a7` 引入、被 lint 攔下但從未修復的問題：
+
+| # | 位置 | 問題 | 影響 |
+|---|------|------|------|
+| 1 | `src/api/director.py:240,287` | 使用 `re.sub` / `re.match` 但**從未 `import re`**（F821） | L287 無 try/except 保護 → 工作紀錄匯入端點必定 `NameError` 崩潰 |
+| 2 | `src/services/director_allocation/converter.py:288-297` | `parse_record()` 解析出 `title` / `issue` / `assignee` / `status` 後**全部丟棄**，`WorkRecord` 亦無對應欄位（4× F841） | 該 commit 的招牌功能「Markdown ↔ DB 雙向**無損**同步」實際上每次往返都掉 4 個中介資料欄位 |
+| 3 | `src/services/report_scheduler.py:302` | 組好通知訊息 `message` 後未帶入 `NotificationPayload`（F841） | 報告自動生成的 Email / LINE 通知內容為空 |
+| 4 | `src/api/main.py:2008 & 2197` | `GET /api/reports` 註冊兩次、函式同名 `api_list_reports`（F811） | 後者成為無效程式碼 |
+| 5 | `src/api/main.py:177` | 模組層 import 置於 app 設定之後（E402） | 與 2026-07-10 熱修的 `BaseModel` NameError 同一類型風險 |
+
+### 🧪 4 個失敗測試的根因
+
+`tests/unit/test_alert_engine.py` 的 4 個測試斷言「預設載入 5 條規則」，但 `AlertRuleEngine()` 現在會優先讀 `configs/alerts/rules.yaml`（含 6 條，多了 `connector_offline`），僅在讀取失敗時才回退到程式內建的 5 條。
+
+**這是測試過期，不是程式錯誤**。建議修法不是把 5 改成 6——那會讓測試繼續綁死一份維運人員本就該自由編輯的生產設定檔——而是讓測試以自備 fixture YAML 或空設定建構引擎，與 repo 設定解耦。
+
+### 📄 文件面問題
+
+| 問題 | 狀態 |
+|------|------|
+| `docs/TODO-roadmap.md` 位元組損壞（全 repo 唯一非法 UTF-8 檔案）、遺失 `## 2. 三步走演進路線` / Step 1 / Phase 11-13 章節、且重複貼上一份過期的 Step 2 區段 | ✅ 本次已修復 |
+| `docs/cursor.md`（CLAUDE.md §6 每日工作流指定的段間交接介面）從未建立 | ✅ 本次已建立 |
+| 三份狀態文件日期互相矛盾（STATUS.yaml 4/21、daily_report 4/27、PROJECT-STATUS 7/03） | ✅ 本次已對齊 |
+| GitHub Issue 狀態與文件不符：#42 / #43 / #44 / #75 / #96 文件標 ✅ 完成，GitHub 上仍為 OPEN（共 18 個 Open Issue） | ⬜ 待人工關閉 |
+| CLAUDE.md 章節編號重複（出現兩組 §5 / §6 / §7）、§10 仍寫「42 個代理」（實為 25） | ⬜ 待修 |
+| daily_report「Hackathon 截止 2026-05-18，剩 21 天」已過期 4 個月 | ✅ 本次已移除 |
 
 ---
 
@@ -28,13 +99,13 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  14  │  1
 |------|--------|-----------------|--------|
 | 核心代理 | 12 (core) | — | 100% |
 | 可聘用代理 | 10 (hirable YAML) | — | 100% |
-| 技能模組 | 28 | **+14**（偏航分析、降載偵測、功率曲線分箱等） | 100% |
+| 技能模組 | 29（實測） | **+14**（偏航分析、降載偵測、功率曲線分箱等） | 100% |
 | ML 模型 | 7 | — | 100% |
-| REST API 端點 | 56 | **+4**（報告下載 API + 報告 HTML）**+5**（告警規則 API） | 98% |
-| 前端元件 | 32 | **功率曲線散佈圖、報告下載按鈕、ReportPreview Modal** | 98% |
+| REST API 端點 | 73（實測） | **+4** 報告下載/HTML、**+5** 告警規則、**+11** 派工 API | 98% |
+| 前端元件 | 40（實測） | **功率曲線散佈圖、ReportPreview Modal、ConnectorManager、ReportManagementPanel** | 98% |
 | Office Renderer | 3 | — | 100% |
-| 測試 | 33 檔案 / 849 測試 | **+10 檔案 / +181 測試**（WindGuard + 新技能 + 對比框架 + 告警規則引擎） | 良好 |
-| 持久化儲存 | SQLite 6 表 | **圖表持久化至 DB + 報告持久化至 DB** | ✅ |
+| 測試 | 35 檔案 / 877 案例（實測） | **+5 檔案 / +560 行**（連接器 + 通知 + 派工 + 報告排程） | 🟡 4 個失敗待修 |
+| 持久化儲存 | SQLite **9 表**（實測） | **+ allocations / daily_sheets / work_records** | ✅ |
 | **WindGuard AI** | — | **LLM 推理 + Agentic Calling + Fleet Scanner** | ✅ 新增 |
 | **任務生命週期** | — | **Task Session 架構重構** | ✅ 新增 |
 
@@ -196,11 +267,11 @@ POST /api/alerts/ingest
 | 新增風機分析技能 #68 | Medium | ✅ 完成 |
 | Lint 清理 #73 + ruff 遷移 #76 | Low | ✅ 完成（錯誤 54→0） |
 | **診斷報告輸出功能 #64** | **High** | **✅ 完成（PR #90）** |
-| 對接外部 API #75 | High | ✅ 完成 |
+| 對接外部 API #75 | High | ✅ 程式完成（GitHub Issue 仍 OPEN，待關閉） |
 | 移除舊版 registry 雙軌 #69 | Medium | ⬜ 技術債 |
 | **告警規則引擎核心 #41** | **High** | **✅ 完成（commit 03440d3）** |
-| [Epic E] 告警規則引擎 #33 | High | ✅ 完成 (#41, #42, #43 全數完工) |
-| [Epic D] 報告與追蹤 #34 | High | 🔨 進行中 (#44 ✅, #45/#46 待啟動) |
+| [Epic E] 告警規則引擎 #33 | High | ✅ 程式完成 (#41, #42, #43)（#33/#42/#43 GitHub 仍 OPEN） |
+| [Epic D] 報告與追蹤 #34 | High | 🔨 進行中 (#44 程式完成待關閉, #45/#46 待啟動) |
 | [Epic A] 案例學習系統 #35 | Medium | ⬜ |
 | [Epic B] 故障知識體系 #36 | Medium | ⬜ |
 | [Epic F] 學術論文規劃 #37 | Ongoing | ⬜ |

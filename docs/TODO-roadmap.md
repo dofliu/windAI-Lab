@@ -1,9 +1,10 @@
 # WindAI Lab — TODO 路線圖與下一步工作規劃
 
-> 最後更新：2026-04-27（W18 啟動日 + OMC 整合啟動）
-> 目前進度：Phase 14 進行中（14a ✅、14b ✅、14c ✅ #64 PR #90）+ Epic C 完成 + OMC 文件層整合 ✅
+> 最後更新：2026-09-22（專案健檢 + 文件校準）
+> 目前進度：Phase 14 全數完成（14a / 14b / 14c ✅）+ Epic C ✅ + Epic E ✅ + OMC 文件層整合 ✅
 > **核心願景：打造一間真實的風場運維 AI 服務公司**
 > **追蹤方式**：GitHub Issues（6 Epic / 15 子 Issue）+ 派工系統（#96）
+> ⚠️ **當前阻塞**：master CI 自 2026-07-10 起紅燈（lint 未過 → 測試 job 被 skip）。詳見 [PROJECT-STATUS.md](PROJECT-STATUS.md#專案健康度2026-09-22-實測)
 
 ---
 
@@ -19,24 +20,60 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
                                                        │  打地基       │ 接真實風場    完整服務
 ```
 
-| 類別 | 已完成 | 剩餘 |
-|------|--------|------|
-| 核心代理 | 12 | 0 |
+| 類別 | 已完成（2026-09-22 實測） | 剩餘 |
+|------|--------------------------|------|
+| 核心代理 | 25 個 agent 模組（6 團隊） | 按需新增 |
 | 可聘用代理 | 10 (YAML 定義) | 按需新增 |
-| 技能模組 | 28 | 依需求新增 |
-| ML 模型 | 7（+2 新增：LSTM v2 + PatchTST） | GNN / 遷移學習 |
+| 技能模組 | 29 個 BaseSkill 實作（28 模組） | 依需求新增 |
+| ML 模型 | 7（含 LSTM v2 + PatchTST） | GNN / 遷移學習 |
 | 對比實驗框架 | 1（ModelBenchmark） | — |
-| API 端點 | 51 | 10+（連接器/風場管理等） |
-| 前端元件 | 32 | 5+（多風場儀表板/派工等） |
+| REST API 端點 | 73（main.py 62 + director.py 11）+ 1 WebSocket | 風場管理等 |
+| 前端元件 | 40 個 `.tsx` | 多風場儀表板等 |
 | Office Renderer | 3（pixel / modern / minimal） | 可擴充 |
-| DB 資料表 | 6（tasks/work_logs/analysis_results/alerts/work_orders/reports） | 按需新增 |
+| DB 資料表 | 9（tasks / work_logs / analysis_results / alerts / work_orders / reports / allocations / daily_sheets / work_records） | 按需新增 |
+| 測試 | 35 檔案 / 877 案例（868 pass、4 fail、5 skip） | 修掉 4 個失敗 |
+| 後端程式碼 | 141 個 `.py` / 30,302 行 | — |
+
+> 註：以上為 2026-09-22 以指令實測所得（`find` / `grep` / `pytest --collect-only`），取代先前人工填寫的估計值。
 
 ### 架構狀態
 
 | 系統 | 狀態 | 說明 |
 |------|------|------|
 | 舊系統（42 人固定） | ⚠️ 並行中 | 仍在運行，待切換 |
-| 新系�| alerts + work_orders 資料表 | SQLite 含完整索引、外部去重 | ✅ |
+| 新系統（12 核心 + 聘用制） | ✅ 就緒 | DynamicRegistry + Skills + YAML |
+
+---
+
+## 2. 三步走演進路線
+
+### 🔴 Step 1：打地基 — 持久化 + 服務閉環（Phase 11-13）✅
+
+> 讓系統「記得住」、「能追蹤」、「會通知」
+
+#### Phase 11 — 前端戰情中心 + 分析面板 ✅
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| MissionAgentPanel 代理面板 | 任務中只顯示參與代理 + 即時進度 | ✅ |
+| WorkflowProgress 三欄佈局 | 代理面板 / 進度+日誌 / 即時分析圖表 | ✅ |
+| ViewSwitcher 自動切換 | header 狀態標籤 + 「返回辦公室」按鈕 | ✅ |
+| 技能管線進度條 | 步驟條 + 代理個別進度條 | ✅ |
+
+#### Phase 12 — 持久化儲存 ✅
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| SQLite 資料庫模組 | 3 張表 + CRUD + WAL 模式（零新依賴） | ✅ |
+| 引擎整合持久化 | workflow 自動寫入/更新任務記錄 | ✅ |
+| 歷史查詢 API | history / detail / stats 三個端點 | ✅ |
+| 前端歷史合併 | localStorage + 後端 API 雙層去重 | ✅ |
+
+#### Phase 13 — 告警系統 + 工單管理 ✅
+
+| 項目 | 說明 | 狀態 |
+|------|------|------|
+| alerts + work_orders 資料表 | SQLite 含完整索引、外部去重 | ✅ |
 | 告警 REST API（6 端點） | CRUD + Ingest + stats + 從告警建工單 | ✅ |
 | 工單 REST API（6 端點） | CRUD + notes + stats | ✅ |
 | AlertIngestRequest | 標準化外部推送格式（source_alert_id 去重） | ✅ |
@@ -107,57 +144,7 @@ Phase:  1  2  3  4  5  5.5  6a  6b  6c  7  8  9  10  │  11  12  13  │  14  1
 | DataConnector 抽象層 | 統一介面（File / REST / OPC UA / MQTT）(#75) | ✅ |
 | 串流處理管線 | 定時拉取 → 清洗 → 分析 → 告警 | ✅ |
 | 連線健康監控 | 斷線偵測 + 自動重連 | ✅ |
-| Connector YAML 設定 | 一個資料來源一個 YAML | ✅ |flow 實驗記錄 | ✅ |
-| C2: PatchTST Transformer | 簡化版 PatchTST (ICLR 2023) + skill 封裝 | ✅ |
-| C3: 模型對比實驗框架 | ModelBenchmark + LaTeX 表格 + 統一評估 | ✅ |
-
----
-
-### 待辦 Epics（以 GitHub Issues 追蹤）
-
-| Epic | Issue | 優先度 | 子任務 |
-|------|-------|--------|--------|
-| [Epic E] 告警規則引擎 | #33 | High | #41 規則核心 ✅ / #42 通知渠道 / #43 YAML 設定 |
-| [Epic D] 報告與追蹤 | #34 | High | #44 報告排程 / #45 效能追蹤 / #46 儀表板 |
-| [Epic A] 案例學習系統 | #35 | Medium | #47 自動記錄 / #48 案例推薦 / #49 API+前端 |
-| [Epic B] 故障知識體系 | #36 | Medium | #50 知識圖譜 / #51 維護效果追蹤 |
-| [Epic F] 學術論文規劃 | #37 | Ongoing | #52 投稿策略 |
-
----
-
-### 🟡 Step 2：接真實風場 — 即時串接 + 多風場管理（Phase 14-16）
-
-> 讓系統「看得到」真實風場、「管得了」多個客戶
-
-#### Phase 14 — WindGuard AI 整合 + 即時資料連接器
-
-**Phase 14a：WindGuard AI 整合 ✅**
-
-| 項目 | 說明 | 狀態 |
-|------|------|------|
-| WindGuard 診斷推理 | LLM 深層推理，產出故障類型、物理機制、維護建議 | ✅ |
-| Agentic Function Calling | LLM 自主決定呼叫診斷工具，多輪對話式調查 | ✅ |
-| 風場級別掃描 | 多執行緒並行掃描多台風機，自動風險排序 | ✅ |
-| 功率曲線散佈圖 | NBM 訓練後產出風速 vs 功率散佈圖 | ✅ |
-| 報告下載 API | `GET /api/reports/{id}/download` | ✅ |
-
-**Phase 14b：前端任務生命週期重構 ✅ (#61)**
-
-| 項目 | 說明 | 狀態 |
-|------|------|------|
-| Task Session 架構 | 後端事件驅動，解決重複紀錄/圖表累積/進度異常 | ✅ |
-| 圖表持久化 | broadcast_analysis_result 同時存入 SQLite | ✅ |
-| 工作日誌保留 | WebSocketManager 內建 log buffer | ✅ |
-
-**Phase 14c：診斷報告輸出 ✅ + 即時資料連接器 ⬜ (#64 ✅, #75)**
-
-| 項目 | 說明 | 狀態 |
-|------|------|------|
-| 診斷報告輸出功能 | P0 context 扁平化 + P1 報告預覽 Modal + P2 SQLite 持久化 + P3 PDF 列印 (#64 PR #90) | ✅ |
-| DataConnector 抽象層 | 統一介面（File / REST / OPC UA / MQTT）(#75) | ⬜ |
-| 串流處理管線 | 定時拉取 → 清洗 → 分析 → 告警 | ⬜ |
-| 連線健康監控 | 斷線偵測 + 自動重連 | ⬜ |
-| Connector YAML 設定 | 一個資料來源一個 YAML | ⬜ |
+| Connector YAML 設定 | 一個資料來源一個 YAML | ✅ |
 
 #### Phase 15 — 多風場管理
 

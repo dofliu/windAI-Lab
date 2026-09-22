@@ -848,10 +848,14 @@ class Database:
         """取得單一派工。"""
         self.initialize()
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM allocations WHERE task_id = ?", (task_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM allocations WHERE task_id = ?", (task_id,)
+            ).fetchone()
             return _row_to_allocation(row) if row else None
 
-    def list_allocations(self, sheet_date: str | None = None, assignee: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def list_allocations(
+        self, sheet_date: str | None = None, assignee: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
         """列出派工。"""
         self.initialize()
         query = "SELECT * FROM allocations WHERE 1=1"
@@ -913,7 +917,9 @@ class Database:
         """取得一日派工單。"""
         self.initialize()
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM daily_sheets WHERE sheet_date = ?", (sheet_date,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM daily_sheets WHERE sheet_date = ?", (sheet_date,)
+            ).fetchone()
             if not row:
                 return None
             d = dict(row)
@@ -964,7 +970,9 @@ class Database:
         """取得工作紀錄。"""
         self.initialize()
         with self._connect() as conn:
-            row = conn.execute("SELECT * FROM work_records WHERE task_id = ?", (task_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM work_records WHERE task_id = ?", (task_id,)
+            ).fetchone()
             if not row:
                 return None
             d = dict(row)

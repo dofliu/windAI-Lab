@@ -92,7 +92,9 @@ class MockConnector(BaseConnector):
                         break
 
             if not data_file:
-                logger.warning(f"MockConnector 找不到 {self.turbine_id} 的 external 數據檔，將使用隨機生成模式")
+                logger.warning(
+                    f"MockConnector 找不到 {self.turbine_id} 的 external 數據檔，將使用隨機生成模式"
+                )
                 self.is_connected = True
                 return True
 
@@ -125,7 +127,9 @@ class MockConnector(BaseConnector):
         if self.data_cache is not None and len(self.data_cache) > 0:
             row = self.data_cache.iloc[[self.current_index]].copy()
             # 更新時間戳記為當前時間以模擬實時性
-            timestamp_col = next((c for c in row.columns if "timestamp" in c.lower() or "time" in c.lower()), None)
+            timestamp_col = next(
+                (c for c in row.columns if "timestamp" in c.lower() or "time" in c.lower()), None
+            )
             if timestamp_col:
                 row[timestamp_col] = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -135,6 +139,7 @@ class MockConnector(BaseConnector):
 
         # 模式二：若無本地檔案，生成隨機合理的模擬行數據
         import random
+
         ws = random.uniform(3.0, 15.0)
         # 簡易正常風速/功率曲線對照 (12m/s 滿載 2050kW)
         if ws < 3.0:
@@ -209,6 +214,7 @@ class RESTConnector(BaseConnector):
 # paho.mqtt fallback 機制
 try:
     import paho.mqtt.client as mqtt_lib
+
     HAS_PAHO = True
 except ImportError:
     HAS_PAHO = False
@@ -244,12 +250,15 @@ class MQTTConnector(BaseConnector):
 
                 def on_message(client: Any, userdata: Any, msg: Any) -> None:
                     import json
+
                     try:
                         payload = json.loads(msg.payload.decode("utf-8"))
                         if isinstance(payload, dict):
                             self._buffer.append(payload)
                         elif isinstance(payload, list):
-                            self._buffer.extend([item for item in payload if isinstance(item, dict)])
+                            self._buffer.extend(
+                                [item for item in payload if isinstance(item, dict)]
+                            )
                     except Exception as e:
                         logger.error(f"MQTTConnector 解析 Payload 失敗：{e}")
 
@@ -266,12 +275,16 @@ class MQTTConnector(BaseConnector):
                 logger.info(f"MQTTConnector [{self.name}] 成功連線並訂閱 Topic: {self.topic}")
                 return True
             except Exception as e:
-                logger.error(f"MQTTConnector [{self.name}] 真實連線失敗：{e}。將嘗試 Fallback 模擬流。")
+                logger.error(
+                    f"MQTTConnector [{self.name}] 真實連線失敗：{e}。將嘗試 Fallback 模擬流。"
+                )
                 self._start_simulator()
                 self.is_connected = True
                 return True
         else:
-            logger.info(f"系統未安裝 paho-mqtt。MQTTConnector [{self.name}] 將自動啟動背景模擬流。")
+            logger.info(
+                f"系統未安裝 paho-mqtt。MQTTConnector [{self.name}] 將自動啟動背景模擬流。"
+            )
             self._start_simulator()
             self.is_connected = True
             return True
@@ -284,6 +297,7 @@ class MQTTConnector(BaseConnector):
     async def _simulate_stream(self) -> None:
         """背景定時向 Buffer 推送 SCADA 數據以模擬 MQTT 流。"""
         import random
+
         while True:
             try:
                 await asyncio.sleep(random.uniform(5.0, 10.0))
@@ -335,6 +349,7 @@ class MQTTConnector(BaseConnector):
 
         if not self._buffer:
             import random
+
             mock_row = {
                 "Timestamp": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 "Wind_speed": random.uniform(6.0, 10.0),
@@ -499,11 +514,15 @@ class ConnectorManager:
         if self.fail_counts[conn.connector_id] >= 3:
             try:
                 from src.services.alert_engine import get_alert_rule_engine
+
                 engine = get_alert_rule_engine()
-                engine.evaluate({
-                    "connector_online_status": 0.0,
-                    "connector_id": conn.connector_id,
-                }, turbine_id=conn.config.get("turbine_id", "SYSTEM"))
+                engine.evaluate(
+                    {
+                        "connector_online_status": 0.0,
+                        "connector_id": conn.connector_id,
+                    },
+                    turbine_id=conn.config.get("turbine_id", "SYSTEM"),
+                )
                 logger.warning(f"連接器 [{conn.name}] 連續 3 次拉取失敗，已觸發離線告警！")
             except Exception as e:
                 logger.error(f"發送連接器離線告警失敗：{e}")
@@ -558,7 +577,7 @@ class ConnectorManager:
             "interval_seconds": 60,
             "config": {
                 "turbine_id": "WT-01",
-            }
+            },
         }
         f = self.configs_dir / "kelmarsh_mock.yaml"
         try:

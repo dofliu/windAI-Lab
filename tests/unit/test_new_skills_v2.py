@@ -19,8 +19,12 @@ class TestDirectorReviewSkill:
     @pytest.fixture()
     def skill(self):
         from src.skills.leadership.director_review import DirectorReviewSkill
+
         # 強制 mock LLM 服務拋出異常以使單元測試穩定回落到規則式審查，避免真實調用
-        with patch("src.services.llm_service.LLMService.generate", side_effect=Exception("Mock LLM Unavailable")):
+        with patch(
+            "src.services.llm_service.LLMService.generate",
+            side_effect=Exception("Mock LLM Unavailable"),
+        ):
             yield DirectorReviewSkill()
 
     def test_skill_id(self, skill) -> None:
@@ -163,7 +167,11 @@ class TestComparativeAnalysisSkill:
         with patch.object(
             skill,
             "_analyze_single_turbine",
-            side_effect=lambda tid: {**mock_report, "turbine_id": tid, "health_score": hash(tid) % 50 + 50},
+            side_effect=lambda tid: {
+                **mock_report,
+                "turbine_id": tid,
+                "health_score": hash(tid) % 50 + 50,
+            },
         ):
             inp = SkillInput(parameters={"turbine_ids": ["WT-01", "WT-02", "WT-03"]})
             output = await skill.execute(inp)
@@ -177,9 +185,39 @@ class TestComparativeAnalysisSkill:
     def test_compare_logic(self, skill) -> None:
         """比較邏輯正確排序。"""
         reports = [
-            {"turbine_id": "WT-01", "health_score": 90, "data_points": 100, "availability": 95, "capacity_factor": 0.4, "anomaly_rate": 1.0, "power_curve_deviation": 2.0, "temp_anomaly_count": 5, "status": "ok"},
-            {"turbine_id": "WT-02", "health_score": 35, "data_points": 100, "availability": 80, "capacity_factor": 0.2, "anomaly_rate": 10.0, "power_curve_deviation": 15.0, "temp_anomaly_count": 50, "status": "ok"},
-            {"turbine_id": "WT-03", "health_score": 60, "data_points": 100, "availability": 88, "capacity_factor": 0.3, "anomaly_rate": 5.0, "power_curve_deviation": 8.0, "temp_anomaly_count": 20, "status": "ok"},
+            {
+                "turbine_id": "WT-01",
+                "health_score": 90,
+                "data_points": 100,
+                "availability": 95,
+                "capacity_factor": 0.4,
+                "anomaly_rate": 1.0,
+                "power_curve_deviation": 2.0,
+                "temp_anomaly_count": 5,
+                "status": "ok",
+            },
+            {
+                "turbine_id": "WT-02",
+                "health_score": 35,
+                "data_points": 100,
+                "availability": 80,
+                "capacity_factor": 0.2,
+                "anomaly_rate": 10.0,
+                "power_curve_deviation": 15.0,
+                "temp_anomaly_count": 50,
+                "status": "ok",
+            },
+            {
+                "turbine_id": "WT-03",
+                "health_score": 60,
+                "data_points": 100,
+                "availability": 88,
+                "capacity_factor": 0.3,
+                "anomaly_rate": 5.0,
+                "power_curve_deviation": 8.0,
+                "temp_anomaly_count": 20,
+                "status": "ok",
+            },
         ]
         result = skill._compare(reports)
 
@@ -192,8 +230,29 @@ class TestComparativeAnalysisSkill:
     def test_compare_with_failures(self, skill) -> None:
         """包含失敗的風機。"""
         reports = [
-            {"turbine_id": "WT-01", "health_score": 80, "data_points": 100, "availability": 95, "capacity_factor": 0.4, "anomaly_rate": 1.0, "power_curve_deviation": 2.0, "temp_anomaly_count": 5, "status": "ok"},
-            {"turbine_id": "WT-02", "status": "error", "error": "file not found", "health_score": 0, "data_points": 0, "availability": 0, "capacity_factor": 0, "anomaly_rate": 0, "power_curve_deviation": 0, "temp_anomaly_count": 0},
+            {
+                "turbine_id": "WT-01",
+                "health_score": 80,
+                "data_points": 100,
+                "availability": 95,
+                "capacity_factor": 0.4,
+                "anomaly_rate": 1.0,
+                "power_curve_deviation": 2.0,
+                "temp_anomaly_count": 5,
+                "status": "ok",
+            },
+            {
+                "turbine_id": "WT-02",
+                "status": "error",
+                "error": "file not found",
+                "health_score": 0,
+                "data_points": 0,
+                "availability": 0,
+                "capacity_factor": 0,
+                "anomaly_rate": 0,
+                "power_curve_deviation": 0,
+                "temp_anomaly_count": 0,
+            },
         ]
         result = skill._compare(reports)
         assert result["fleet_summary"]["failed"] == 1
@@ -256,7 +315,12 @@ class TestMaintenanceSchedulerSkill:
                 "fault_classification": {
                     "status": "success",
                     "data": {
-                        "severity_distribution": {"critical": 3, "high": 2, "medium": 5, "low": 10},
+                        "severity_distribution": {
+                            "critical": 3,
+                            "high": 2,
+                            "medium": 5,
+                            "low": 10,
+                        },
                     },
                 },
             },

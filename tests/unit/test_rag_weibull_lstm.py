@@ -189,9 +189,7 @@ class TestWeibullSkill:
         df = pd.DataFrame({"Wind speed (m/s)_Mean": ws})
 
         skill = WeibullAnalysisSkill()
-        result = await skill.execute(
-            SkillInput(parameters={"turbine_id": "WT-01"}, dataframe=df)
-        )
+        result = await skill.execute(SkillInput(parameters={"turbine_id": "WT-01"}, dataframe=df))
 
         assert result.status == SkillStatus.SUCCESS
         assert "shape_k" in result.data
@@ -276,9 +274,11 @@ class TestLSTMForecastSkill:
 
         np.random.seed(42)
         n = 300
-        df = pd.DataFrame({
-            "Wind speed (m/s)_Mean": np.random.uniform(3, 20, n),
-        })
+        df = pd.DataFrame(
+            {
+                "Wind speed (m/s)_Mean": np.random.uniform(3, 20, n),
+            }
+        )
 
         skill = LSTMForecastSkill()
         result = await skill.execute(

@@ -73,13 +73,17 @@ async def _auto_dispatch_workflow(turbine_id: str, event: Any) -> None:
             workflow = create_diagnose_workflow(turbine_id)
             if hasattr(event, "path") and event.path:
                 workflow.parameters["file_path"] = event.path
-            logger.info(f"自動派任故障診斷工作流程：{turbine_id}，資料源：{getattr(event, 'path', '未知')}")
+            logger.info(
+                f"自動派任故障診斷工作流程：{turbine_id}，資料源：{getattr(event, 'path', '未知')}"
+            )
         else:
             # 只做基本資料載入+特徵探索
             workflow = create_data_load_workflow(turbine_id)
             if hasattr(event, "path") and event.path:
                 workflow.parameters["file_path"] = event.path
-            logger.info(f"自動派任資料載入工作流程：{turbine_id}，資料源：{getattr(event, 'path', '未知')}")
+            logger.info(
+                f"自動派任資料載入工作流程：{turbine_id}，資料源：{getattr(event, 'path', '未知')}"
+            )
 
         await orch_engine.run_workflow_background(workflow)
     except Exception as e:
@@ -133,6 +137,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 啟動報告排程管理器
     from src.services.report_scheduler import get_report_scheduler
+
     get_report_scheduler().start()
     logger.info("ReportScheduler 報告排程背景任務已啟動")
 
@@ -143,9 +148,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await _file_watcher.stop()
     if _connector_manager:
         await _connector_manager.stop()
-    
+
     # 關閉報告排程
     from src.services.report_scheduler import get_report_scheduler
+
     get_report_scheduler().stop()
     logger.info("WindAI Lab API 正在關閉...")
 
@@ -175,6 +181,7 @@ app.add_middleware(
 )
 
 from src.api.director import router as director_router
+
 app.include_router(director_router)
 
 
@@ -2194,26 +2201,18 @@ async def reload_alert_rules() -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}")
 
 
-@app.get("/api/reports", tags=["報告管理"])
-async def api_list_reports() -> list[dict[str, Any]]:
-    """取得所有歷史生成報告清單。"""
-    from src.services import report_store
-    return report_store.list_reports()
-
-
 @app.post("/api/reports/generate", tags=["報告管理"])
-async def api_generate_report(report_type: str = "weekly", turbine_id: str = "all") -> dict[str, Any]:
+async def api_generate_report(
+    report_type: str = "weekly", turbine_id: str = "all"
+) -> dict[str, Any]:
     """即時手動觸發生成週報或月報。"""
     from src.services.report_scheduler import get_report_scheduler
+
     try:
         scheduler = get_report_scheduler()
         title_prefix = "全風場手動維運週報" if report_type == "weekly" else "全風場手動維運月報"
         res = scheduler.generate_and_dispatch(report_type, turbine_id, title_prefix)
-        return {
-            "status": "success",
-            "detail": "維運報告生成成功！",
-            "report": res
-        }
+        return {"status": "success", "detail": "維運報告生成成功！", "report": res}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"即時生成報告失敗：{e}")
 
@@ -2234,7 +2233,9 @@ async def api_toggle_connector(connector_id: str, enabled: bool) -> dict[str, An
 
     success = await _connector_manager.toggle_connector(connector_id, enabled)
     if not success:
-        raise HTTPException(status_code=404, detail=f"無法操作連接器 '{connector_id}'（可能找不到設定檔）")
+        raise HTTPException(
+            status_code=404, detail=f"無法操作連接器 '{connector_id}'（可能找不到設定檔）"
+        )
 
     return {"status": "success", "connector_id": connector_id, "enabled": enabled}
 
@@ -2277,12 +2278,7 @@ async def api_create_connector(req: ConnectorCreateRequest) -> dict[str, Any]:
         if not success:
             raise HTTPException(status_code=500, detail="寫入設定檔成功，但動態啟動連接器失敗。")
 
-    return {
-        "status": "success",
-        "detail": f"連接器 '{req.id}' 已成功建立！",
-        "connector": data
-    }
-
+    return {"status": "success", "detail": f"連接器 '{req.id}' 已成功建立！", "connector": data}
 
 
 # ── 應用程式啟動入口 ────────────────────────────────────────────

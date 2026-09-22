@@ -44,7 +44,9 @@ def _make_alarm_df(n: int = 100, seed: int = 42) -> pd.DataFrame:
         }.get(c, "Unknown alarm")
         for c in codes
     ]
-    severities = rng.choice(["info", "warning", "high", "critical"], size=n, p=[0.2, 0.4, 0.3, 0.1])
+    severities = rng.choice(
+        ["info", "warning", "high", "critical"], size=n, p=[0.2, 0.4, 0.3, 0.1]
+    )
     components = rng.choice(
         ["Gearbox", "Generator", "Yaw System", "Pitch System", "Grid", "Sensors"],
         size=n,
@@ -238,10 +240,17 @@ class TestEventsToTimeseries:
         events = _normalize_events(df, col_map)
         ts = _events_to_timeseries(events, freq="1D", top_n_codes=5)
 
-        alarm_cols = [c for c in ts.columns if c.startswith("alarm_") and c != "alarm_count"
-                      and c != "alarm_duration_hours" and c != "alarm_severity_mean"
-                      and c != "alarm_severity_max" and c != "alarm_unique_codes"
-                      and c != "alarm_high_severity_count"]
+        alarm_cols = [
+            c
+            for c in ts.columns
+            if c.startswith("alarm_")
+            and c != "alarm_count"
+            and c != "alarm_duration_hours"
+            and c != "alarm_severity_mean"
+            and c != "alarm_severity_max"
+            and c != "alarm_unique_codes"
+            and c != "alarm_high_severity_count"
+        ]
         assert len(alarm_cols) > 0
 
     def test_component_columns(self) -> None:

@@ -113,6 +113,13 @@ docs/work-logs/
 
 ## 5. 月度索引
 
+### 2026 年 9 月
+
+| 日期 | 派工單 | 主要任務 | 完成度 |
+|------|--------|----------|--------|
+| 05-01 ~ 09-21 | — | 停擺期（僅 07-03 / 07-10 兩次 commit，皆未留派工紀錄） | ⚠ |
+| 09-22 | [allocation](2026-09/2026-09-22-allocation.md) | **復工健檢** — CI 紅燈 73 天定位 + 5 項缺陷記錄 + `TODO-roadmap.md` 損壞修復 + 文件全面校準；[auto-advance P0-1](2026-09/WLAB-20260922-02-ruff-autofix.md) ruff --fix 158 項 + black 格式化；[auto-advance P0-2](2026-09/WLAB-20260922-03-director-import-re.md) director.py 補 import re；[auto-advance P0-3](2026-09/WLAB-20260922-04-alert-engine-test-decouple.md) test_alert_engine.py 與生產 rules.yaml 解耦；[auto-advance P0-4](2026-09/WLAB-20260922-05-report-scheduler-notification-message.md) report_scheduler 補回遺失的報告通知內文；[auto-advance P1-1](2026-09/WLAB-20260922-06-main-duplicate-reports-route.md) 移除 main.py 重複註冊的 `GET /api/reports` 死碼 | ✅ |
+
 ### 2026 年 4 月
 
 | 日期 | 派工單 | 主要任務 | 完成度 |
@@ -143,4 +150,4 @@ docs/work-logs/
 
 ---
 
-*由 Claude Code 自動建立並維護，最後更新：2026-04-27（W18 Day 1 · OMC 整合啟動）*
+*由 Claude Code 自動建立並維護，最後更新：2026-09-22（復工健檢日）*

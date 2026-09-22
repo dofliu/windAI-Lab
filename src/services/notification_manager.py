@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import logging
-from pathlib import Path
+import os
 import re
+from pathlib import Path
 from typing import Any
+
 import yaml
 
 from src.services.notifiers.base import BaseNotifier, NotificationPayload, NotificationResult
@@ -38,7 +39,7 @@ class NotificationManager:
         try:
             with self.config_path.open("r", encoding="utf-8") as stream:
                 raw_cfg = yaml.safe_load(stream) or {}
-                
+
             self.config = self._expand_env_vars(raw_cfg.get("channels", {}))
             self._initialize_notifiers()
         except Exception as e:
@@ -62,24 +63,26 @@ class NotificationManager:
                 tasks.append(self._send_with_perf(notifier, payload))
             else:
                 logger.warning(f"嘗試分派至未啟用或未註冊的渠道：{ch}")
-                
+
         if not tasks:
             return []
-            
+
         results = await asyncio.gather(*tasks)
         for r in results:
             if not r.success:
                 logger.warning(f"渠道 [{r.channel}] 通知發送失敗：{r.error}")
             else:
                 logger.info(f"渠道 [{r.channel}] 通知發送成功（耗時 {r.latency_ms}ms）")
-                
+
         return list(results)
 
     def get_all_status(self) -> dict[str, bool]:
         """取得所有渠道是否啟用的狀態。"""
         return {name: notifier.healthcheck() for name, notifier in self.notifiers.items()}
 
-    async def _send_with_perf(self, notifier: BaseNotifier, payload: NotificationPayload) -> NotificationResult:
+    async def _send_with_perf(
+        self, notifier: BaseNotifier, payload: NotificationPayload
+    ) -> NotificationResult:
         """包裝單一 Notifier 的異步發送與例外保護。"""
         try:
             return await notifier.send(payload)
@@ -94,17 +97,17 @@ class NotificationManager:
     def _initialize_notifiers(self) -> None:
         """根據設定檔初始化啟用的 Notifiers。"""
         self.notifiers.clear()
-        
+
         # 1. Email Notifier
         email_cfg = self.config.get("email", {})
         if email_cfg.get("enabled", False):
             self.register(EmailNotifier(email_cfg))
-            
+
         # 2. Webhook Notifier
         webhook_cfg = self.config.get("webhook", {})
         if webhook_cfg.get("enabled", False):
             self.register(WebhookNotifier(webhook_cfg))
-            
+
         # 3. LINE Notifier
         line_cfg = self.config.get("line", {})
         if line_cfg.get("enabled", False):
@@ -144,9 +147,7 @@ class NotificationManager:
                 "webhook": {
                     "enabled": False,
                     "default_url": "${WEBHOOK_URL}",
-                    "default_headers": {
-                        "Content-Type": "application/json"
-                    },
+                    "default_headers": {"Content-Type": "application/json"},
                     "timeout_seconds": 5,
                     "retry": 2,
                 },
@@ -154,7 +155,7 @@ class NotificationManager:
                     "enabled": False,
                     "access_token": "${LINE_NOTIFY_TOKEN}",
                     "timeout_seconds": 5,
-                }
+                },
             }
         }
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
