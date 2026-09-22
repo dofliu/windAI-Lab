@@ -118,7 +118,7 @@ docs/work-logs/
 | 日期 | 派工單 | 主要任務 | 完成度 |
 |------|--------|----------|--------|
 | 05-01 ~ 09-21 | — | 停擺期（僅 07-03 / 07-10 兩次 commit，皆未留派工紀錄） | ⚠ |
-| 09-22 | [allocation](2026-09/2026-09-22-allocation.md) | **復工健檢** — CI 紅燈 73 天定位 + 5 項缺陷記錄 + `TODO-roadmap.md` 損壞修復 + 文件全面校準；[auto-advance P0-1](2026-09/WLAB-20260922-02-ruff-autofix.md) ruff --fix 158 項 + black 格式化；[auto-advance P0-2](2026-09/WLAB-20260922-03-director-import-re.md) director.py 補 import re；[auto-advance P0-3](2026-09/WLAB-20260922-04-alert-engine-test-decouple.md) test_alert_engine.py 與生產 rules.yaml 解耦 | ✅ |
+| 09-22 | [allocation](2026-09/2026-09-22-allocation.md) | **復工健檢** — CI 紅燈 73 天定位 + 5 項缺陷記錄 + `TODO-roadmap.md` 損壞修復 + 文件全面校準；[auto-advance P0-1](2026-09/WLAB-20260922-02-ruff-autofix.md) ruff --fix 158 項 + black 格式化；[auto-advance P0-2](2026-09/WLAB-20260922-03-director-import-re.md) director.py 補 import re；[auto-advance P0-3](2026-09/WLAB-20260922-04-alert-engine-test-decouple.md) test_alert_engine.py 與生產 rules.yaml 解耦；[auto-advance P0-4](2026-09/WLAB-20260922-05-report-scheduler-notification-message.md) report_scheduler 補回遺失的報告通知內文 | ✅ |
 
 ### 2026 年 4 月
 
