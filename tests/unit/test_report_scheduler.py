@@ -132,5 +132,9 @@ class TestReportScheduler:
             assert "2** 件" in markdown_content  # 警報總數 2
             assert "1** 件" in markdown_content  # 嚴重警報 1, 完成工單 1, 進行中 1
 
-            # 驗證是否觸發 Email/LINE 通知
+            # 驗證是否觸發 Email/LINE 通知，且通知內文非空並帶有報告資訊
             notifier_mock.dispatch.assert_called_once()
+            dispatched_payload = notifier_mock.dispatch.call_args[0][0]
+            assert dispatched_payload.message
+            assert res["id"] in dispatched_payload.message
+            assert "全風場測試週報" in dispatched_payload.message

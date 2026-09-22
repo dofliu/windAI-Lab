@@ -22,6 +22,8 @@ class NotificationPayload:
     triggered_at: datetime
     recommended_action: str | None = None
     work_order_id: str | None = None
+    message: str | None = None
+    """預先組好的完整通知內文；若提供，Notifier 應優先使用而非自行組裝欄位。"""
 
 
 @dataclass

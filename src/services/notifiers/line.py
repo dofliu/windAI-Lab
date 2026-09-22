@@ -35,21 +35,24 @@ class LineNotifier(BaseNotifier):
                 error="未配置 LINE Notify Access Token",
             )
 
-        # 組裝 LINE Notify 純文字訊息
-        severity_upper = payload.severity.upper()
-        msg_lines = [
-            f"\n[WindAI][{severity_upper}] {payload.rule_name}",
-            f"風機：{payload.turbine_id}",
-            f"指標：{payload.metric} = {payload.metric_value}",
-            f"臨界值：{payload.threshold}",
-            f"時間：{payload.triggered_at.strftime('%Y-%m-%d %H:%M:%S')} (UTC)",
-        ]
-        if payload.work_order_id:
-            msg_lines.append(f"工單：#{payload.work_order_id}")
-        if payload.recommended_action:
-            msg_lines.append(f"建議動作：{payload.recommended_action}")
+        # 組裝 LINE Notify 純文字訊息：若呼叫端已組好完整訊息（如報告通知），優先採用
+        if payload.message:
+            message = f"\n{payload.message}"
+        else:
+            severity_upper = payload.severity.upper()
+            msg_lines = [
+                f"\n[WindAI][{severity_upper}] {payload.rule_name}",
+                f"風機：{payload.turbine_id}",
+                f"指標：{payload.metric} = {payload.metric_value}",
+                f"臨界值：{payload.threshold}",
+                f"時間：{payload.triggered_at.strftime('%Y-%m-%d %H:%M:%S')} (UTC)",
+            ]
+            if payload.work_order_id:
+                msg_lines.append(f"工單：#{payload.work_order_id}")
+            if payload.recommended_action:
+                msg_lines.append(f"建議動作：{payload.recommended_action}")
 
-        message = "\n".join(msg_lines)
+            message = "\n".join(msg_lines)
 
         # LINE Notify 採用 Form Data 傳遞 message
         headers = {

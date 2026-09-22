@@ -56,19 +56,22 @@ class EmailNotifier(BaseNotifier):
                 f"[WindAI Alert][{severity_upper}] {payload.rule_name} — {payload.turbine_id}"
             )
 
-            # 渲染郵件內文
-            body_text = (
-                f"風機編號：{payload.turbine_id}\n"
-                f"規則名稱：{payload.rule_name}\n"
-                f"嚴重程度：{payload.severity}\n"
-                f"觸發指標：{payload.metric} = {payload.metric_value}\n"
-                f"臨界值：{payload.threshold}\n"
-                f"觸發時間：{payload.triggered_at.strftime('%Y-%m-%d %H:%M:%S')} (UTC)\n"
-            )
-            if payload.recommended_action:
-                body_text += f"建議動作：{payload.recommended_action}\n"
-            if payload.work_order_id:
-                body_text += f"工單編號：{payload.work_order_id}\n"
+            # 渲染郵件內文：若呼叫端已組好完整訊息（如報告通知），優先採用
+            if payload.message:
+                body_text = payload.message
+            else:
+                body_text = (
+                    f"風機編號：{payload.turbine_id}\n"
+                    f"規則名稱：{payload.rule_name}\n"
+                    f"嚴重程度：{payload.severity}\n"
+                    f"觸發指標：{payload.metric} = {payload.metric_value}\n"
+                    f"臨界值：{payload.threshold}\n"
+                    f"觸發時間：{payload.triggered_at.strftime('%Y-%m-%d %H:%M:%S')} (UTC)\n"
+                )
+                if payload.recommended_action:
+                    body_text += f"建議動作：{payload.recommended_action}\n"
+                if payload.work_order_id:
+                    body_text += f"工單編號：{payload.work_order_id}\n"
 
             body_text += "\n此郵件由 WindAI Lab 自動發送，請勿直接回覆。"
             msg.attach(MIMEText(body_text, "plain", "utf-8"))

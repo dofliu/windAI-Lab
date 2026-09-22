@@ -336,6 +336,7 @@ class ReportScheduler:
             triggered_at=datetime.now(),
             recommended_action=f"正式 HTML 預覽與 PDF 列印下載連結：{download_url}",
             work_order_id=None,
+            message=message,
         )
 
         try:
