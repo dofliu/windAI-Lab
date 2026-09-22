@@ -98,11 +98,13 @@ class TestRealAgentPath:
         fake = FakeAgent("agent-1", result_data={"r2_score": 0.95})
         model = _make_agent_model("agent-1")
 
-        with patch("src.agents.orchestrator.engine.get_agent", return_value=model), patch(
-            "src.agents.orchestrator.engine.update_agent_status", return_value=model
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=fake,
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", return_value=model),
+            patch("src.agents.orchestrator.engine.update_agent_status", return_value=model),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=fake,
+            ),
         ):
             step = WorkflowStep(
                 name="train",
@@ -132,15 +134,19 @@ class TestRealAgentPath:
         def get_instance_side_effect(aid: str) -> FakeAgent | None:
             return {"a": agent_a, "b": agent_b}.get(aid)
 
-        with patch(
-            "src.agents.orchestrator.engine.get_agent",
-            side_effect=get_agent_side_effect,
-        ), patch(
-            "src.agents.orchestrator.engine.update_agent_status",
-            side_effect=lambda aid, **kw: get_agent_side_effect(aid),
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            side_effect=get_instance_side_effect,
+        with (
+            patch(
+                "src.agents.orchestrator.engine.get_agent",
+                side_effect=get_agent_side_effect,
+            ),
+            patch(
+                "src.agents.orchestrator.engine.update_agent_status",
+                side_effect=lambda aid, **kw: get_agent_side_effect(aid),
+            ),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                side_effect=get_instance_side_effect,
+            ),
         ):
             step = WorkflowStep(
                 name="parallel-analysis",
@@ -161,11 +167,13 @@ class TestRealAgentPath:
         fake = FakeAgent("agent-1")
         model = _make_agent_model("agent-1")
 
-        with patch("src.agents.orchestrator.engine.get_agent", return_value=model), patch(
-            "src.agents.orchestrator.engine.update_agent_status", return_value=model
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=fake,
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", return_value=model),
+            patch("src.agents.orchestrator.engine.update_agent_status", return_value=model),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=fake,
+            ),
         ):
             step = WorkflowStep(
                 name="diagnose",
@@ -182,18 +190,18 @@ class TestRealAgentPath:
         assert fake.task_calls[0][0] == "diagnose WT-01 with xgboost"
 
     @pytest.mark.asyncio
-    async def test_missing_template_var_fallback(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_missing_template_var_fallback(self, engine: OrchestrationEngine) -> None:
         """task_template 佔位符缺失時不崩潰（使用 description fallback）。"""
         fake = FakeAgent("agent-1")
         model = _make_agent_model("agent-1")
 
-        with patch("src.agents.orchestrator.engine.get_agent", return_value=model), patch(
-            "src.agents.orchestrator.engine.update_agent_status", return_value=model
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=fake,
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", return_value=model),
+            patch("src.agents.orchestrator.engine.update_agent_status", return_value=model),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=fake,
+            ),
         ):
             step = WorkflowStep(
                 name="diagnose",
@@ -217,13 +225,14 @@ class TestSimulationPath:
         """代理無實例時退回模擬路徑。"""
         model = _make_agent_model("agent-1")
 
-        with patch("src.agents.orchestrator.engine.get_agent", return_value=model), patch(
-            "src.agents.orchestrator.engine.update_agent_status", return_value=model
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=None,  # 無實例
-        ), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", return_value=model),
+            patch("src.agents.orchestrator.engine.update_agent_status", return_value=model),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=None,  # 無實例
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             step = WorkflowStep(
                 name="sim-step",
@@ -237,9 +246,7 @@ class TestSimulationPath:
         assert result == {}
 
     @pytest.mark.asyncio
-    async def test_nonexistent_agent_returns_empty(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_nonexistent_agent_returns_empty(self, engine: OrchestrationEngine) -> None:
         """代理在 registry 中不存在時回傳空 dict。"""
         with patch("src.agents.orchestrator.engine.get_agent", return_value=None):
             step = WorkflowStep(
@@ -257,9 +264,7 @@ class TestSimulationPath:
 
 class TestResultAccumulation:
     @pytest.mark.asyncio
-    async def test_results_accumulate_across_steps(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_results_accumulate_across_steps(self, engine: OrchestrationEngine) -> None:
         """跨步驟的結果應正確累積。"""
         agent_1 = FakeAgent("a1", result_data={"step1_data": "val1"})
         agent_2 = FakeAgent("a2", result_data={"step2_data": "val2"})
@@ -272,16 +277,17 @@ class TestResultAccumulation:
         def get_instance_se(aid: str) -> FakeAgent | None:
             return {"a1": agent_1, "a2": agent_2}.get(aid)
 
-        with patch(
-            "src.agents.orchestrator.engine.get_agent", side_effect=get_agent_se
-        ), patch(
-            "src.agents.orchestrator.engine.update_agent_status",
-            side_effect=lambda aid, **kw: get_agent_se(aid),
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            side_effect=get_instance_se,
-        ), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", side_effect=get_agent_se),
+            patch(
+                "src.agents.orchestrator.engine.update_agent_status",
+                side_effect=lambda aid, **kw: get_agent_se(aid),
+            ),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                side_effect=get_instance_se,
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             workflow = Workflow(
                 id="test-wf",
@@ -322,10 +328,11 @@ class TestRetryIntegration:
                 return {"agent": {"status": "error"}}
             return {"agent": {"status": "success", "data": "ok"}}
 
-        with patch.object(engine, "_run_step", side_effect=mock_run_step), patch.object(
-            engine, "_create_log", return_value=MagicMock()
-        ), patch("src.agents.orchestrator.engine.ws_manager"), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch.object(engine, "_run_step", side_effect=mock_run_step),
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch("src.agents.orchestrator.engine.ws_manager"),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             step = WorkflowStep(
                 name="retry-step",
@@ -333,25 +340,22 @@ class TestRetryIntegration:
                 description="retryable",
                 retry=RetryConfig(max_retries=3, retry_delay=0.01),
             )
-            results, should_continue = await engine._run_step_with_retry(
-                step, 0, 1, {}
-            )
+            results, should_continue = await engine._run_step_with_retry(step, 0, 1, {})
         assert should_continue is True
         assert call_count == 3
 
     @pytest.mark.asyncio
-    async def test_all_retries_exhausted_abort(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_all_retries_exhausted_abort(self, engine: OrchestrationEngine) -> None:
         """所有重試耗盡後使用 ABORT 策略。"""
 
         async def always_fail(step, acc=None):
             return {"agent": {"status": "error"}}
 
-        with patch.object(engine, "_run_step", side_effect=always_fail), patch.object(
-            engine, "_create_log", return_value=MagicMock()
-        ), patch("src.agents.orchestrator.engine.ws_manager"), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch.object(engine, "_run_step", side_effect=always_fail),
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch("src.agents.orchestrator.engine.ws_manager"),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             step = WorkflowStep(
                 name="doomed",
@@ -363,24 +367,21 @@ class TestRetryIntegration:
                     degradation=DegradationStrategy.ABORT,
                 ),
             )
-            results, should_continue = await engine._run_step_with_retry(
-                step, 0, 1, {}
-            )
+            results, should_continue = await engine._run_step_with_retry(step, 0, 1, {})
         assert should_continue is False
 
     @pytest.mark.asyncio
-    async def test_all_retries_exhausted_skip(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_all_retries_exhausted_skip(self, engine: OrchestrationEngine) -> None:
         """所有重試耗盡後使用 SKIP 策略應繼續。"""
 
         async def always_fail(step, acc=None):
             return {"agent": {"status": "error"}}
 
-        with patch.object(engine, "_run_step", side_effect=always_fail), patch.object(
-            engine, "_create_log", return_value=MagicMock()
-        ), patch("src.agents.orchestrator.engine.ws_manager"), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch.object(engine, "_run_step", side_effect=always_fail),
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch("src.agents.orchestrator.engine.ws_manager"),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             step = WorkflowStep(
                 name="skippable",
@@ -392,15 +393,11 @@ class TestRetryIntegration:
                     degradation=DegradationStrategy.SKIP,
                 ),
             )
-            results, should_continue = await engine._run_step_with_retry(
-                step, 0, 1, {}
-            )
+            results, should_continue = await engine._run_step_with_retry(step, 0, 1, {})
         assert should_continue is True
 
     @pytest.mark.asyncio
-    async def test_exception_triggers_retry(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_exception_triggers_retry(self, engine: OrchestrationEngine) -> None:
         """步驟拋出例外時也觸發重試。"""
         call_count = 0
 
@@ -411,10 +408,10 @@ class TestRetryIntegration:
                 raise RuntimeError("transient error")
             return {"agent": {"ok": True}}
 
-        with patch.object(
-            engine, "_run_step", side_effect=fail_then_succeed
-        ), patch.object(engine, "_create_log", return_value=MagicMock()), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch.object(engine, "_run_step", side_effect=fail_then_succeed),
+            patch.object(engine, "_create_log", return_value=MagicMock()),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             step = WorkflowStep(
                 name="exception-retry",
@@ -422,9 +419,7 @@ class TestRetryIntegration:
                 description="test",
                 retry=RetryConfig(max_retries=2, retry_delay=0.01),
             )
-            results, should_continue = await engine._run_step_with_retry(
-                step, 0, 1, {}
-            )
+            results, should_continue = await engine._run_step_with_retry(step, 0, 1, {})
         assert should_continue is True
         assert call_count == 2
 
@@ -483,11 +478,13 @@ class TestCollaborators:
         agent_a = FakeAgent("a")
         model = _make_agent_model("a")
 
-        with patch("src.agents.orchestrator.engine.get_agent", return_value=model), patch(
-            "src.agents.orchestrator.engine.update_agent_status", return_value=model
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=agent_a,
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", return_value=model),
+            patch("src.agents.orchestrator.engine.update_agent_status", return_value=model),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=agent_a,
+            ),
         ):
             step = WorkflowStep(
                 name="collab",
@@ -506,11 +503,13 @@ class TestCollaborators:
         agent_a = FakeAgent("a")
         model = _make_agent_model("a")
 
-        with patch("src.agents.orchestrator.engine.get_agent", return_value=model), patch(
-            "src.agents.orchestrator.engine.update_agent_status", return_value=model
-        ), patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=agent_a,
+        with (
+            patch("src.agents.orchestrator.engine.get_agent", return_value=model),
+            patch("src.agents.orchestrator.engine.update_agent_status", return_value=model),
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=agent_a,
+            ),
         ):
             step = WorkflowStep(
                 name="collab",
@@ -532,14 +531,17 @@ class TestExecuteAgentTask:
         """直接呼叫已註冊代理執行任務。"""
         fake = FakeAgent("direct-agent", result_data={"result": "ok"})
 
-        with patch(
-            "src.agents.dynamic_registry.dynamic_registry.get_instance",
-            return_value=fake,
-        ), patch("src.agents.orchestrator.engine.ws_manager"), patch(
-            "src.agents.orchestrator.engine.update_agent_status",
-            return_value=_make_agent_model("direct-agent"),
-        ), patch(
-            "asyncio.sleep", new_callable=AsyncMock
+        with (
+            patch(
+                "src.agents.dynamic_registry.dynamic_registry.get_instance",
+                return_value=fake,
+            ),
+            patch("src.agents.orchestrator.engine.ws_manager"),
+            patch(
+                "src.agents.orchestrator.engine.update_agent_status",
+                return_value=_make_agent_model("direct-agent"),
+            ),
+            patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             result = await engine.execute_agent_task(
                 "direct-agent",
@@ -551,17 +553,13 @@ class TestExecuteAgentTask:
         assert result["data"]["result"] == "ok"
 
     @pytest.mark.asyncio
-    async def test_unregistered_agent_returns_error(
-        self, engine: OrchestrationEngine
-    ) -> None:
+    async def test_unregistered_agent_returns_error(self, engine: OrchestrationEngine) -> None:
         """未註冊代理回傳錯誤。"""
         with patch(
             "src.agents.dynamic_registry.dynamic_registry.get_instance",
             return_value=None,
         ):
-            result = await engine.execute_agent_task(
-                "ghost-agent", "do something"
-            )
+            result = await engine.execute_agent_task("ghost-agent", "do something")
 
         assert "error" in result
 

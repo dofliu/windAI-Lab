@@ -6,6 +6,7 @@ import asyncio
 import logging
 import time
 from typing import Any
+
 import httpx
 
 from src.services.notifiers.base import BaseNotifier, NotificationPayload, NotificationResult
@@ -27,7 +28,7 @@ class WebhookNotifier(BaseNotifier):
 
     async def send(self, payload: NotificationPayload) -> NotificationResult:
         start_time = time.time()
-        
+
         # 決定 URL (支援覆寫)
         url = self.default_url
         if not url:
@@ -54,13 +55,13 @@ class WebhookNotifier(BaseNotifier):
                 "triggered_at": payload.triggered_at.isoformat(),
                 "recommended_action": payload.recommended_action,
                 "work_order_id": payload.work_order_id,
-            }
+            },
         }
 
         # 異步發送 POST，帶重試機制
         headers = {"Content-Type": "application/json"}
         headers.update(self.default_headers)
-        
+
         attempt = 0
         last_error = ""
         while attempt <= self.retry:
@@ -77,12 +78,12 @@ class WebhookNotifier(BaseNotifier):
                         last_error = f"HTTP 狀態碼：{response.status_code}"
             except Exception as e:
                 last_error = str(e)
-                
+
             attempt += 1
             if attempt <= self.retry:
                 # 指數退避等待
                 await asyncio.sleep(attempt * 2)
-                
+
         return NotificationResult(
             channel=self.channel_name,
             success=False,

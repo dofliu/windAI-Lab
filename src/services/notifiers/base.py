@@ -15,7 +15,7 @@ class NotificationPayload:
     turbine_id: str
     rule_id: str
     rule_name: str
-    severity: str          # info / warning / critical
+    severity: str  # info / warning / critical
     metric: str
     metric_value: float
     threshold: float

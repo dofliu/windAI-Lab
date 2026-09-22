@@ -71,9 +71,7 @@ class TestWebSocketManager:
         ws2.send_json.assert_called_once_with(data)
 
     @pytest.mark.asyncio
-    async def test_broadcast_removes_dead_connections(
-        self, mgr: WebSocketManager
-    ) -> None:
+    async def test_broadcast_removes_dead_connections(self, mgr: WebSocketManager) -> None:
         ws_alive = _make_mock_ws()
         ws_dead = _make_mock_ws(should_fail=True)
         mgr._active_connections = [ws_alive, ws_dead]

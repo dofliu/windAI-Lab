@@ -332,7 +332,7 @@ class TestAlertRuleOperators:
     def test_load_rules_from_yaml(self, tmp_path) -> None:
         """測試從 YAML 載入自訂告警規則與格式異常時的 Fallback。"""
         yaml_file = tmp_path / "custom_rules.yaml"
-        
+
         # 1. 寫入自訂 YAML 內容
         custom_yaml = """
 rules:
@@ -351,10 +351,10 @@ rules:
     description_template: "溫度超過 {temp_val:.1f} 度"
 """
         yaml_file.write_text(custom_yaml, encoding="utf-8")
-        
+
         # 2. 載入自訂規則
         self.engine.load_rules(yaml_file)
-        
+
         assert len(self.engine.rules) == 1
         rule = self.engine.get_rule("custom_rule_1")
         assert rule is not None
@@ -370,7 +370,7 @@ rules:
         bad_yaml = "invalid: yaml: [unbalanced"
         bad_yaml_file = tmp_path / "bad_rules.yaml"
         bad_yaml_file.write_text(bad_yaml, encoding="utf-8")
-        
+
         # 呼叫 load_rules 應捕捉 Exception，且維持舊的 custom_rule_1 規則不崩潰
         self.engine.load_rules(bad_yaml_file)
         assert len(self.engine.rules) == 1

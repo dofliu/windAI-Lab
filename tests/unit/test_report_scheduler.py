@@ -1,13 +1,13 @@
 """報告排程與自動生成單元測試。"""
 
-import asyncio
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from datetime import datetime, UTC
-import yaml
-from pathlib import Path
 
-from src.services.report_scheduler import ReportScheduler, get_report_scheduler
+import pytest
+import yaml
+
+from src.services.report_scheduler import ReportScheduler
+
 
 class TestReportScheduler:
     """ReportScheduler 核心測試。"""
@@ -32,7 +32,7 @@ class TestReportScheduler:
                     "interval_seconds": 86400,
                     "report_type": "monthly",
                     "turbine_id": "WT-01",
-                }
+                },
             ]
         }
         with open(config_file, "w", encoding="utf-8") as f:
@@ -54,40 +54,44 @@ class TestReportScheduler:
         db_mock = MagicMock()
 
         # 準備模擬 alerts 與 work_orders 數據
-        db_mock.list_alerts = MagicMock(return_value=[
-            {
-                "id": "ALT_1",
-                "turbine_id": "WT-01",
-                "severity": "critical",
-                "message": "溫度異常",
-                "status": "resolved",
-                "created_at": datetime.now(UTC).isoformat(),
-            },
-            {
-                "id": "ALT_2",
-                "turbine_id": "WT-01",
-                "severity": "warning",
-                "message": "微幅偏差",
-                "status": "active",
-                "created_at": datetime.now(UTC).isoformat(),
-            }
-        ])
-        db_mock.list_work_orders = MagicMock(return_value=[
-            {
-                "id": "WO_1",
-                "turbine_id": "WT-01",
-                "title": "檢查風機",
-                "status": "completed",
-                "created_at": datetime.now(UTC).isoformat(),
-            },
-            {
-                "id": "WO_2",
-                "turbine_id": "WT-01",
-                "title": "檢查發電機",
-                "status": "in_progress",
-                "created_at": datetime.now(UTC).isoformat(),
-            }
-        ])
+        db_mock.list_alerts = MagicMock(
+            return_value=[
+                {
+                    "id": "ALT_1",
+                    "turbine_id": "WT-01",
+                    "severity": "critical",
+                    "message": "溫度異常",
+                    "status": "resolved",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+                {
+                    "id": "ALT_2",
+                    "turbine_id": "WT-01",
+                    "severity": "warning",
+                    "message": "微幅偏差",
+                    "status": "active",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+            ]
+        )
+        db_mock.list_work_orders = MagicMock(
+            return_value=[
+                {
+                    "id": "WO_1",
+                    "turbine_id": "WT-01",
+                    "title": "檢查風機",
+                    "status": "completed",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+                {
+                    "id": "WO_2",
+                    "turbine_id": "WT-01",
+                    "title": "檢查發電機",
+                    "status": "in_progress",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+            ]
+        )
 
         # Mock 資料庫 Connection，模擬 daily_sheets 統計
         conn_mock = MagicMock()
@@ -100,9 +104,14 @@ class TestReportScheduler:
         notifier_mock = MagicMock()
         notifier_mock.dispatch = AsyncMock()
 
-        with patch("src.core.database.get_database", return_value=db_mock), \
-             patch("src.services.report_scheduler.get_notification_manager", return_value=notifier_mock), \
-             patch("src.services.report_store.save_report") as save_mock:
+        with (
+            patch("src.core.database.get_database", return_value=db_mock),
+            patch(
+                "src.services.report_scheduler.get_notification_manager",
+                return_value=notifier_mock,
+            ),
+            patch("src.services.report_store.save_report") as save_mock,
+        ):
 
             res = scheduler.generate_and_dispatch("weekly", "all", "全風場測試週報")
 

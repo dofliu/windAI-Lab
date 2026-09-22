@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import logging
 import smtplib
 import time
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Any
 
 from src.services.notifiers.base import BaseNotifier, NotificationPayload, NotificationResult
@@ -33,10 +33,10 @@ class EmailNotifier(BaseNotifier):
 
     async def send(self, payload: NotificationPayload) -> NotificationResult:
         start_time = time.time()
-        
+
         # 決定收件者 (支援從額外 metadata 中傳入 recipients，否則用預設值)
         recipients = self.default_recipients
-        
+
         if not recipients:
             return NotificationResult(
                 channel=self.channel_name,
@@ -50,10 +50,12 @@ class EmailNotifier(BaseNotifier):
             msg = MIMEMultipart()
             msg["From"] = self.from_address
             msg["To"] = ", ".join(recipients)
-            
+
             severity_upper = payload.severity.upper()
-            msg["Subject"] = f"[WindAI Alert][{severity_upper}] {payload.rule_name} — {payload.turbine_id}"
-            
+            msg["Subject"] = (
+                f"[WindAI Alert][{severity_upper}] {payload.rule_name} — {payload.turbine_id}"
+            )
+
             # 渲染郵件內文
             body_text = (
                 f"風機編號：{payload.turbine_id}\n"
@@ -67,13 +69,13 @@ class EmailNotifier(BaseNotifier):
                 body_text += f"建議動作：{payload.recommended_action}\n"
             if payload.work_order_id:
                 body_text += f"工單編號：{payload.work_order_id}\n"
-                
+
             body_text += "\n此郵件由 WindAI Lab 自動發送，請勿直接回覆。"
             msg.attach(MIMEText(body_text, "plain", "utf-8"))
-            
+
             # 異步執行同步 smtplib 寄送
             await asyncio.to_thread(self._send_sync, msg, recipients)
-            
+
             return NotificationResult(
                 channel=self.channel_name,
                 success=True,

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+
 import yaml
 
 from src.services import report_store
@@ -24,7 +25,9 @@ class ReportScheduler:
     def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or (_PROJECT_ROOT / "configs" / "reports" / "schedule.yaml")
         self.schedules: list[dict[str, Any]] = []
-        self.last_run_dates: dict[str, str] = {}  # 紀錄每個排程的最後執行自然週/月：id -> '2026-W18' or '2026-06'
+        self.last_run_dates: dict[str, str] = (
+            {}
+        )  # 紀錄每個排程的最後執行自然週/月：id -> '2026-W18' or '2026-06'
         self.active_tasks: list[asyncio.Task[None]] = []
         self.is_running = False
 
@@ -35,7 +38,7 @@ class ReportScheduler:
             return 0
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             self.schedules = [s for s in data.get("schedules", []) if s.get("enabled", False)]
             logger.info(f"報告排程載入成功：共啟用 {len(self.schedules)} 個自動排程")
@@ -85,7 +88,7 @@ class ReportScheduler:
                 if report_type == "weekly":
                     period_str = now.strftime("%Y-W%W")  # 例如 '2026-W18'
                 elif report_type == "monthly":
-                    period_str = now.strftime("%Y-%m")   # 例如 '2026-06'
+                    period_str = now.strftime("%Y-%m")  # 例如 '2026-06'
                 else:
                     period_str = now.strftime("%Y%m%d_%H%M")  # demo 快速生成
 
@@ -93,7 +96,9 @@ class ReportScheduler:
 
                 # 如果進入了新的週期，或者從未執行過，則生成報告
                 if last_run != period_str:
-                    logger.info(f"排程 [{schedule_name}] 偵測到新週期 {period_str}，開始自動生成報告...")
+                    logger.info(
+                        f"排程 [{schedule_name}] 偵測到新週期 {period_str}，開始自動生成報告..."
+                    )
                     self.generate_and_dispatch(report_type, turbine_id, schedule_name)
                     self.last_run_dates[sched_id] = period_str
 
@@ -104,7 +109,9 @@ class ReportScheduler:
                 logger.error(f"排程 [{schedule_name}] 執行錯誤：{e}")
                 await asyncio.sleep(60)
 
-    def generate_and_dispatch(self, report_type: str, turbine_id: str, title_prefix: str) -> dict[str, Any]:
+    def generate_and_dispatch(
+        self, report_type: str, turbine_id: str, title_prefix: str
+    ) -> dict[str, Any]:
         """彙整資料庫數據，生成 Markdown 報告，儲存並發送通知。"""
         # 1. 決定時間範圍 (週報: 7 天；月報: 30 天)
         days = 7 if report_type == "weekly" else 30
@@ -122,8 +129,9 @@ class ReportScheduler:
 
         try:
             from src.core.database import get_database
+
             db = get_database()
-            
+
             # 統計警報
             all_alerts = db.list_alerts(limit=500)
             for alt in all_alerts:
@@ -154,10 +162,10 @@ class ReportScheduler:
                 # 統計區間內 signed_off 的數量
                 start_str = start_time.strftime("%Y-%m-%d")
                 end_str = end_time.strftime("%Y-%m-%d")
-                
+
                 cursor.execute(
                     "SELECT COUNT(*), SUM(signed_off) FROM daily_sheets WHERE date >= ? AND date <= ?",
-                    (start_str, end_str)
+                    (start_str, end_str),
                 )
                 row = cursor.fetchone()
                 if row:
@@ -197,7 +205,7 @@ class ReportScheduler:
             completed_orders=completed_orders,
             total_sheets=total_sheets,
             signed_sheets=signed_sheets,
-            signoff_ratio=signoff_ratio
+            signoff_ratio=signoff_ratio,
         )
 
         # 5. 保存報告
@@ -207,11 +215,7 @@ class ReportScheduler:
         # 6. 發送電子通知聯動
         self._dispatch_report_notification(report_id, title, report_type, turbine_id)
 
-        return {
-            "id": report_id,
-            "title": title,
-            "created_at": end_time.isoformat()
-        }
+        return {"id": report_id, "title": title, "created_at": end_time.isoformat()}
 
     def _parse_iso(self, iso_str: str | None) -> datetime | None:
         if not iso_str:
@@ -229,13 +233,23 @@ class ReportScheduler:
                 return None
 
     def _render_markdown_report(
-        self, title: str, report_id: str, report_type: str, date_range: str, turbine_id: str,
-        alerts_count: int, resolved_alerts: int, critical_alerts: int,
-        open_orders: int, completed_orders: int,
-        total_sheets: int, signed_sheets: int, signoff_ratio: float
+        self,
+        title: str,
+        report_id: str,
+        report_type: str,
+        date_range: str,
+        turbine_id: str,
+        alerts_count: int,
+        resolved_alerts: int,
+        critical_alerts: int,
+        open_orders: int,
+        completed_orders: int,
+        total_sheets: int,
+        signed_sheets: int,
+        signoff_ratio: float,
     ) -> str:
         """渲染高質感正式 Markdown 報告內容。"""
-        
+
         # 決定 AI 運維優化建議內容
         if report_type == "weekly":
             ai_suggestions = (
@@ -295,10 +309,12 @@ class ReportScheduler:
 {ai_suggestions}
 """
 
-    def _dispatch_report_notification(self, report_id: str, title: str, report_type: str, turbine_id: str) -> None:
+    def _dispatch_report_notification(
+        self, report_id: str, title: str, report_type: str, turbine_id: str
+    ) -> None:
         """當新報告自動生成後，主動呼叫通知管理器發布 Email & LINE。"""
         download_url = f"http://localhost:5800/api/reports/{report_id}/download"
-        
+
         message = (
             f"📢 【windAI-Lab 運維報告通知】\n"
             f"一份新的正式運維報告已成功自動生成！\n\n"
@@ -319,7 +335,7 @@ class ReportScheduler:
             threshold=0.0,
             triggered_at=datetime.now(),
             recommended_action=f"正式 HTML 預覽與 PDF 列印下載連結：{download_url}",
-            work_order_id=None
+            work_order_id=None,
         )
 
         try:
@@ -333,6 +349,7 @@ class ReportScheduler:
 
 # 全域單例
 _scheduler: ReportScheduler | None = None
+
 
 def get_report_scheduler() -> ReportScheduler:
     """取得報告排程器全域單例。"""

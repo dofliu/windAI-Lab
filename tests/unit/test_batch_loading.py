@@ -54,7 +54,7 @@ def _make_csv_files(
         timestamps = pd.date_range(start, periods=rows_per_file, freq=f"{interval_seconds}s")
 
         wind_speed = rng.weibull(2.0, rows_per_file) * 7 + 1
-        power = np.clip(wind_speed ** 3 * 0.5, 0, 2050)
+        power = np.clip(wind_speed**3 * 0.5, 0, 2050)
 
         df = pd.DataFrame(
             {
@@ -232,10 +232,12 @@ class TestEnsureDatetimeIndex:
 
     def test_converts_timestamp_column_to_index(self) -> None:
         """確認能將 Timestamp 欄位轉為 DatetimeIndex。"""
-        df = pd.DataFrame({
-            "Timestamp": pd.date_range("2024-01-01", periods=5, freq="1min"),
-            "value": [1, 2, 3, 4, 5],
-        })
+        df = pd.DataFrame(
+            {
+                "Timestamp": pd.date_range("2024-01-01", periods=5, freq="1min"),
+                "value": [1, 2, 3, 4, 5],
+            }
+        )
         result = _ensure_datetime_index(df)
         assert isinstance(result.index, pd.DatetimeIndex)
 
@@ -302,20 +304,24 @@ class TestInferSamplingInterval:
 
     def test_detects_1_second(self) -> None:
         """確認偵測 1 秒取樣。"""
-        df = pd.DataFrame({
-            "Timestamp": pd.date_range("2024-01-01", periods=100, freq="1s"),
-            "value": range(100),
-        })
+        df = pd.DataFrame(
+            {
+                "Timestamp": pd.date_range("2024-01-01", periods=100, freq="1s"),
+                "value": range(100),
+            }
+        )
         interval = _infer_sampling_interval(df)
         assert interval is not None
         assert abs(interval - 1.0) < 0.1
 
     def test_detects_10_minutes(self) -> None:
         """確認偵測 10 分鐘取樣。"""
-        df = pd.DataFrame({
-            "DateTime": pd.date_range("2024-01-01", periods=100, freq="10min"),
-            "value": range(100),
-        })
+        df = pd.DataFrame(
+            {
+                "DateTime": pd.date_range("2024-01-01", periods=100, freq="10min"),
+                "value": range(100),
+            }
+        )
         interval = _infer_sampling_interval(df)
         assert interval is not None
         assert abs(interval - 600.0) < 1.0

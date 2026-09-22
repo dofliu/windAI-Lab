@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from typing import Any
+
 import httpx
 
 from src.services.notifiers.base import BaseNotifier, NotificationPayload, NotificationResult
@@ -25,7 +25,7 @@ class LineNotifier(BaseNotifier):
 
     async def send(self, payload: NotificationPayload) -> NotificationResult:
         start_time = time.time()
-        
+
         token = self.access_token
         if not token:
             return NotificationResult(
@@ -48,7 +48,7 @@ class LineNotifier(BaseNotifier):
             msg_lines.append(f"工單：#{payload.work_order_id}")
         if payload.recommended_action:
             msg_lines.append(f"建議動作：{payload.recommended_action}")
-            
+
         message = "\n".join(msg_lines)
 
         # LINE Notify 採用 Form Data 傳遞 message

@@ -132,11 +132,15 @@ class TestDuplicateRemoval:
 
     def test_multiple_duplicate_groups_all_removed(self) -> None:
         """確認多組重複時間戳記均被移除，只保留每組的第一筆。"""
-        index = pd.DatetimeIndex([
-            "2024-01-01 00:00", "2024-01-01 00:00",   # 第一組：1 個重複
-            "2024-01-01 00:10", "2024-01-01 00:10",   # 第二組：1 個重複
-            "2024-01-01 00:20",
-        ])
+        index = pd.DatetimeIndex(
+            [
+                "2024-01-01 00:00",
+                "2024-01-01 00:00",  # 第一組：1 個重複
+                "2024-01-01 00:10",
+                "2024-01-01 00:10",  # 第二組：1 個重複
+                "2024-01-01 00:20",
+            ]
+        )
         df = pd.DataFrame(
             {"Wind Speed_Mean": [5.0] * 5, "Active Power_Mean": [200.0] * 5},
             index=index,
@@ -167,7 +171,7 @@ class TestOutlierDetection:
 
         條件：ws > cut_in (3.0) + 1 = 4.0 且 power < -10
         """
-        ws = [5.0, 6.0, 7.0]     # 均高於 4.0
+        ws = [5.0, 6.0, 7.0]  # 均高於 4.0
         pwr = [-200.0, 500.0, 600.0]  # 第一筆為明顯負功率
         df = _make_scada_df(n=3, ws_values=ws, pwr_values=pwr)
         df_clean, report = clean_scada_data(df)

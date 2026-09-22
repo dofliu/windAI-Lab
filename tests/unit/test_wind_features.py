@@ -38,9 +38,7 @@ def _make_wind_df(
     """
     index = pd.date_range(start="2024-01-01", periods=n, freq="10min")
     ws = ws_values if ws_values is not None else [float(i % 15 + 2) for i in range(n)]
-    pwr = pwr_values if pwr_values is not None else [
-        min(float(w**2 * 10), 2050.0) for w in ws
-    ]
+    pwr = pwr_values if pwr_values is not None else [min(float(w**2 * 10), 2050.0) for w in ws]
     return pd.DataFrame({ws_col: ws, power_col: pwr}, index=index)
 
 
@@ -195,9 +193,7 @@ class TestComputeTemperatureFeatures:
 
     def test_handles_missing_temperature_columns_gracefully(self) -> None:
         """確認缺少溫度欄位時不拋出例外，僅跳過對應特徵。"""
-        df = pd.DataFrame(
-            {"Wind Speed_Mean": [5.0, 10.0], "Active Power_Mean": [300.0, 1200.0]}
-        )
+        df = pd.DataFrame({"Wind Speed_Mean": [5.0, 10.0], "Active Power_Mean": [300.0, 1200.0]})
         result = compute_temperature_features(df)
         assert isinstance(result, pd.DataFrame)
         assert "gear_oil_temp_delta" not in result.columns
@@ -298,9 +294,7 @@ class TestComputeOperationalFeatures:
         result = compute_operational_features(df)
         assert "tip_speed_ratio" in result.columns
 
-    def test_operating_state_column_dtype_is_object(
-        self, sample_scada_df: pd.DataFrame
-    ) -> None:
+    def test_operating_state_column_dtype_is_object(self, sample_scada_df: pd.DataFrame) -> None:
         """確認 operating_state 欄位為字串型別。"""
         result = compute_operational_features(sample_scada_df)
         assert pd.api.types.is_string_dtype(result["operating_state"])

@@ -261,16 +261,12 @@ class TestApplyParamAdjustments:
 
     def test_double(self) -> None:
         params = {"n_estimators": 100}
-        result = OrchestrationEngine._apply_param_adjustments(
-            params, {"n_estimators": "double"}
-        )
+        result = OrchestrationEngine._apply_param_adjustments(params, {"n_estimators": "double"})
         assert result["n_estimators"] == 200
 
     def test_halve(self) -> None:
         params = {"learning_rate": 0.1}
-        result = OrchestrationEngine._apply_param_adjustments(
-            params, {"learning_rate": "halve"}
-        )
+        result = OrchestrationEngine._apply_param_adjustments(params, {"learning_rate": "halve"})
         assert result["learning_rate"] == pytest.approx(0.05)
 
     def test_increase_100pct(self) -> None:
@@ -296,16 +292,12 @@ class TestApplyParamAdjustments:
 
     def test_float_stays_float(self) -> None:
         params = {"learning_rate": 0.1}
-        result = OrchestrationEngine._apply_param_adjustments(
-            params, {"learning_rate": "double"}
-        )
+        result = OrchestrationEngine._apply_param_adjustments(params, {"learning_rate": "double"})
         assert isinstance(result["learning_rate"], float)
 
     def test_nonexistent_param_ignored(self) -> None:
         params = {"a": 1}
-        result = OrchestrationEngine._apply_param_adjustments(
-            params, {"nonexistent": "double"}
-        )
+        result = OrchestrationEngine._apply_param_adjustments(params, {"nonexistent": "double"})
         assert result == {"a": 1}
 
     def test_non_numeric_param_ignored(self) -> None:
@@ -318,9 +310,7 @@ class TestApplyParamAdjustments:
 
     def test_does_not_mutate_original(self) -> None:
         params = {"n_estimators": 100}
-        result = OrchestrationEngine._apply_param_adjustments(
-            params, {"n_estimators": "double"}
-        )
+        result = OrchestrationEngine._apply_param_adjustments(params, {"n_estimators": "double"})
         assert params["n_estimators"] == 100
         assert result["n_estimators"] == 200
 

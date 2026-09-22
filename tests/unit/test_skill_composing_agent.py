@@ -170,25 +170,19 @@ class TestSkillComposingAgent:
         assert route.pipeline == ["test_clean"]
 
     def test_match_route_no_routes(self, skill_registry: SkillRegistry) -> None:
-        spec = AgentSpec(
-            id="empty-agent", name="wAI:empty", display_name="空代理", tier="ai-ml"
-        )
+        spec = AgentSpec(id="empty-agent", name="wAI:empty", display_name="空代理", tier="ai-ml")
         agent = SkillComposingAgent(spec, skill_registry)
         assert agent._match_route("anything") is None
 
     @pytest.mark.asyncio
-    async def test_execute_single_skill_pipeline(
-        self, agent: SkillComposingAgent
-    ) -> None:
+    async def test_execute_single_skill_pipeline(self, agent: SkillComposingAgent) -> None:
         ctx = TaskContext(parameters={})
         result = await agent.execute("清洗資料", ctx)
         assert result.status == TaskStatus.SUCCESS
         assert "test_clean" in result.data
 
     @pytest.mark.asyncio
-    async def test_execute_multi_skill_pipeline(
-        self, agent: SkillComposingAgent
-    ) -> None:
+    async def test_execute_multi_skill_pipeline(self, agent: SkillComposingAgent) -> None:
         ctx = TaskContext(parameters={})
         result = await agent.execute("全分析資料集", ctx)
         assert result.status == TaskStatus.SUCCESS
@@ -198,9 +192,7 @@ class TestSkillComposingAgent:
         assert "→" in result.summary
 
     @pytest.mark.asyncio
-    async def test_execute_pipeline_stops_on_error(
-        self, agent: SkillComposingAgent
-    ) -> None:
+    async def test_execute_pipeline_stops_on_error(self, agent: SkillComposingAgent) -> None:
         ctx = TaskContext(parameters={})
         result = await agent.execute("fail test", ctx)
         assert result.status == TaskStatus.ERROR
@@ -209,9 +201,7 @@ class TestSkillComposingAgent:
         assert "test_analyze" not in result.data
 
     @pytest.mark.asyncio
-    async def test_execute_missing_skill(
-        self, skill_registry: SkillRegistry
-    ) -> None:
+    async def test_execute_missing_skill(self, skill_registry: SkillRegistry) -> None:
         spec = AgentSpec(
             id="bad-agent",
             name="wAI:bad",
@@ -228,9 +218,7 @@ class TestSkillComposingAgent:
         assert any("缺少技能" in e for e in result.errors)
 
     @pytest.mark.asyncio
-    async def test_execute_no_pipeline(
-        self, skill_registry: SkillRegistry
-    ) -> None:
+    async def test_execute_no_pipeline(self, skill_registry: SkillRegistry) -> None:
         """沒有路由 → 回傳基本成功訊息。"""
         spec = AgentSpec(
             id="noop-agent",

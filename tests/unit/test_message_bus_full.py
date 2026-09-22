@@ -240,9 +240,7 @@ class TestPointToPoint:
 class TestHistory:
     @pytest.mark.asyncio
     async def test_history_records(self, bus: MessageBus) -> None:
-        msg = AgentMessage(
-            from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={}
-        )
+        msg = AgentMessage(from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={})
         await bus.publish(msg)
         assert len(bus.history) == 1
         assert bus.history[0].from_agent == "a"
@@ -321,9 +319,7 @@ class TestSubscription:
         msg1 = AgentMessage(
             from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={}
         )
-        msg2 = AgentMessage(
-            from_agent="c", to_agent="d", type=MessageType.QUERY, payload={}
-        )
+        msg2 = AgentMessage(from_agent="c", to_agent="d", type=MessageType.QUERY, payload={})
         await bus.publish(msg1)
         await bus.publish(msg2)
         assert len(received) == 2
@@ -331,6 +327,7 @@ class TestSubscription:
     @pytest.mark.asyncio
     async def test_subscriber_exception_doesnt_break_publish(self, bus: MessageBus) -> None:
         """訂閱者拋出異常不應影響訊息發布。"""
+
         async def bad_handler(msg: AgentMessage) -> None:
             raise RuntimeError("subscriber crash")
 
@@ -342,9 +339,7 @@ class TestSubscription:
         bus.subscribe("*", bad_handler)
         bus.subscribe("*", good_handler)
 
-        msg = AgentMessage(
-            from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={}
-        )
+        msg = AgentMessage(from_agent="a", to_agent="b", type=MessageType.NOTIFICATION, payload={})
         await bus.publish(msg)
         assert len(good_received) == 1
 
@@ -447,9 +442,7 @@ class TestAgentMessageSerialization:
         assert "timestamp" in d
 
     def test_default_fields(self) -> None:
-        msg = AgentMessage(
-            from_agent="a", to_agent="b", type=MessageType.NOTIFICATION
-        )
+        msg = AgentMessage(from_agent="a", to_agent="b", type=MessageType.NOTIFICATION)
         assert msg.message_id  # auto UUID
         assert msg.timestamp  # auto ISO
         assert msg.correlation_id is None

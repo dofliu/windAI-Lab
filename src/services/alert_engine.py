@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class AlertRuleEngine:
             self._create_default_rules_yaml(file_path)
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
 
             rules_data = data.get("rules", [])
@@ -140,64 +141,60 @@ class AlertRuleEngine:
                     "silence_minutes": 120,
                     "auto_create_work_order": True,
                     "notify_channels": ["email", "line"],
-                    "conditions": [
-                        {"metric": "health_score", "operator": "<", "threshold": 0.5}
-                    ],
-                    "description_template": "風機健康分數 {health_score:.2f}，低於臨界值 0.5，需立即檢修"
+                    "conditions": [{"metric": "health_score", "operator": "<", "threshold": 0.5}],
+                    "description_template": "風機健康分數 {health_score:.2f}，低於臨界值 0.5，需立即檢修",
                 },
                 {
                     "id": "health_score_warning",
-                     "name": "健康分數過低",
-                     "enabled": True,
-                     "severity": "warning",
-                     "silence_minutes": 360,
-                     "auto_create_work_order": False,
-                     "notify_channels": ["email"],
-                     "conditions": [
-                         {"metric": "health_score", "operator": "<", "threshold": 0.7}
-                     ],
-                     "description_template": "風機健康分數 {health_score:.2f}，低於警戒值 0.7，建議排程檢查"
+                    "name": "健康分數過低",
+                    "enabled": True,
+                    "severity": "warning",
+                    "silence_minutes": 360,
+                    "auto_create_work_order": False,
+                    "notify_channels": ["email"],
+                    "conditions": [{"metric": "health_score", "operator": "<", "threshold": 0.7}],
+                    "description_template": "風機健康分數 {health_score:.2f}，低於警戒值 0.7，建議排程檢查",
                 },
                 {
-                     "id": "power_deviation_high",
-                     "name": "功率偏差過大",
-                     "enabled": True,
-                     "severity": "critical",
-                     "silence_minutes": 120,
-                     "auto_create_work_order": True,
-                     "notify_channels": ["email", "line", "webhook"],
-                     "conditions": [
-                         {"metric": "power_deviation_pct", "operator": ">", "threshold": 15.0},
-                         {"metric": "wind_speed", "operator": ">", "threshold": 5.0}
-                     ],
-                     "description_template": "功率偏差 {power_deviation_pct:.1f}%（風速 {wind_speed:.1f} m/s），超過 15% 門檻"
+                    "id": "power_deviation_high",
+                    "name": "功率偏差過大",
+                    "enabled": True,
+                    "severity": "critical",
+                    "silence_minutes": 120,
+                    "auto_create_work_order": True,
+                    "notify_channels": ["email", "line", "webhook"],
+                    "conditions": [
+                        {"metric": "power_deviation_pct", "operator": ">", "threshold": 15.0},
+                        {"metric": "wind_speed", "operator": ">", "threshold": 5.0},
+                    ],
+                    "description_template": "功率偏差 {power_deviation_pct:.1f}%（風速 {wind_speed:.1f} m/s），超過 15% 門檻",
                 },
                 {
-                     "id": "anomaly_count_high",
-                     "name": "異常數量過多",
-                     "enabled": True,
-                     "severity": "warning",
-                     "silence_minutes": 240,
-                     "auto_create_work_order": False,
-                     "notify_channels": ["webhook"],
-                     "conditions": [
-                         {"metric": "temperature_anomaly_count", "operator": ">", "threshold": 10.0}
-                     ],
-                     "description_template": "偵測到 {temperature_anomaly_count:.0f} 個溫度異常點，超過 10 個門檻"
+                    "id": "anomaly_count_high",
+                    "name": "異常數量過多",
+                    "enabled": True,
+                    "severity": "warning",
+                    "silence_minutes": 240,
+                    "auto_create_work_order": False,
+                    "notify_channels": ["webhook"],
+                    "conditions": [
+                        {"metric": "temperature_anomaly_count", "operator": ">", "threshold": 10.0}
+                    ],
+                    "description_template": "偵測到 {temperature_anomaly_count:.0f} 個溫度異常點，超過 10 個門檻",
                 },
                 {
-                     "id": "efficiency_loss_critical",
-                     "name": "效率損失嚴重",
-                     "enabled": True,
-                     "severity": "critical",
-                     "silence_minutes": 180,
-                     "auto_create_work_order": True,
-                     "notify_channels": ["email", "line"],
-                     "conditions": [
-                         {"metric": "efficiency_loss_pct", "operator": ">", "threshold": 20.0}
-                     ],
-                     "description_template": "效率損失 {efficiency_loss_pct:.1f}%，超過 20% 門檻，可能存在嚴重故障"
-                }
+                    "id": "efficiency_loss_critical",
+                    "name": "效率損失嚴重",
+                    "enabled": True,
+                    "severity": "critical",
+                    "silence_minutes": 180,
+                    "auto_create_work_order": True,
+                    "notify_channels": ["email", "line"],
+                    "conditions": [
+                        {"metric": "efficiency_loss_pct", "operator": ">", "threshold": 20.0}
+                    ],
+                    "description_template": "效率損失 {efficiency_loss_pct:.1f}%，超過 20% 門檻，可能存在嚴重故障",
+                },
             ]
         }
         try:

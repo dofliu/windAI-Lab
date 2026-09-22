@@ -70,14 +70,17 @@ class TestGetAgentOrRaise:
         with pytest.raises(AgentNotFoundError):
             get_agent_or_raise("")
 
-    @pytest.mark.parametrize("agent_id", [
-        "project-director",
-        "scada-processor",
-        "model-trainer",
-        "paper-writer",
-        "backend-dev",
-        "iec-specialist",
-    ])
+    @pytest.mark.parametrize(
+        "agent_id",
+        [
+            "project-director",
+            "scada-processor",
+            "model-trainer",
+            "paper-writer",
+            "backend-dev",
+            "iec-specialist",
+        ],
+    )
     def test_multiple_valid_agent_ids(self, agent_id: str) -> None:
         """確認多個已知的有效代理 ID 均可成功查詢。
 

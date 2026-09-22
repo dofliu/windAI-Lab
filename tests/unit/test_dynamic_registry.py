@@ -227,9 +227,7 @@ class TestQueryInterfaces:
         assert result.current_task == "清洗 SCADA 資料"
         assert result.progress == 0.5
 
-    def test_update_nonexistent_returns_none(
-        self, registry: DynamicAgentRegistry
-    ) -> None:
+    def test_update_nonexistent_returns_none(self, registry: DynamicAgentRegistry) -> None:
         registry.load_specs()
         assert registry.update_agent_status("ghost", status=AgentStatus.IDLE) is None
 

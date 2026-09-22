@@ -2,25 +2,30 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
 import logging
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query
 
 from src.core.database import get_database
+from src.services.director_allocation.allocator import (
+    AllocationEngine,
+    AllocationSuggestion,
+    TaskInput,
+)
+from src.services.director_allocation.converter import AllocationMarkdownConverter
 from src.services.director_allocation.models import (
-    Priority,
-    TeamNamespace,
-    TaskStatus,
+    AiAdvice,
     Allocation,
     DailyAllocationSheet,
-    AiAdvice,
-    WorkRecord,
+    Priority,
+    TaskStatus,
     TeamLoadSnapshot,
+    TeamNamespace,
+    WorkRecord,
 )
-from src.services.director_allocation.allocator import AllocationEngine, TaskInput, AllocationSuggestion
-from src.services.director_allocation.converter import AllocationMarkdownConverter
 
 logger = logging.getLogger("windailab.api.director")
 
@@ -45,7 +50,7 @@ async def list_allocations(
 async def create_allocation(alloc: Allocation):
     """建立一筆派工，寫入資料庫並同步更新/生成 YYYY-MM-DD-allocation.md。"""
     db = get_database()
-    
+
     # 1. 寫入資料庫
     db.create_allocation(
         task_id=alloc.task_id,
@@ -62,11 +67,11 @@ async def create_allocation(alloc: Allocation):
         rationale=alloc.rationale,
         status=alloc.status.value,
     )
-    
+
     # 2. 同步更新 Markdown 派工單
     sheet_date_str = alloc.sheet_date.isoformat()
     await _sync_sheet_to_markdown(db, sheet_date_str)
-    
+
     return {"status": "success", "task_id": alloc.task_id}
 
 
@@ -87,16 +92,16 @@ async def update_allocation_status(task_id: str, status: TaskStatus):
     alloc = db.get_allocation(task_id)
     if not alloc:
         raise HTTPException(status_code=404, detail=f"找不到派工紀錄：{task_id}")
-        
+
     success = db.update_allocation_status(task_id, status.value)
     if not success:
         raise HTTPException(status_code=500, detail="更新派工狀態失敗")
-        
+
     # 同步更新 markdown
     sheet_date_str = alloc.get("sheet_date")
     if sheet_date_str:
         await _sync_sheet_to_markdown(db, sheet_date_str)
-        
+
     return {"status": "success", "task_id": task_id, "new_status": status.value}
 
 
@@ -119,7 +124,7 @@ async def get_daily_sheet(sheet_date: str):
     """取得一日完整派工單。若資料庫不存在，嘗試從 Markdown 檔案解析匯入。"""
     db = get_database()
     sheet = db.get_daily_sheet(sheet_date)
-    
+
     if not sheet:
         # 嘗試從實體檔案載入
         try:
@@ -157,10 +162,10 @@ async def get_daily_sheet(sheet_date: str):
                 sheet = db.get_daily_sheet(sheet_date)
         except Exception as e:
             logger.warning(f"從 Markdown 載入派工單失敗：{e}")
-            
+
     if not sheet:
         raise HTTPException(status_code=404, detail=f"找不到該日期的派工單：{sheet_date}")
-        
+
     # 合併 allocations 列表
     allocations = db.list_allocations(sheet_date=sheet_date)
     sheet["allocations"] = allocations
@@ -174,7 +179,7 @@ async def signoff_daily_sheet(sheet_date: str):
     sheet = db.get_daily_sheet(sheet_date)
     if not sheet:
         raise HTTPException(status_code=404, detail=f"找不到該日期的派工單：{sheet_date}")
-        
+
     db.create_daily_sheet(
         sheet_date=sheet_date,
         hackathon_days_remaining=sheet["hackathon_days_remaining"],
@@ -184,7 +189,7 @@ async def signoff_daily_sheet(sheet_date: str):
         signed_off=True,
         markdown_path=sheet.get("markdown_path", ""),
     )
-    
+
     # 同步更新 markdown
     await _sync_sheet_to_markdown(db, sheet_date)
     return {"status": "success", "sheet_date": sheet_date, "signed_off": True}
@@ -204,7 +209,7 @@ async def get_work_record(task_id: str):
 async def create_or_update_work_record(record: WorkRecord):
     """建立或更新工作紀錄，寫入資料庫並同步更新 Markdown。"""
     db = get_database()
-    
+
     # 1. 寫入資料庫
     db.create_work_record(
         task_id=record.task_id,
@@ -219,13 +224,13 @@ async def create_or_update_work_record(record: WorkRecord):
         follow_up_actions=record.follow_up_actions,
         closed_at=record.closed_at.isoformat() if record.closed_at else None,
     )
-    
+
     # 2. 取得對置派工資訊，組裝渲染 Markdown
     alloc = db.get_allocation(record.task_id) or {}
     title = alloc.get("title", "未知任務")
     issue = alloc.get("github_issue")
     assignee = alloc.get("assignee_agent", "")
-    
+
     # 確定 Markdown 路徑
     # 根據 task_id 的日期決定，WLAB-YYYYMMDD-NN
     markdown_path = record.markdown_path
@@ -240,18 +245,20 @@ async def create_or_update_work_record(record: WorkRecord):
             slug = re.sub(r"[^\w\-]", "", slug)
             markdown_path = str(folder / f"{record.task_id}-{slug}.md")
         except Exception:
-            markdown_path = str(_PROJECT_ROOT / "docs" / "work-logs" / f"{record.task_id}-record.md")
-            
+            markdown_path = str(
+                _PROJECT_ROOT / "docs" / "work-logs" / f"{record.task_id}-record.md"
+            )
+
     # 更新實體檔案
     md_content = AllocationMarkdownConverter.render_record(
         record, title=title, github_issue=issue, assignee_agent=assignee
     )
-    
+
     path = Path(markdown_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         f.write(md_content)
-        
+
     # 把路徑存回資料庫
     db.create_work_record(
         task_id=record.task_id,
@@ -266,7 +273,7 @@ async def create_or_update_work_record(record: WorkRecord):
         follow_up_actions=record.follow_up_actions,
         closed_at=record.closed_at.isoformat() if record.closed_at else None,
     )
-    
+
     return {"status": "success", "task_id": record.task_id, "markdown_path": markdown_path}
 
 
@@ -275,22 +282,22 @@ async def import_markdown_logs():
     """自動掃描 docs/work-logs/ 目錄，將所有歷史派工單與工作紀錄解析並匯入 SQLite 資料庫中。"""
     db = get_database()
     work_logs_dir = _PROJECT_ROOT / "docs" / "work-logs"
-    
+
     if not work_logs_dir.exists():
         return {"status": "warning", "detail": f"目錄不存在：{work_logs_dir}"}
-        
+
     sheets_imported = 0
     records_imported = 0
-    
+
     # 遍歷所有的子目錄 (按月份 YYYY-MM)
     for month_dir in work_logs_dir.iterdir():
         if not month_dir.is_dir() or not re.match(r"^\d{4}-\d{2}$", month_dir.name):
             continue
-            
+
         for filepath in month_dir.iterdir():
             if not filepath.is_file() or not filepath.name.endswith(".md"):
                 continue
-                
+
             try:
                 # 1. 判斷是否是一日派工單 YYYY-MM-DD-allocation.md
                 if filepath.name.endswith("-allocation.md"):
@@ -323,7 +330,7 @@ async def import_markdown_logs():
                             status=alloc.status.value,
                         )
                     sheets_imported += 1
-                    
+
                 # 2. 判斷是否是工作紀錄 WLAB-*.md
                 elif filepath.name.startswith("WLAB-"):
                     parsed = AllocationMarkdownConverter.parse_record(filepath)
@@ -344,7 +351,7 @@ async def import_markdown_logs():
                     records_imported += 1
             except Exception as e:
                 logger.error(f"匯入 Markdown 檔案失敗：{filepath.name} — {e}")
-                
+
     return {
         "status": "success",
         "sheets_imported": sheets_imported,
@@ -358,9 +365,9 @@ async def _sync_sheet_to_markdown(db: Any, sheet_date_str: str) -> None:
         sheet = db.get_daily_sheet(sheet_date_str)
         if not sheet:
             return
-            
+
         allocations = db.list_allocations(sheet_date=sheet_date_str)
-        
+
         # 組裝 allocations Pydantic 列表
         alloc_models = []
         for a in allocations:
@@ -379,7 +386,7 @@ async def _sync_sheet_to_markdown(db: Any, sheet_date_str: str) -> None:
                     status=TaskStatus(a["status"]),
                 )
             )
-            
+
         # 組裝 load_snapshot Pydantic 列表
         load_models = []
         for l in sheet["load_snapshot"]:
@@ -392,7 +399,7 @@ async def _sync_sheet_to_markdown(db: Any, sheet_date_str: str) -> None:
                     suggestion=l["suggestion"],
                 )
             )
-            
+
         advice = sheet["ai_advice"]
         sheet_model = DailyAllocationSheet(
             date=date.fromisoformat(sheet_date_str),
@@ -410,21 +417,21 @@ async def _sync_sheet_to_markdown(db: Any, sheet_date_str: str) -> None:
             signed_off=sheet["signed_off"],
             markdown_path=sheet.get("markdown_path", ""),
         )
-        
+
         markdown_path = sheet_model.markdown_path
         if not markdown_path:
             dt = date.fromisoformat(sheet_date_str)
             folder = _PROJECT_ROOT / "docs" / "work-logs" / dt.strftime("%Y-%m")
             folder.mkdir(parents=True, exist_ok=True)
             markdown_path = str(folder / f"{sheet_date_str}-allocation.md")
-            
+
         md_content = AllocationMarkdownConverter.render_sheet(sheet_model)
-        
+
         path = Path(markdown_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
             f.write(md_content)
-            
+
         # 如果路徑是新的，更新回資料庫
         if not sheet.get("markdown_path"):
             db.create_daily_sheet(

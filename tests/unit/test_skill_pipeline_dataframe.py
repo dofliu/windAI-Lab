@@ -242,9 +242,7 @@ class TestDataFramePipeline:
         assert stat_data["mean_power"] == pytest.approx(expected_mean, rel=0.01)
 
     @pytest.mark.asyncio
-    async def test_no_df_skill_preserves_previous_df(
-        self, skill_registry: SkillRegistry
-    ) -> None:
+    async def test_no_df_skill_preserves_previous_df(self, skill_registry: SkillRegistry) -> None:
         """不產生 DataFrame 的技能不覆蓋上一步的 DataFrame。"""
         agent = _make_agent(
             skill_registry,
@@ -274,9 +272,7 @@ class TestDataFramePipeline:
         assert result.data["test_load"]["data"]["row_count"] == 4
 
     @pytest.mark.asyncio
-    async def test_filter_without_df_returns_error(
-        self, skill_registry: SkillRegistry
-    ) -> None:
+    async def test_filter_without_df_returns_error(self, skill_registry: SkillRegistry) -> None:
         """過濾技能未收到 DataFrame 時應回報錯誤。"""
         agent = _make_agent(
             skill_registry,
@@ -349,9 +345,7 @@ class TestProgressCallback:
         assert len(ProgressTrackingSkill.progress_calls) == 3
 
     @pytest.mark.asyncio
-    async def test_multi_skill_progress_proportional(
-        self, skill_registry: SkillRegistry
-    ) -> None:
+    async def test_multi_skill_progress_proportional(self, skill_registry: SkillRegistry) -> None:
         """多技能管線中，各技能進度在整體中按比例分配。"""
         agent = _make_agent(
             skill_registry,
@@ -491,9 +485,7 @@ class TestEdgeCases:
         assert result.status == TaskStatus.SUCCESS
 
     @pytest.mark.asyncio
-    async def test_summary_joins_skill_summaries(
-        self, skill_registry: SkillRegistry
-    ) -> None:
+    async def test_summary_joins_skill_summaries(self, skill_registry: SkillRegistry) -> None:
         """最終摘要應包含各技能摘要，以 → 連接。"""
         agent = _make_agent(
             skill_registry,

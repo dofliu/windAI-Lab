@@ -3,25 +3,24 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-import pytest
 
-from src.services.director_allocation.models import (
-    Priority,
-    TeamNamespace,
-    TaskStatus,
-    Allocation,
-    DailyAllocationSheet,
-    AiAdvice,
-    WorkRecord,
-    TeamLoadSnapshot,
-)
 from src.services.director_allocation.allocator import AllocationEngine, TaskInput
 from src.services.director_allocation.converter import AllocationMarkdownConverter
+from src.services.director_allocation.models import (
+    AiAdvice,
+    Allocation,
+    DailyAllocationSheet,
+    Priority,
+    TaskStatus,
+    TeamLoadSnapshot,
+    TeamNamespace,
+    WorkRecord,
+)
 
 
 def test_allocation_engine_suggest():
     engine = AllocationEngine()
-    
+
     # 測試後端/API任務
     task1 = TaskInput(
         title="開發通知與告警 API 路由",
@@ -31,7 +30,7 @@ def test_allocation_engine_suggest():
     sugg1 = engine.suggest(task1)
     assert sugg1.assignee_agent == "wEng:backend-dev"
     assert sugg1.priority == Priority.P3
-    
+
     # 測試 RAG/論文任務
     task2 = TaskInput(
         title="寫論文的 Results 章節",
@@ -87,13 +86,13 @@ def test_markdown_sheet_roundtrip():
             lessons_learned=["設計先行確實減少了程式碼返工"],
         ),
     )
-    
+
     # 1. 渲染成 Markdown 字串
     md_content = AllocationMarkdownConverter.render_sheet(sheet)
-    
+
     # 2. 將 Markdown 字串解析回 DailyAllocationSheet 物件
     parsed = AllocationMarkdownConverter.parse_sheet(md_content)
-    
+
     # 3. 斷言兩者欄位值完全相等，驗證無損 roundtrip 序列化
     assert parsed.date == sheet.date
     assert parsed.hackathon_days_remaining == sheet.hackathon_days_remaining
@@ -141,15 +140,15 @@ def test_markdown_record_roundtrip():
         created_at=datetime(2026, 4, 20, 10, 0),
         closed_at=datetime(2026, 4, 20, 18, 0),
     )
-    
+
     # 1. 渲染
     md_content = AllocationMarkdownConverter.render_record(
         record, title="實作通知渠道", github_issue=42, assignee_agent="wEng:backend-dev"
     )
-    
+
     # 2. 解析
     parsed = AllocationMarkdownConverter.parse_record(md_content)
-    
+
     # 3. 斷言
     assert parsed.task_id == record.task_id
     assert parsed.summary == record.summary

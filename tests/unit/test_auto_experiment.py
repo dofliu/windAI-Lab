@@ -206,9 +206,7 @@ class TestLogTrial:
 
     def test_creates_jsonl_file(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """確認建立 JSONL 記錄檔。"""
-        monkeypatch.setattr(
-            "src.skills.ml.auto_experiment._EXPERIMENT_LOG_DIR", tmp_path
-        )
+        monkeypatch.setattr("src.skills.ml.auto_experiment._EXPERIMENT_LOG_DIR", tmp_path)
         trial = TrialResult(1, "nbm", {"lr": 0.1}, {"r2": 0.95}, 2.5)
         _log_trial("test_exp", trial)
 
@@ -227,9 +225,7 @@ class TestLogTrial:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """確認多次實驗追加寫入。"""
-        monkeypatch.setattr(
-            "src.skills.ml.auto_experiment._EXPERIMENT_LOG_DIR", tmp_path
-        )
+        monkeypatch.setattr("src.skills.ml.auto_experiment._EXPERIMENT_LOG_DIR", tmp_path)
         _log_trial("exp2", TrialResult(1, "a", {}, {"r2": 0.8}, 1.0))
         _log_trial("exp2", TrialResult(2, "b", {}, {"r2": 0.9}, 1.0))
 
