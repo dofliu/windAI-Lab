@@ -1,7 +1,8 @@
 # WindAI Lab — 自動推進 Routine（auto-advance）
 
 > 版本：v1.0（2026-09-22 建立）
-> 觸發頻率：每 3 小時（cron `0 */3 * * *`，UTC）
+> 觸發頻率：每 3 小時（cron `47 */3 * * *`，UTC — 伺服器依建立時間錨定分鐘數）
+> Trigger ID：`trig_01DhdmQUUguMvZLjudiLEvB1`
 > 執行模式：每次觸發開一個**全新 session**，以 `docs/cursor.md` 為唯一狀態交接介面
 > 關聯規則：`CLAUDE.md` §5（Git/PR）、§6（任務追蹤）、`docs/routines/daily-workflow.md`（每日工作流）
 
@@ -27,12 +28,21 @@
 
 ### Phase 0 — 環境準備
 
-```bash
-cd /home/user/windAI-Lab
-git fetch origin master claude/auto-advance
+**先確認 repo 在不在**（定時觸發的新 session 不保證帶著 checkout）：
 
-# 分支不存在就從 master 開；存在就接續並併入 master 最新變更
+```bash
+cd /home/user/windAI-Lab 2>/dev/null \
+  || git clone https://github.com/dofliu/windAI-Lab /home/user/windAI-Lab && cd /home/user/windAI-Lab
+```
+
+若 clone 失敗（無憑證 / 私有 repo 無授權）→ **立刻停止**，回報「本次觸發無法取得 repo」並說明需人工於 claude.ai Routines UI 為此 Routine 掛上 source repository。不要在沒有 repo 的情況下嘗試任何替代方案。
+
+```bash
+git fetch origin master claude/auto-advance claude/lucid-johnson-um3m2o
+
+# 分支不存在就從帶有本 playbook 的分支開，最後才退回 master
 git checkout -B claude/auto-advance origin/claude/auto-advance 2>/dev/null \
+  || git checkout -B claude/auto-advance origin/claude/lucid-johnson-um3m2o 2>/dev/null \
   || git checkout -B claude/auto-advance origin/master
 git merge --no-edit origin/master     # 衝突 → 見 §5
 
@@ -135,7 +145,8 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 - 修 `docs/cursor.md` 佇列中明確描述的缺陷
 - 更新文件、校準文件中的指標（以實測數字）
 - CI workflow 設定調整（`.github/workflows/ci.yml`）
-- 關閉已完工的 GitHub Issue（附完工證據）
+
+> ⚠️ 關閉 GitHub Issue **不在**此清單內——不是因為不該做，而是本 Routine 沒有 GitHub connector，技術上做不到。見 §4.1。
 
 ---
 
@@ -154,6 +165,21 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 | 啟動一個全新 Epic / Phase | 方向性決策屬總監與使用者 |
 
 遇到禁止事項 → 寫進 cursor.md「阻塞 / 風險」，標註 **需人工授權**，取下一項工作。
+
+### 4.1 本 Routine 的工具限制（2026-09-22 建立時的已知條件）
+
+本 Routine 經 MCP 建立，**未攜帶任何 connector**，因此定時觸發的 session **沒有 `mcp__github__*` 工具**。影響：
+
+| 能力 | 可用性 |
+|------|--------|
+| `git` 讀寫、fetch / merge / commit / push | ✅ 可用（走 git，不經 connector） |
+| lint / format / pytest / 檔案操作 | ✅ 可用 |
+| 查 GitHub Actions CI 狀態 | ❌ 不可用 |
+| 開 / 關 / 留言 GitHub Issue 與 PR | ❌ 不可用 |
+
+**凡需 GitHub API 的佇列項目（如 P1-4 關閉 Issue）→ 直接標註「需人工執行（此 Routine 無 GitHub connector）」並取下一項，不要嘗試用 `curl` 或 `gh` 繞道**（本環境無 `gh`，且繞道會需要憑證）。
+
+要解除此限制：請使用者於 claude.ai 的 Routines UI 重建此 Routine 並掛上 GitHub connector 與 source repository。
 
 ---
 

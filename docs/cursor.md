@@ -49,7 +49,7 @@
 - [ ] **P1-1** 修 `src/api/main.py` 的 `GET /api/reports` 重複註冊（L2008 與 L2197 同名 `api_list_reports`，後者為死碼）。保留其中一個，確認回傳行為一致。
 - [ ] **P1-2** `src/services/director_allocation/converter.py` 補回遺失欄位：`parse_record()` 解析出 `title`/`issue`/`assignee`/`status` 後全數丟棄。需為 `WorkRecord` 補 `title` / `github_issue` / `assignee` / `status` 欄位並寫入，**並加一個 render → parse → render 的 round-trip 測試**守住「雙向無損」的承諾。
 - [ ] **P1-3** CI 防護：`.github/workflows/ci.yml` 將 `test` job 的 `needs: lint` 移除（兩者並行、各自回報，避免 lint 錯誤再次封鎖測試回饋 73 天）；ruff/black 改為 pin 版本（現為 `pip install ruff black mypy` 未 pin，與 `requirements.txt` 的 `ruff==0.6.0` 不一致）；lint 範圍由 `src/` 擴到 `src/ tests/`。
-- [ ] **P1-4** 關閉 6 個已完工 Issue（#33 / #42 / #43 / #44 / #75 / #96），每個附完工證據（commit sha + 對應程式位置）。⚠️ 注意 #96 需等 P1-2 修完才算真正完工。
+- [ ] **P1-4** 關閉 6 個已完工 Issue（#33 / #42 / #43 / #44 / #75 / #96），每個附完工證據（commit sha + 對應程式位置）。⚠️ #96 需等 P1-2 修完才算真正完工。⚠️ **需人工執行**：auto-advance Routine 無 GitHub connector（見 `docs/routines/auto-advance.md` §4.1），觸發時請直接跳過此項。
 - [ ] **P2-1** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ 依 `docs/routines/auto-advance.md` §4，修改 CLAUDE.md **規則內容**需人工授權；此項僅限**編號與事實數字**的修正，不得改動任何規則語意。
 - [ ] **P2-2** 定向下一個功能方向（Phase 15 多風場管理 / Epic A 案例學習系統）— **屬方向性決策，需使用者指派，routine 不得自行啟動**。
 
