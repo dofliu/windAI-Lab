@@ -3,8 +3,8 @@ name_zh: 風力發電AI研究平台
 category: wind_energy
 progress: 92
 status: active
-last_updated: "2026-04-21"
-next_milestone: "Phase 14c - 診斷報告輸出與資料連接器"
+last_updated: "2026-09-22"
+next_milestone: "CI 復綠與 Phase 14 缺陷收斂（Phase 15 多風場管理待啟動）"
 technologies:
   - Python
   - FastAPI
@@ -16,5 +16,6 @@ outputs:
   - platform
   - tool
 description: "Multi-agent collaborative research platform with virtual office interface for wind energy AI"
-description_zh: "風力發電 AI 研究協作系統，匯聚 12 位核心代理與 28 個技能模組，支援故障診斷（F1=1.0）、功率曲線建模（R²=0.997）、剩餘壽命預測。整合虛擬辦公室 UI、SCADA 真實資料分析、RAG 知識庫、WindGuard AI LLM 推理與自動品質檢查機制，是系統化進行風能科研的協作平台。"
-key_metrics: "F1=1.0 fault diagnosis, R²=0.997 power curve, 12 core + 10 hirable agents, 28 skills"
+description_zh: "風力發電 AI 研究協作系統，匯聚 25 個代理模組與 29 個技能模組，支援故障診斷（F1=1.0）、功率曲線建模（R²=0.997）、剩餘壽命預測。整合虛擬辦公室 UI、SCADA 真實資料分析、RAG 知識庫、WindGuard AI LLM 推理與自動品質檢查機制，是系統化進行風能科研的協作平台。"
+key_metrics: "F1=1.0 fault diagnosis, R²=0.997 power curve, 25 agent modules + 10 hirable, 29 skills, 73 REST endpoints, 877 tests"
+health: "ci_red_since_2026-07-10"

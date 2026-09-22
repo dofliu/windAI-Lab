@@ -1,120 +1,116 @@
 # WindAI Lab Daily Report
 
-> 最後更新：2026-04-27（W18 Day 1 · OMC 整合啟動）
-> Hackathon 截止日：2026-05-18（剩餘 21 天）
+> 最後更新：2026-09-22（專案健檢日 · 文件校準）
+> 上次有效工作日：2026-07-10（中間停擺 74 天）
 
 ---
 
-## 今日工作摘要（2026-04-27）
+## 今日工作摘要（2026-09-22）
 
 | 項目 | 說明 |
 |------|------|
-| **核心產出** | **OMC 整合啟動文件三件套**（AGENTS.md + 速查表 + 整合指南） |
-| **新需求** | 使用者要求整合 oh-my-claudecode (OMC)，總監核定為 P1 |
-| **派工紀錄** | 新增 2026-04-27-allocation.md + WLAB-20260427-01（2 份文件） |
-| **每日例行掃描** | Python TODO/FIXME: 0、前端 TODO: 1（穩定）、`ruff check .` All checks passed! |
-| **CI 狀態** | 綠燈（純文件變更） |
-| **派工系統** | 第 6 次實戰（OMC 整合情境驗證 v1.1 模板） |
+| **核心產出** | **專案全面健檢 + 文件校準**（實測取代人工估計） |
+| **最重要發現** | **master CI 自 2026-07-10 起紅燈 73 天**，測試 job 因 `needs: lint` 被 skip，自 4/30 起未在 CI 跑過一次 |
+| **次要發現** | 2026-07-03 commit `bfca6a7`（5,315 行）直接進 master 未過 CI，遺留 5 項實際缺陷 + 4 個失敗測試 + 1 份損壞文件 |
+| **文件修復** | `docs/TODO-roadmap.md` 位元組損壞修復、`docs/cursor.md` 補建、三份狀態文件日期對齊 |
+| **CI 狀態** | 🔴 紅燈（Lint & Format failure → Tests skipped；Frontend Build ✅） |
 
 ---
 
 ## 本日交付清單
 
-| 檔案 | 狀態 |
-|------|------|
-| `AGENTS.md`（repo 根目錄） | ✅ 新建 |
-| `.claude/windailab-skills.md` | ✅ 新建 |
-| `docs/omc-integration-guide.md` | ✅ 新建 |
-| `README.md`（OMC 章節 + 文件索引） | ✅ 更新 |
-| `CLAUDE.md`（§11 OMC 整合條款） | ✅ 更新 |
-| `docs/TODO-roadmap.md`（研發工具區段） | ✅ 更新 |
-| `docs/work-logs/2026-04/2026-04-27-allocation.md` | ✅ 新建 |
-| `docs/work-logs/2026-04/WLAB-20260427-01-omc-integration.md` | ✅ 新建 |
-| `docs/daily_report.md`（本檔，瘦身版） | ✅ 更新 |
+| 檔案 | 狀態 | 說明 |
+|------|------|------|
+| `docs/TODO-roadmap.md` | ✅ 修復 + 更新 | 修復非法 UTF-8、還原遺失章節、移除重複區段、指標校準 |
+| `docs/PROJECT-STATUS.md` | ✅ 更新 | 新增「專案健康度」章節（CI / 品質 / 缺陷 / 資產實測） |
+| `STATUS.yaml` | ✅ 更新 | 日期、里程碑、指標、新增 `health` 欄位 |
+| `docs/cursor.md` | ✅ 新建 | CLAUDE.md §6 指定但從未存在的段間交接介面 |
+| `docs/daily_report.md` | ✅ 重寫（本檔） | 每日重寫格式 |
+| `docs/work-logs/2026-09/2026-09-22-allocation.md` | ✅ 新建 | 派工單 |
+| `docs/work-logs/2026-09/WLAB-20260922-01-project-healthcheck.md` | ✅ 新建 | 工作紀錄 |
 
-> **瘦身決策**：4/27 起 daily_report 改為「每日當日重寫」格式，歷史紀錄由 `docs/work-logs/` 保存。降低檔案膨脹、加速 Claude Code 讀取。
+> 註：本日**未修改任何程式碼**。所有程式缺陷已完整記錄待總監核定後執行，見下方「建議行動」。
 
 ---
 
-## OMC 整合進度
+## 🔴 CI 紅燈根因鏈
 
-| 階段 | 狀態 | 備註 |
-|------|------|------|
-| 文件層（AGENTS / 速查表 / 指南） | ✅ 完成 | 本日交付 |
-| Plugin 安裝（`/plugin install oh-my-claudecode`） | ⏳ 待人工 | 需於 Claude Code session 執行 |
-| `omc-doctor` 驗證 | ⏳ 待人工 | 同上 |
-| Smoke test（scientist 模組地圖） | ⏳ 待人工 | 同上 |
-| OMC `wiki` ↔ windAI RAG 對接 | ⬜ 待評估 | W19+ |
+```
+2026-07-03  bfca6a7  5,315 行功能 commit 直接推 master
+                     ├─ 未跑 ruff / black
+                     └─ 新增 5 個測試檔從未在 CI 驗證
+                                    ↓
+2026-07-10  bde44fe  熱修 main.py 的 BaseModel NameError
+                     └─ 只修了崩潰點，未修 lint
+                                    ↓
+            CI run #303 → Lint & Format ❌ failure
+                        → Black check   ⏭️ skipped（前一步失敗）
+                        → Tests         ⏭️ skipped（needs: lint）
+                                    ↓
+2026-09-22  紅燈已 73 天，且測試自 2026-04-30 起未在 CI 執行過
+```
 
-詳見 [`docs/omc-integration-guide.md`](omc-integration-guide.md)。
+**關鍵教訓**：`needs: lint` 讓一個空白字元等級的 lint 錯誤，連帶封鎖了整個測試層的回饋。
+
+---
+
+## 實測數據 vs. 文件聲稱
+
+| 指標 | 文件聲稱 | 實測（2026-09-22） |
+|------|---------|-------------------|
+| `ruff check .` | 0 錯誤（連續 7 日綠燈） | **185 錯誤**（src/ 146、tests/ 39） |
+| `black --check src/` | 通過 | **13 檔需重新格式化** |
+| `pytest` | 849 通過 | **877 收集：868 pass / 4 fail / 5 skip** |
+| REST API 端點 | 56 | **73** |
+| 前端元件 | 32 | **40** |
+| 技能模組 | 28 | **29** |
+| DB 資料表 | 6 | **9** |
+| Agent 模組 | 25 | **25** ✅ |
+| Python TODO/FIXME | 0 | **0** ✅ |
+
+---
+
+## 遺留缺陷清單（皆來自 `bfca6a7`）
+
+| # | 位置 | 問題 | 嚴重度 |
+|---|------|------|--------|
+| 1 | `src/api/director.py:240,287` | 未 `import re` 卻使用 `re.sub`/`re.match` | 🔴 端點必崩 |
+| 2 | `converter.py:288-297` | 解析出的 4 個中介資料欄位全數丟棄 | 🔴 「無損同步」實為有損 |
+| 3 | `report_scheduler.py:302` | 通知訊息組好未帶入 payload | 🟠 通知內容為空 |
+| 4 | `main.py:2008 & 2197` | `GET /api/reports` 重複註冊 | 🟡 死碼 |
+| 5 | `main.py:177` | 模組層 import 位置錯誤 | 🟡 同類風險 |
+| 6 | `test_alert_engine.py` × 4 | 斷言 5 條預設規則，實際 YAML 載入 6 條 | 🟠 測試過期 |
 
 ---
 
 ## Issue 狀態
 
-連續第 6 日穩定，19 Open Issues，無新建、無關閉。
+**18 個 Open Issue**。其中 5 個（#42 / #43 / #44 / #75 / #96）程式已完成但 GitHub Issue 未關閉，文件與 tracker 脫鉤。
 
-| 預計啟動 | Issue | 主責 | 備註 |
-|----------|-------|------|------|
-| 4/27 | #42 PR A（Email Notifier） | wEng:backend-dev | 4h |
-| 4/27 | #75 規格收集 | wData:scada-processor | 2h（已等 11 天） |
-| 4/27 | #48 設計稿（案例推薦） | wAI:model-trainer | 2h（**強制啟動**，閒置 8 天） |
-| 4/27 | #50 故障知識圖譜建模 | wDomain:wake-analyst | 2h（**強制啟動**，閒置 8 天） |
-| 4/28 | #96 階段二 PR 1 | wLab + wEng | 2h |
-| 4/30 | #42 PR B + #43 YAML 規則 | wEng:backend-dev | 10h |
-| 4/30 | 2026-W18 週報（**首採 v1.1**） | wRes + wLab | 2h |
-| 5/01 | #44 設計稿 | wLab + wEng | 4h |
-
----
-
-## 完成度評估
-
-| 項目 | 進度 | 備註 |
-|------|------|------|
-| 研究平台（Phase 1-10） | 92% | 完成 |
-| Step 1 打地基（Phase 11-13） | 100% | 完成 |
-| Phase 14 WindGuard AI | 90% | 僅剩 #75 |
-| Epic C ML 模型進化 | 100% | 完成 |
-| Epic E 告警規則引擎 | 45% | #41 ✅ + #42 設計 ✅ |
-| Epic D 報告與追蹤 | 12% | 模板 v1.1 |
-| 派工系統（#96） | 52% | 階段二設計 ✅，實作 0% |
-| 正式報告層 | 35% | 首份週報 ✅ + 模板 v1.1 ✅ |
-| **OMC 整合（研發工具）** | **40%** | **文件層 ✅，安裝待人工** |
-| 外部 API 對接 (#75) | 0% | 4/27 啟動 |
-| **整體運維服務演進** | **54%** | 53% → 54%（OMC 整合 +1%） |
+| Issue | 文件標記 | GitHub | 動作 |
+|-------|---------|--------|------|
+| #42 通知渠道 | ✅ 完成 | OPEN | 待關閉 |
+| #43 YAML 設定 | ✅ 完成 | OPEN | 待關閉 |
+| #44 報告排程 | ✅ 完成 | OPEN | 待關閉 |
+| #75 外部 API | ✅ 完成 | OPEN | 待關閉 |
+| #96 派工系統 | ✅ 完成 | OPEN | 待關閉 |
+| #33 Epic E | ✅ 完成 | OPEN | 子任務齊 → 待關閉 |
+| #69 registry 雙軌 | ⬜ 技術債 | OPEN | 保留 |
+| #34/#35/#36/#37 Epic | 進行中/待辦 | OPEN | 保留 |
+| #45/#46/#47/#48/#49/#50/#51/#52 | 待啟動 | OPEN | 保留 |
 
 ---
 
-## 程式碼品質
+## 建議行動（優先序）
 
-- Lint：**0 錯誤**（`ruff check .` 連續第 7 日綠燈）
-- TODO/FIXME：Python **0**、前端 **1**（`useWebSocket.ts:266` 穩定 TODO）
-- 測試：31 檔案 / 849 案例（本日不變）
-- API 端點：56 個 REST + WebSocket
-- 技能模組：28 個
-- 前端元件：32 個
-
----
-
-## 風險提醒
-
-| 風險 | 對策 |
-|------|------|
-| OMC plugin 互動式安裝無法自動化 | 文件已標明「需人工於 Claude Code session 執行」+ 附 smoke test 預期結果 |
-| wAI / wDomain 連續閒置 8 天 | **本日強制啟動 #48 / #50** |
-| #75 已等 11 天 | **本日早上第一件事**：wData 啟動規格收集 |
-| Hackathon 倒數 21 天 | Epic E 剩 ~10h + Epic D #44 設計 ~6h，5/04 前需完工 Epic E |
-| daily_report 過往膨脹 | **本日已瘦身**，未來每日重寫，歷史交給 work-logs |
+1. **[P0]** 恢復 CI 綠燈 — `ruff check --fix`（158 項自動）+ 手動修 5 項實際缺陷 + `black src/`
+2. **[P0]** 修 4 個失敗測試 — 以 fixture YAML 與 repo 生產設定解耦，而非把 5 改成 6
+3. **[P1]** CI 防護強化 — lint 與 test job 解除 `needs` 相依、加 pre-commit gate、master 加分支保護
+4. **[P1]** 關閉 6 個已完工 Issue，讓 tracker 與文件重新對齊
+5. **[P2]** CLAUDE.md 整理 — 章節編號去重（兩組 §5/§6/§7）、§10「42 個代理」更正為 25
+6. **[P2]** 啟動 Phase 15 多風場管理 或 Epic A 案例學習系統（待總監定向）
 
 ---
 
-## 建議行動（明日 4/28）
-
-1. **[P1]** 跟進 4/27 啟動的四線進度（#42 PR A / #75 / #48 / #50）
-2. **[P2]** 啟動 #96 階段二 PR 1（`models.py` + SQLite schema）
-3. **[Ongoing]** 維持 lint 0 / CI 綠燈 / Issue 狀態追蹤
-
----
-
-*本報告由 Claude Code 自動產出，日期：2026-04-27（W18 Day 1 · OMC 整合啟動 · daily_report 瘦身首日）*
-*工作流程：Phase 1（讀文件）→ Phase 2（環境驗證）→ Phase 3（OMC 文件三件套）→ Phase 4（模組地圖）→ Phase 5（更新文件）→ Phase 6（瘦身 daily_report）→ Phase 7（commit/push）→ Phase 8（Email 通知）*
+*本報告由 Claude Code 產出，日期：2026-09-22（專案健檢日）*
+*工作流程：Phase 1（讀文件）→ Phase 2（環境實測：lint/test/盤點）→ Phase 3（GitHub CI 與 Issue 核對）→ Phase 4（缺陷根因定位）→ Phase 5（文件修復與校準）→ Phase 6（派工紀錄）→ Phase 7（commit/push）*
