@@ -1,25 +1,25 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-09-22（auto-advance #6 觸發後）
+> 自動更新時間：2026-09-22（auto-advance #7 觸發後）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
 - 日期：2026-09-22
-- Session：`auto-advance` 第 6 次觸發，完成 P1-2（`src/services/director_allocation/converter.py` 的 `parse_record()` 補回遺失的 `title`/`github_issue`/`assignee`/`status` 4 個中介資料欄位；`WorkRecord` 新增對應欄位；`render_record()` 三個中介資料參數改為可選並回退採用 record 自身欄位；新增 render → parse → render 往返測試）
-- 前次有效工作日：2026-09-22（auto-advance #5，commit `47ca81d`）
+- Session：`auto-advance` 第 7 次觸發，完成 P1-3（`.github/workflows/ci.yml`：`test` job 移除 `needs: lint` 使兩者並行回報，不再讓 lint 既有 debt 封鎖測試層回饋；`pip install ruff black mypy` 改為 pin `ruff==0.6.0`/`black==24.8.0`/`mypy==1.11.0` 與 `requirements.txt` 一致；`ruff check`/`black --check` 範圍由 `src/` 擴大到 `src/ tests/`）
+- 前次有效工作日：2026-09-22（auto-advance #6，commit `b550570`）
 
-## 數據基準（實測，auto-advance #6 之後）
+## 數據基準（實測，auto-advance #7 之後）
 
-- `ruff check .`：**19 錯誤**（較 auto-advance #5 基準 23 減少 4，正是本次修掉的 4× F841 未使用變數；剩餘 19 個為既有 N815/UP042/TC003 型別警告，無 `--fix` 可自動解，需人工評估是否值得改動）
+- `ruff check .`：**19 錯誤**（與 auto-advance #6 基準相同，本次只改 `.github/workflows/ci.yml`，未動 Python 程式；另以 `ruff check src/ tests/` 交叉驗證錯誤數同為 19，確認擴大 CI lint 範圍不會讓 CI 新增紅燈）
 - `python3 -m black --check --line-length 99 src/ tests/`：**全綠**（⚠️ 本容器 PATH 上 `black` 預設為 `/root/.local/bin/black` 非 pin 版本，務必用 `python3 -m black` 呼叫避免誤判）
-- `pytest tests/`：**877 收集 → 872 pass / 0 fail / 5 skip**（與 auto-advance #5 基準相同，本次變更未影響任何既有測試案例，新增的往返斷言併入既有 `test_markdown_record_roundtrip`，未新增測試檔案）
+- `pytest tests/`：**877 收集 → 872 pass / 0 fail / 5 skip**（與 auto-advance #6 基準相同，本次未動任何測試或程式）
 - Python TODO/FIXME：0
 - 前端 TODO：1（`frontend/src/hooks/useWebSocket.ts`，穩定）
 - Open Issues：**18**（未變，本 routine 無 GitHub connector 無法核對）
-- 最近 commit：`b550570`（2026-09-22，`fix(#96): converter.parse_record 補回遺失的 4 個中介資料欄位`）
-- **CI：狀態未知**（本 routine 無 GitHub connector，無法查詢 Actions；需人工或下次有 connector 的 session 核對）
+- 最近 commit：`1b5ba1f`（2026-09-22，`chore: CI lint 與 test job 解耦、pin ruff/black/mypy 版本、lint 範圍擴至 tests/`）
+- **CI：狀態未知**（本 routine 無 GitHub connector，無法查詢 Actions；本次變更的 workflow 本身是否如預期並行執行，需人工或下次有 connector 的 session 核對實際 Actions 執行結果）
 - 資產：73 REST 端點 + 1 WS、40 前端元件、29 技能、25 agent 模組、9 DB 表、141 `.py`（行數未重新統計）
 
 ## Issue 狀態快照
@@ -48,15 +48,15 @@
 - [x] **P0-4**（完成於 auto-advance #4，commit `2e6fde5`）修 `src/services/report_scheduler.py:318` 報告通知內文遺失問題。詳見 [WLAB-20260922-05](work-logs/2026-09/WLAB-20260922-05-report-scheduler-notification-message.md)。
 - [x] **P1-1**（完成於 auto-advance #5，commit `47ca81d`）修 `src/api/main.py` 的 `GET /api/reports` 重複註冊死碼。詳見 [WLAB-20260922-06](work-logs/2026-09/WLAB-20260922-06-main-duplicate-reports-route.md)。
 - [x] **P1-2**（完成於 auto-advance #6，commit `b550570`）`converter.parse_record()` 補回遺失欄位：`WorkRecord` 新增 `title`/`github_issue`/`assignee`/`status`；`parse_record()` 寫入這些欄位不再丟棄；`render_record()` 三個中介資料參數改為可選並回退採用 record 自身欄位（既有呼叫端不受影響）；新增 render → parse → render 往返測試。詳見 [WLAB-20260922-07](work-logs/2026-09/WLAB-20260922-07-converter-record-metadata-roundtrip.md)。
+- [x] **P1-3**（完成於 auto-advance #7，commit `1b5ba1f`）CI 防護：`.github/workflows/ci.yml` 的 `test` job 移除 `needs: lint`（兩者並行、各自回報）；ruff/black/mypy 改為 pin 版本 `ruff==0.6.0`/`black==24.8.0`/`mypy==1.11.0`，與 `requirements.txt` 一致；lint 範圍由 `src/` 擴到 `src/ tests/`（已本地驗證擴大範圍不會新增紅燈）。詳見 [WLAB-20260922-08](work-logs/2026-09/WLAB-20260922-08-ci-lint-test-decouple.md)。⚠️ 實際 CI Actions 執行結果需人工或下次有 GitHub connector 的 session 核對。
 - [ ] **P2-0**（新發現，auto-advance #6）`parse_record()` 仍未解析 `created_at` / `closed_at` 時間欄位（皆用模型預設值），導致 `render_record()` 推導出的 `status_str`（`in_progress`/`completed`）在多輪 round-trip 後可能與首次不一致。建議：`render_record()` 補上 `> **建立日期**：` 之外，也於 metadata 區塊寫入 `closed_at`（若有），並讓 `parse_record()` 解析回填，徹底補齊雙向無損。範圍與 P1-2 類似，可視為其延伸切片。
-- [ ] **P1-3** CI 防護：`.github/workflows/ci.yml` 將 `test` job 的 `needs: lint` 移除（兩者並行、各自回報，避免 lint 錯誤再次封鎖測試回饋 73 天）；ruff/black 改為 pin 版本（現為 `pip install ruff black mypy` 未 pin，與 `requirements.txt` 的 `ruff==0.6.0` 不一致）；lint 範圍由 `src/` 擴到 `src/ tests/`。
 - [ ] **P1-4** 關閉 6 個已完工 Issue（#33 / #42 / #43 / #44 / #75 / #96），每個附完工證據（commit sha + 對應程式位置）。✅ #96 的 converter 遺損阻塞（P1-2）已解除，可視為完工。⚠️ **需人工執行**：auto-advance Routine 無 GitHub connector（見 `docs/routines/auto-advance.md` §4.1），觸發時請直接跳過此項。
 - [ ] **P2-1** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ 依 `docs/routines/auto-advance.md` §4，修改 CLAUDE.md **規則內容**需人工授權；此項僅限**編號與事實數字**的修正，不得改動任何規則語意。
 - [ ] **P2-2** 定向下一個功能方向（Phase 15 多風場管理 / Epic A 案例學習系統）— **屬方向性決策，需使用者指派，routine 不得自行啟動**。
 
 ## 阻塞 / 風險
 
-- 🔴 **CI 紅燈 73 天**：`needs: lint` 使空白字元等級錯誤封鎖整個測試層回饋（見 P1-3）
+- 🟢 **CI 紅燈 73 天成因已修**（P1-3，commit `1b5ba1f`）：`needs: lint` 已移除，lint 與 test 並行回報；⚠️ 實際 Actions 執行結果尚未經人工核對，下次有 GitHub connector 的 session 應確認並行是否如預期運作
 - 🟠 **大 commit 直推 master**：`bfca6a7` 5,315 行未過 CI 即進主幹，流程缺門檻
 - 🟡 **文件與 tracker 脫鉤**：5 個 Issue 程式已完成但未關閉（需人工，見 P1-4）
 - 🟡 **`converter.parse_record()` 時間欄位仍未解析**：`created_at`/`closed_at` 未寫回 `WorkRecord`（見 P2-0，非阻塞但影響 round-trip 完整性）
