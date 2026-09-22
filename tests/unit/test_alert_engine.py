@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,6 +14,9 @@ from src.services.alert_engine import (
     RuleCondition,
     get_alert_rule_engine,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestRuleCondition:
@@ -60,8 +64,15 @@ class TestAlertRule:
 class TestAlertRuleEngine:
     """AlertRuleEngine 核心邏輯測試。"""
 
-    def setup_method(self) -> None:
+    @pytest.fixture(autouse=True)
+    def _isolated_engine(self, tmp_path: Path) -> None:
+        """以暫存路徑重新載入規則，與正式環境 configs/alerts/rules.yaml 的內容解耦。
+
+        路徑不存在時，引擎會自動生成並載入標準 5 條預設規則，
+        因此測試不受維運人員自行增修 rules.yaml（如新增第 6 條規則）影響。
+        """
         self.engine = AlertRuleEngine()
+        self.engine.load_rules(tmp_path / "rules.yaml")
 
     def test_default_rules_loaded(self) -> None:
         assert len(self.engine.rules) == 5
