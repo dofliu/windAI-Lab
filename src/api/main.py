@@ -2201,14 +2201,6 @@ async def reload_alert_rules() -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}")
 
 
-@app.get("/api/reports", tags=["報告管理"])
-async def api_list_reports() -> list[dict[str, Any]]:
-    """取得所有歷史生成報告清單。"""
-    from src.services import report_store
-
-    return report_store.list_reports()
-
-
 @app.post("/api/reports/generate", tags=["報告管理"])
 async def api_generate_report(
     report_type: str = "weekly", turbine_id: str = "all"
