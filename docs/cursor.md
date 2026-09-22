@@ -1,24 +1,24 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-09-22（auto-advance #2 觸發後）
+> 自動更新時間：2026-09-22（auto-advance #3 觸發後）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
 - 日期：2026-09-22
-- Session：`auto-advance` 第 2 次觸發，完成 P0-2（`src/api/director.py` 補 `import re`）
-- 前次有效工作日：2026-09-22（auto-advance #1，commit `8be9948` → `ab3b9c4`）
+- Session：`auto-advance` 第 3 次觸發，完成 P0-3（`tests/unit/test_alert_engine.py` 與生產 `configs/alerts/rules.yaml` 解耦）
+- 前次有效工作日：2026-09-22（auto-advance #2，commit `5084a8f`）
 
-## 數據基準（實測，auto-advance #2 之後）
+## 數據基準（實測，auto-advance #3 之後）
 
-- `ruff check .`：**25 錯誤**（原 27，本次消除 2 個 F821；剩餘皆需手動處理，無 `--fix` 可自動解）
-- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**（⚠️ 本容器 PATH 上 `black` 預設為 `/root/.local/bin/black` 26.3.1，非 pin 版本 24.8.0，務必用 `python3 -m black` 呼叫避免誤判）
-- `pytest tests/`：**877 收集 → 868 pass / 4 fail / 5 skip**（4 fail 為 `test_alert_engine.py`，對應 P0-3，尚未修復，與本次變更無關）
+- `ruff check .`：**25 錯誤**（與 auto-advance #2 基準相同，本次未新增也未消除；剩餘皆需手動處理，無 `--fix` 可自動解）
+- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**（⚠️ 本容器 PATH 上 `black` 預設為 `/root/.local/bin/black` 非 pin 版本，務必用 `python3 -m black` 呼叫避免誤判）
+- `pytest tests/`：**877 收集 → 872 pass / 0 fail / 5 skip**（原 868 pass / 4 fail，本次修復 `test_alert_engine.py` 全部 4 個失敗）
 - Python TODO/FIXME：0
 - 前端 TODO：1（`frontend/src/hooks/useWebSocket.ts`，穩定）
 - Open Issues：**18**（未變，本 routine 無 GitHub connector 無法核對）
-- 最近 commit：`5084a8f`（2026-09-22，`fix(#96): director.py 補回遺失的 import re`）
+- 最近 commit：`e9d459e`（2026-09-22，`fix(#alert-engine): 讓 test_alert_engine.py 與正式 configs/alerts/rules.yaml 解耦`）
 - **CI：狀態未知**（本 routine 無 GitHub connector，無法查詢 Actions；需人工或下次有 connector 的 session 核對）
 - 資產：73 REST 端點 + 1 WS、40 前端元件、29 技能、25 agent 模組、9 DB 表、141 `.py`（行數未重新統計）
 
@@ -44,7 +44,7 @@
 
 - [x] **P0-1**（完成於 auto-advance #1，commit `ab3b9c4`）`ruff check --fix .` 套用 158 項自動修復 + `black --line-length 99 src/ tests/`。詳見 [WLAB-20260922-02](work-logs/2026-09/WLAB-20260922-02-ruff-autofix.md)。
 - [x] **P0-2**（完成於 auto-advance #2，commit `5084a8f`）修 `src/api/director.py` 缺少的 `import re`（L245 `re.sub`、L294 `re.match` NameError 已解）。詳見 [WLAB-20260922-03](work-logs/2026-09/WLAB-20260922-03-director-import-re.md)。
-- [ ] **P0-3** 修 4 個 `tests/unit/test_alert_engine.py` 失敗測試。根因：`AlertRuleEngine()` 優先讀 `configs/alerts/rules.yaml`（6 條），測試斷言內建 5 條。**正確修法**：讓測試以自備 fixture YAML（或明確空設定）建構引擎，與 repo 生產設定解耦。**不要**把 5 改成 6——那會讓測試繼續綁死維運人員本就該自由編輯的設定檔。驗收：`pytest tests/unit/test_alert_engine.py` 全綠，且之後編輯 `rules.yaml` 不會再弄壞測試。
+- [x] **P0-3**（完成於 auto-advance #3，commit `e9d459e`）修 4 個 `tests/unit/test_alert_engine.py` 失敗測試。根因：`AlertRuleEngine()` 優先讀 `configs/alerts/rules.yaml`（維運人員已加到 6 條），測試斷言內建 5 條。修法：`setup_method` 改為 `@pytest.fixture(autouse=True)`，以 `tmp_path` 重新 `load_rules()`，與生產設定解耦（未改動 rules.yaml 本身，維運人員仍可自由編輯）。詳見 [WLAB-20260922-04](work-logs/2026-09/WLAB-20260922-04-alert-engine-test-decouple.md)。
 - [ ] **P0-4** 修 `src/services/report_scheduler.py:318`（黑格式化後行號已變）：`message` 組好後未帶入 `NotificationPayload`，導致報告通知內容為空。驗收：無 F841，且加一個斷言通知內容非空的測試。
 - [ ] **P1-1** 修 `src/api/main.py` 的 `GET /api/reports` 重複註冊（黑格式化後行號已變：L2016 與 L2205 同名 `api_list_reports`，後者為死碼）。保留其中一個，確認回傳行為一致。
 - [ ] **P1-2** `src/services/director_allocation/converter.py` 補回遺失欄位：`parse_record()` 解析出 `title`/`issue`/`assignee`/`status` 後全數丟棄。需為 `WorkRecord` 補 `title` / `github_issue` / `assignee` / `status` 欄位並寫入，**並加一個 render → parse → render 的 round-trip 測試**守住「雙向無損」的承諾。
