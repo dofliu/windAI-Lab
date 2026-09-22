@@ -160,3 +160,18 @@ def test_markdown_record_roundtrip():
     assert parsed.follow_up_actions == record.follow_up_actions
     assert parsed.test_results["單元測試"] == record.test_results["單元測試"]
     assert parsed.test_results["手動驗證"] == record.test_results["手動驗證"]
+
+    # 4. 中介資料欄位（title / github_issue / assignee / status）不得於往返中遺失
+    assert parsed.title == "實作通知渠道"
+    assert parsed.github_issue == 42
+    assert parsed.assignee == "wEng:backend-dev"
+    assert parsed.status == "completed"  # closed_at 已設定 → render_record 輸出 completed
+
+    # 5. render → parse → render：第二次渲染不再顯式帶入中介資料，
+    #    改由 parsed record 自身欄位回填（fallback），驗證 title / github_issue /
+    #    assignee 在多次往返後仍保持一致，守住雙向無損的承諾
+    md_content_2 = AllocationMarkdownConverter.render_record(parsed)
+    parsed_2 = AllocationMarkdownConverter.parse_record(md_content_2)
+    assert parsed_2.title == parsed.title
+    assert parsed_2.github_issue == parsed.github_issue
+    assert parsed_2.assignee == parsed.assignee

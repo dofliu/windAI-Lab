@@ -280,7 +280,7 @@ class AllocationMarkdownConverter:
         # > **建立日期**：...
         # > **狀態**：...
         title = "未知任務"
-        issue = []
+        github_issue: int | None = None
         assignee = ""
         status = "pending"
 
@@ -294,7 +294,7 @@ class AllocationMarkdownConverter:
                 # 解析其中的 issue number, 例如 [#42](...)
                 issue_nums = re.findall(r"#(\d+)", val)
                 if issue_nums:
-                    issue = [int(i) for i in issue_nums]
+                    github_issue = int(issue_nums[0])
             elif "指派代理" in name:
                 assignee = val
             elif "狀態" in name:
@@ -379,6 +379,10 @@ class AllocationMarkdownConverter:
             summary=summary,
             execution_steps=steps,
             deliverables=deliverables,
+            title=title,
+            github_issue=github_issue,
+            assignee=assignee,
+            status=status,
             commits=commits,
             prs=prs,
             test_results=test_results,
@@ -390,11 +394,18 @@ class AllocationMarkdownConverter:
     @staticmethod
     def render_record(
         record: WorkRecord,
-        title: str = "未知任務",
+        title: str | None = None,
         github_issue: int | None = None,
-        assignee_agent: str = "",
+        assignee_agent: str | None = None,
     ) -> str:
-        """渲染成 WLAB-*.md 工作紀錄 Markdown 內容。"""
+        """渲染成 WLAB-*.md 工作紀錄 Markdown 內容。
+
+        `title` / `github_issue` / `assignee_agent` 未顯式提供時，回退採用
+        `record` 自身同名欄位（例如來自 `parse_record()` 的往返解析結果）。
+        """
+        title = title if title is not None else record.title
+        github_issue = github_issue if github_issue is not None else record.github_issue
+        assignee_agent = assignee_agent if assignee_agent is not None else record.assignee
         issue_str = (
             f"[#{github_issue}](https://github.com/dofliu/windai-lab/issues/{github_issue})"
             if github_issue

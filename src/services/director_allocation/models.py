@@ -89,6 +89,10 @@ class WorkRecord(BaseModel):
     summary: str
     execution_steps: list[str]
     deliverables: list[str]
+    title: str = "未知任務"
+    github_issue: int | None = None
+    assignee: str = ""
+    status: str = "pending"
     commits: list[str] = Field(default_factory=list)
     prs: list[int] = Field(default_factory=list)
     test_results: dict[str, str] = Field(default_factory=dict)
