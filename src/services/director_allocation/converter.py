@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from src.services.director_allocation.models import (
@@ -283,6 +284,8 @@ class AllocationMarkdownConverter:
         github_issue: int | None = None
         assignee = ""
         status = "pending"
+        created_at = datetime.utcnow()
+        closed_at: datetime | None = None
 
         meta_matches = re.findall(r"> \*\*([^*]+)\*\*：(.*)", content)
         for name, value in meta_matches:
@@ -297,6 +300,12 @@ class AllocationMarkdownConverter:
                     github_issue = int(issue_nums[0])
             elif "指派代理" in name:
                 assignee = val
+            elif "結束日期" in name:
+                with contextlib.suppress(ValueError):
+                    closed_at = datetime.strptime(val, "%Y-%m-%d")
+            elif "建立日期" in name:
+                with contextlib.suppress(ValueError):
+                    created_at = datetime.strptime(val, "%Y-%m-%d")
             elif "狀態" in name:
                 status = val
 
@@ -389,6 +398,8 @@ class AllocationMarkdownConverter:
             learnings=learnings,
             follow_up_actions=follow_up,
             markdown_path=markdown_path,
+            created_at=created_at,
+            closed_at=closed_at,
         )
 
     @staticmethod
@@ -420,6 +431,12 @@ class AllocationMarkdownConverter:
             f"> **GitHub Issue**：{issue_str}",
             f"> **指派代理**：{assignee_agent}",
             f"> **建立日期**：{record.created_at.strftime('%Y-%m-%d')}",
+        ]
+
+        if record.closed_at:
+            lines.append(f"> **結束日期**：{record.closed_at.strftime('%Y-%m-%d')}")
+
+        lines += [
             f"> **狀態**：{status_str}",
             "",
             "---",
