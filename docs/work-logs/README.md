@@ -119,6 +119,8 @@ docs/work-logs/
 |------|--------|----------|--------|
 | 05-01 ~ 09-21 | — | 停擺期（僅 07-03 / 07-10 兩次 commit，皆未留派工紀錄） | ⚠ |
 | 09-22 | [allocation](2026-09/2026-09-22-allocation.md) | **復工健檢** — CI 紅燈 73 天定位 + 5 項缺陷記錄 + `TODO-roadmap.md` 損壞修復 + 文件全面校準；[auto-advance P0-1](2026-09/WLAB-20260922-02-ruff-autofix.md) ruff --fix 158 項 + black 格式化；[auto-advance P0-2](2026-09/WLAB-20260922-03-director-import-re.md) director.py 補 import re；[auto-advance P0-3](2026-09/WLAB-20260922-04-alert-engine-test-decouple.md) test_alert_engine.py 與生產 rules.yaml 解耦；[auto-advance P0-4](2026-09/WLAB-20260922-05-report-scheduler-notification-message.md) report_scheduler 補回遺失的報告通知內文；[auto-advance P1-1](2026-09/WLAB-20260922-06-main-duplicate-reports-route.md) 移除 main.py 重複註冊的 `GET /api/reports` 死碼；[auto-advance P1-2](2026-09/WLAB-20260922-07-converter-record-metadata-roundtrip.md) converter.parse_record 補回遺失的 title/github_issue/assignee/status 4 個欄位；[auto-advance P1-3](2026-09/WLAB-20260922-08-ci-lint-test-decouple.md) CI lint/test job 解耦 + pin ruff/black/mypy 版本 + lint 範圍擴至 tests/ | ✅ |
+| 09-23 | — | [auto-advance P2-0](2026-09/WLAB-20260923-01-converter-created-closed-at-roundtrip.md) converter.parse_record 補回 created_at/closed_at 雙向解析；P2-1（CLAUDE.md 編號去重）因 Self-Modification 被系統層擋下，已還原 | ✅ |
+| 09-24 | — | [auto-advance P1-4](2026-09/WLAB-20260924-01-close-completed-issues.md) 本次觸發首次掛載 GitHub connector，逐檔核實後關閉 6 個已完工 Issue（#33/#42/#43/#44/#75/#96）；副產物發現 CI 實際 pin `ruff==0.6.0`（25 錯誤）與 routine 本地 pin `ruff==0.15.8`（19 錯誤）版本落差，為 CI 持續紅燈的真正根因，已列入 cursor.md 新 P0 | ✅ |
 
 ### 2026 年 4 月
 
