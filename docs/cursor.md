@@ -1,26 +1,33 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-09-23（auto-advance #9 觸發後）
+> 自動更新時間：2026-09-24（auto-advance #10 觸發後）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
-- 日期：2026-09-23
-- Session：`auto-advance` 第 9 次觸發。取用 P2-1（CLAUDE.md 章節編號去重 + 虛擬辦公室代理數量校正），已完成編輯並通過自我測試，但 **commit 被 Claude Code auto-mode classifier 以「Self-Modification」拒絕**（CLAUDE.md 是治理 Claude 自身行為的檔案，编辑後嘗試 commit 時被系統層擋下，而非測試失敗）。已將工作樹改動 `git checkout -- CLAUDE.md` 完整還原，本次**無 commit**。
-- 前次有效工作日：2026-09-23（auto-advance #8，commit `e2a7fff`）
+- 日期：2026-09-24
+- Session：`auto-advance` 第 10 次觸發。待續產出佇列僅剩 P1-4 / P2-1 / P2-2，三項皆標註「需人工」，視為**佇列已清空**（依 `docs/routines/auto-advance.md` §6）。改跑一次完整健檢（Phase 4 三項 + 編碼掃描 + 資產盤點），數字已更新於下方。**本次無 commit**（§6 步驟 5：確實無事不 commit）。
+- 前次有效工作日：2026-09-23（auto-advance #8，commit `e2a7fff`；#9 因 Self-Modification 被擋，無 commit）
 
-## 數據基準（實測，auto-advance #9 之後，未變更任何程式碼）
+## 數據基準（實測，auto-advance #10，未變更任何程式碼）
 
-- `ruff check .`：**19 錯誤**（與 auto-advance #8 基準相同，本次未變更任何 `.py` 檔案）
-- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**（⚠️ 本容器 PATH 上 `black` 預設為 `/root/.local/bin/black` 非 pin 版本，務必用 `python3 -m black` 呼叫避免誤判）
-- `pytest tests/`：**877 收集 → 872 pass / 0 fail / 5 skip**（與 auto-advance #8 基準相同）
+- `ruff check .`：**19 錯誤**（與 #8/#9 基準相同）
+- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，181 檔案（⚠️ 本容器 PATH 上 `black` 預設為 `/root/.local/bin/black` 非 pin 版本，務必用 `python3 -m black` 呼叫避免誤判）
+- `pytest tests/`：**877 收集 → 872 pass / 0 fail / 5 skip**（與 #8/#9 基準相同）
+- 編碼掃描（`iconv -f UTF-8 -t UTF-8`，`src/ tests/ docs/` 內 `.py`/`.md`）：**0 個非 UTF-8 檔案**
 - Python TODO/FIXME：0
 - 前端 TODO：1（`frontend/src/hooks/useWebSocket.ts`，穩定）
 - Open Issues：**18**（未變，本 routine 無 GitHub connector 無法核對）
-- 最近 commit：`5b93960`（2026-09-23，`docs: 更新 cursor.md 與工作紀錄，反映 P2-0 完成狀態`）——本次觸發無新 commit
+- 最近 commit：`2712163`（2026-09-23，`docs: 更新 cursor.md，記錄 P2-1 因 Self-Modification 被系統層擋下`）——本次觸發無新 commit
 - **CI：狀態未知**（本 routine 無 GitHub connector，無法查詢 Actions；沿用既有基準）
-- 資產：73 REST 端點 + 1 WS、40 前端元件、29 技能、25 agent 模組、9 DB 表、141 `.py`（行數未重新統計）
+- 資產（本次重新實測）：
+  - REST 端點：**72**（`src/api/main.py` + `src/api/director.py`，符合 P1-1 移除重複 `/api/reports` 後的預期值，73→72）+ 1 WS
+  - 前端元件：**40**（`frontend/src/**/*.tsx`）
+  - 技能（`src/skills/` 下扣除 `__init__.py`/`base.py`/`registry.py`）：**28**（data 7、features 4、leadership 1、ml 12、rag 3、reporting 1；舊基準寫 29，屬前次未精算的估計值，本次為實測數）
+  - agent 模組：**25**（`src/agents/{leadership,data,ai,domain,engineering,research}/*.py`，與 `CLAUDE.md` §2 表格逐一核對一致）
+  - DB 表：**沿用既有 9**（grep `__tablename__` 得 0 筆，本專案程式碼內無 SQLAlchemy ORM 表定義，「9 DB 表」應為架構文件中的規劃/邏輯表數而非可由程式碼驗證的實測值；建議下次有餘裕時對照 `docs/architecture-design.md` 澄清定義後再更新此數字）
+  - `.py` 檔案：**141**，總行數 **30,411**（`src/` 下）
 
 ## Issue 狀態快照
 
@@ -54,9 +61,15 @@
 - [ ] **P2-1** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ **已嘗試執行並卡關（auto-advance #9）**：編輯內容本身通過自我測試（不影響 ruff/black/pytest），但 commit 動作被 **Claude Code auto-mode classifier 以「Self-Modification」拒絕**——CLAUDE.md 是治理 Claude 自身工作守則的檔案，系統層不允許 Claude 自動 commit 對它的修改，即使內容僅為編號/事實數字修正。工作樹已還原，**未留下未 commit 的改動**。⚠️ **需人工授權**：此項需要人工在具備更高權限的 session（或人工直接編輯）才能完成 commit；auto-advance routine 之後觸發應**跳過此項**（除非人工調整了 auto-mode 的分類規則），直接取下一項。
 - [ ] **P2-2** 定向下一個功能方向（Phase 15 多風場管理 / Epic A 案例學習系統）— **屬方向性決策，需使用者指派，routine 不得自行啟動**。
 
+> ⚠️ **佇列狀態（auto-advance #10 起）**：以上三項皆為「需人工」，routine 可自主執行的佇列**目前為空**。下次觸發應直接依 §6 跑健檢並回報，除非使用者已新增可自主處理的項目、或人工已解除 P1-4／P2-1 的阻塞。**建議的下一個方向（供使用者挑選，非本 routine 自行啟動）**：
+> 1. Phase 15：多風場管理（新增風場切換 / 跨場比較功能）
+> 2. Epic A：案例學習系統（#35，尚未啟動的子任務）
+> 3. 人工協助完成 P2-1（CLAUDE.md 編號去重）與 P1-4（關閉 6 個已完工 Issue）以清空技術債佇列
+
 ## 阻塞 / 風險
 
 - 🟢 **CI 紅燈 73 天成因已修**（P1-3，commit `1b5ba1f`）：`needs: lint` 已移除，lint 與 test 並行回報；⚠️ 實際 Actions 執行結果尚未經人工核對，下次有 GitHub connector 的 session 應確認並行是否如預期運作
 - 🟠 **大 commit 直推 master**：`bfca6a7` 5,315 行未過 CI 即進主幹，流程缺門檻
 - 🟡 **文件與 tracker 脫鉤**：5 個 Issue 程式已完成但未關閉（需人工，見 P1-4）
 - 🟡 **新發現（auto-advance #9）：CLAUDE.md 不可被此 routine 自動 commit**：任何觸及 `CLAUDE.md` 的佇列項目都會在 commit 階段被系統層擋下（Self-Modification），與 `docs/routines/auto-advance.md` §4 的「需人工授權」清單性質不同——這不是規則面的自我禁止，而是執行環境的硬性限制。建議：往後佇列不要再排入直接修改 `CLAUDE.md` 的項目，除非使用者確認可由人工協助完成 commit 步驟。
+- 🟡 **新發現（auto-advance #10）：可自主執行的佇列已空**：P1-4（需 GitHub connector）、P2-1（CLAUDE.md 自我修改被擋）、P2-2（方向性決策）皆卡在「需人工」，routine 已連續 2 次觸發（#9、#10）無法產出新 commit。需使用者其中之一：(a) 指派新的技術方向（見上方建議清單）、(b) 協助完成 P2-1 的 commit、(c) 為 routine 掛上 GitHub connector 以解除 P1-4。
