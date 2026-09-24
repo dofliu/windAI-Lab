@@ -52,10 +52,10 @@ pip install --quiet fastapi==0.115.0 "uvicorn[standard]" "websockets>=13.0" \
   pydantic==2.9.0 pydantic-settings==2.5.0 pandas==2.2.0 "numpy>=1.26,<2" \
   scikit-learn xgboost scipy pytest==8.3.0 pytest-asyncio==0.24.0 \
   python-dotenv loguru "httpx>=0.28.1" pyyaml
-pip install --quiet "ruff==0.15.8" "black==24.8.0"
+pip install --quiet "ruff==0.6.0" "black==24.8.0"
 ```
 
-> ⚠️ **ruff 版本必須 pin**。CI 目前用 `pip install ruff`（未 pin），本地若版本不同會看到不一樣的錯誤數。本 routine 固定 `0.15.8`，與 2026-09-22 健檢基準一致。
+> ⚠️ **ruff 版本必須 pin**，且須與 CI 實際版本一致。CI（`.github/workflows/ci.yml`）目前 pin `ruff==0.6.0`，本 routine 同步固定 `0.6.0`（2026-09-24 auto-advance #12 校正；舊版本 `0.15.8` 與 CI 規則集不同，曾造成本地 25 項誤判為新錯誤）。
 
 ### Phase 1 — 讀取狀態（**只讀 cursor.md，不要讀整篇 daily_report**）
 
