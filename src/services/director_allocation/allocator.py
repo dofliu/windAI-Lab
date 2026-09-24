@@ -104,7 +104,7 @@ class AllocationEngine:
         ns = None
         assignee = ""
 
-        labels_lower = [l.lower() for l in task.labels]
+        labels_lower = [label.lower() for label in task.labels]
         if "paper" in labels_lower or "docs" in labels_lower or "research" in labels_lower:
             ns = TeamNamespace.wRes
             assignee = "wRes:paper-writer"
@@ -170,7 +170,7 @@ class AllocationEngine:
             elif task.dependencies:
                 # 有阻礙鏈的優先級別提高
                 priority = Priority.P1
-            elif "epic" in comb_text or any("epic" in l.lower() for l in task.labels):
+            elif "epic" in comb_text or any("epic" in label.lower() for label in task.labels):
                 priority = Priority.P2
             elif "debt" in comb_text or "refactor" in comb_text or "clean" in comb_text:
                 priority = Priority.P4

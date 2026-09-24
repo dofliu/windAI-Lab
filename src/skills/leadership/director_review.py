@@ -180,7 +180,7 @@ class DirectorReviewSkill(BaseSkill):
                 key_metrics = {
                     k: v
                     for k, v in data.items()
-                    if isinstance(v, (int, float, str, bool)) and k != "raw_llm_response"
+                    if isinstance(v, int | float | str | bool) and k != "raw_llm_response"
                 }
                 if key_metrics:
                     parts.append(f"關鍵指標：{json.dumps(key_metrics, ensure_ascii=False)}")
@@ -305,7 +305,7 @@ class DirectorReviewSkill(BaseSkill):
     def _find_metric(data: Any, key: str) -> float | None:
         """在巢狀 dict 中搜索指標。"""
         if isinstance(data, dict):
-            if key in data and isinstance(data[key], (int, float)):
+            if key in data and isinstance(data[key], int | float):
                 return float(data[key])
             for v in data.values():
                 found = DirectorReviewSkill._find_metric(v, key)

@@ -38,10 +38,7 @@ class AllocationMarkdownConverter:
 
         # 1. 解析日期
         date_match = re.search(r"# 總監派工單 — (\d{4}-\d{2}-\d{2})", content)
-        if date_match:
-            sheet_date = date.fromisoformat(date_match.group(1))
-        else:
-            sheet_date = date.today()
+        sheet_date = date.fromisoformat(date_match.group(1)) if date_match else date.today()
 
         # 2. 解析剩餘天數
         days_match = re.search(r"\* Hackathon 剩餘天數：(\d+)", content)
@@ -492,8 +489,8 @@ class AllocationMarkdownConverter:
         lines.extend(["", "## 6. 學習與後續建議", "* 學到什麼："])
 
         if record.learnings:
-            for l in record.learnings:
-                lines.append(f"  - {l}")
+            for learning in record.learnings:
+                lines.append(f"  - {learning}")
         else:
             lines.append("  - 暫無。")
 

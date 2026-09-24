@@ -390,14 +390,14 @@ async def _sync_sheet_to_markdown(db: Any, sheet_date_str: str) -> None:
 
         # 組裝 load_snapshot Pydantic 列表
         load_models = []
-        for l in sheet["load_snapshot"]:
+        for load_entry in sheet["load_snapshot"]:
             load_models.append(
                 TeamLoadSnapshot(
-                    namespace=TeamNamespace(l["namespace"]),
-                    wip_count=l["wip_count"],
-                    backlog_count=l["backlog_count"],
-                    load_level=l["load_level"],
-                    suggestion=l["suggestion"],
+                    namespace=TeamNamespace(load_entry["namespace"]),
+                    wip_count=load_entry["wip_count"],
+                    backlog_count=load_entry["backlog_count"],
+                    load_level=load_entry["load_level"],
+                    suggestion=load_entry["suggestion"],
                 )
             )
 

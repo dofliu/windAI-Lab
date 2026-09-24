@@ -112,7 +112,7 @@ class ReportGeneratorSkill(BaseSkill):
         health_score = anomaly.get("health_score", "N/A")
         lines.append("## 1. 健康分數摘要")
         lines.append("")
-        if isinstance(health_score, (int, float)):
+        if isinstance(health_score, int | float):
             emoji = "🟢" if health_score >= 80 else "🟡" if health_score >= 60 else "🔴"
             lines.append(f"**綜合健康分數：{emoji} {health_score}/100**")
         else:
@@ -245,7 +245,7 @@ class ReportGeneratorSkill(BaseSkill):
         lines.append("## 1. 健康總覽")
         lines.append("")
         health_score = anomaly.get("health_score", "N/A")
-        if isinstance(health_score, (int, float)):
+        if isinstance(health_score, int | float):
             emoji = "🟢" if health_score >= 80 else "🟡" if health_score >= 60 else "🔴"
             lines.append(f"**本月健康分數：{emoji} {health_score}/100**")
         lines.append("")
@@ -390,7 +390,7 @@ def _generate_recommendations(
     recs: list[str] = []
 
     health = anomaly.get("health_score", 100)
-    if isinstance(health, (int, float)):
+    if isinstance(health, int | float):
         if health < 60:
             recs.append("- 🔴 健康分數偏低，建議立即安排現場檢查")
         elif health < 80:
@@ -403,16 +403,16 @@ def _generate_recommendations(
         recs.append(f"- ⚠️ 有 {temp_count} 個溫度異常事件，建議持續追蹤")
 
     eff_loss = anomaly.get("efficiency_loss_pct", 0)
-    if isinstance(eff_loss, (int, float)) and abs(eff_loss) > 10:
+    if isinstance(eff_loss, int | float) and abs(eff_loss) > 10:
         recs.append("- 🔴 效率損失顯著，建議檢查葉片狀態與 yaw alignment")
-    elif isinstance(eff_loss, (int, float)) and abs(eff_loss) > 5:
+    elif isinstance(eff_loss, int | float) and abs(eff_loss) > 5:
         recs.append("- ⚠️ 功率曲線略有偏差，建議下次維護時檢查葉片清潔度")
 
     if rul:
         rul_days = rul.get("predicted_rul_days")
-        if isinstance(rul_days, (int, float)) and rul_days < 90:
+        if isinstance(rul_days, int | float) and rul_days < 90:
             recs.append(f"- 🔴 預測 RUL 僅 {rul_days:.0f} 天，建議提前規劃大修")
-        elif isinstance(rul_days, (int, float)) and rul_days < 180:
+        elif isinstance(rul_days, int | float) and rul_days < 180:
             recs.append(f"- ⚠️ 預測 RUL {rul_days:.0f} 天，建議備妥備品")
 
     if not recs:

@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from src.agents.orchestrator.engine import engine as orchestration_engine
 from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
 from src.api.agent_registry import get_agent, get_all_agents, update_agent_status
+from src.api.director import router as director_router
 from src.api.models import (
     AddWorkOrderNoteRequest,
     AgentModel,
@@ -179,8 +180,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from src.api.director import router as director_router
 
 app.include_router(director_router)
 
@@ -2198,7 +2197,7 @@ async def reload_alert_rules() -> dict[str, Any]:
             "detail": "告警規則已成功熱重載！",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}")
+        raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}") from e
 
 
 @app.post("/api/reports/generate", tags=["報告管理"])
@@ -2214,7 +2213,7 @@ async def api_generate_report(
         res = scheduler.generate_and_dispatch(report_type, turbine_id, title_prefix)
         return {"status": "success", "detail": "維運報告生成成功！", "report": res}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"即時生成報告失敗：{e}")
+        raise HTTPException(status_code=500, detail=f"即時生成報告失敗：{e}") from e
 
 
 @app.get("/api/connectors", tags=["資料對接"])
@@ -2271,7 +2270,7 @@ async def api_create_connector(req: ConnectorCreateRequest) -> dict[str, Any]:
         with open(file_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"寫入設定檔失敗：{e}")
+        raise HTTPException(status_code=500, detail=f"寫入設定檔失敗：{e}") from e
 
     if req.enabled:
         success = await _connector_manager.toggle_connector(req.id, True)
