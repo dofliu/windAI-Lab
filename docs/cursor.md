@@ -1,35 +1,35 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-09-26（auto-advance #19 觸發後）
+> 自動更新時間：2026-09-26（auto-advance #20 觸發後）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
 - 日期：2026-09-26
-- Session：`auto-advance` 第 19 次觸發。佇列僅剩需人工項目（P2-1 / P2-2），依 playbook §6 執行完整健檢（自我測試三項 + iconv 編碼掃描 + 資產盤點 + GitHub Issue/CI 核對）。實測與 #18 基準完全一致，無回歸、無新問題，本次**無程式碼變更、無 commit（僅本檔文件更新）**。
-- 前次有效工作日：2026-09-26（auto-advance #18，健檢 only）；最近一次有實質程式碼 commit 仍為 auto-advance #13（`253f80f`，見 [WLAB-20260924-03](work-logs/2026-09/WLAB-20260924-03-p0-new2-verify-p1-new1-ruff-pin.md)）
-- ⚠️ **佇列已連續 6 次觸發（#14～#19）維持「等待方向指派」空轉**，僅剩需人工項目未解除。#18 已透過 push notification 提醒過一次；本次（#19）數據與 #18 完全一致、無新資訊，故不重複發送通知，避免對使用者造成干擾。建議使用者盡快在 P2-2 候選方向中擇一，或協助完成 P2-1，否則後續觸發將持續重複相同健檢、無實質產出。
+- Session：`auto-advance` 第 20 次觸發。佇列僅剩需人工項目（P2-1 / P2-2），依 playbook §6 執行完整健檢（自我測試三項 + iconv 編碼掃描 + 資產盤點 + GitHub Issue/CI 核對）。實測與 #19 基準完全一致，無回歸、無新問題，本次**無程式碼變更、無 commit（僅本檔文件更新）**。
+- 前次有效工作日：2026-09-26（auto-advance #19，健檢 only）；最近一次有實質程式碼 commit 仍為 auto-advance #13（`253f80f`，見 [WLAB-20260924-03](work-logs/2026-09/WLAB-20260924-03-p0-new2-verify-p1-new1-ruff-pin.md)）
+- ⚠️ **佇列已連續 7 次觸發（#14～#20）維持「等待方向指派」空轉**，僅剩需人工項目未解除。#18 已透過 push notification 提醒過一次；#19、#20 數據皆與前次完全一致、無新資訊，故不重複發送通知，避免對使用者造成干擾。建議使用者盡快在 P2-2 候選方向中擇一，或協助完成 P2-1，否則後續觸發將持續重複相同健檢、無實質產出。
 
-## 數據基準（實測，auto-advance #19）
+## 數據基準（實測，auto-advance #20）
 
 - 環境：新容器，依 playbook Phase 0 重裝，pin `ruff==0.6.0`、`black==24.8.0`（與 CI 一致）
 - `ruff check .`（`0.6.0`，`/usr/local/bin/ruff`）：**0 錯誤**
 - `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，181 檔案
-- `python3 -m pytest tests/ -q`：**872 pass / 0 fail / 5 skip**（與 #8～#18 基準相同，本次無回歸）
+- `python3 -m pytest tests/ -q`：**872 pass / 0 fail / 5 skip**（與 #8～#19 基準相同，本次無回歸）
 - `iconv` 編碼掃描（`src/` `tests/` `docs/` 下 `.py`/`.md`）：**0 個非 UTF-8 檔案**（238 檔掃描）
-- CI：最新 push（run `36243276916`，#18 的健檢 commit `be28404`）已確認 **conclusion=success**
-- Open Issues：12（`list_issues` state=OPEN 核對，號碼與 #11～#18 完全一致：#34/35/36/37/46/47/48/49/50/51/52/69，無新增無關閉）
+- CI：最新 push（run `36253389046`，#19 的健檢 commit `6752ef3`）已確認 **conclusion=success**
+- Open Issues：12（`list_issues` state=OPEN 核對，號碼與 #11～#19 完全一致：#34/35/36/37/46/47/48/49/50/51/52/69，無新增無關閉）
 - 前端 TODO：1（`frontend/src/hooks/useWebSocket.ts:266`，穩定，本次未重新掃描細節）
-- 最近 commit：`be28404`（2026-09-26，auto-advance #18；本次 #19 未變更程式碼，僅文件）
+- 最近 commit：`6752ef3`（2026-09-26，auto-advance #19；本次 #20 未變更程式碼，僅文件）
 - 資產：
-  - REST 端點：73（含 1 WS，與 #10～#18 基準一致）
-  - 前端元件：未重新掃描（`frontend/` 本次未變更；沿用 #14～#18 已知結論——純 grep `export` 口徑在 37～41 間波動，屬統計誤差非實際變化。維持建議：下次需要精確值時改用 AST parser）
-  - 技能：28（重新以 `find src -path "*skills*" -name "*.py"` 排除 `__pycache__`/`__init__.py`/`base.py`/`registry.py` 後核實為 28，與 #10～#18 基準一致）
+  - REST 端點：73（含 1 WS，與 #10～#19 基準一致）
+  - 前端元件：未重新掃描（`frontend/` 本次未變更；沿用 #14～#19 已知結論——純 grep `export` 口徑在 37～41 間波動，屬統計誤差非實際變化。維持建議：下次需要精確值時改用 AST parser）
+  - 技能：28（重新以 `find src -path "*skills*" -name "*.py"` 排除 `__pycache__`/`__init__.py`/`base.py`/`registry.py` 後核實為 28，與 #10～#19 基準一致）
   - agent 模組：25（排除 7 個 `__init__.py` 後核實，與基準一致）
-  - `.py` 檔案：141，總行數 30,411（`src/` 下，與 #18 完全一致）
+  - `.py` 檔案：141，總行數 30,411（`src/` 下，與 #19 完全一致）
 
-## Issue 狀態快照（#19 重新核對，未變更）
+## Issue 狀態快照（#20 重新核對，未變更）
 
 剩餘 Open Issues：12 個（#34/#35/#36/#37/#46/#47/#48/#49/#50/#51/#52/#69）。詳見 #11 work-log。
 
@@ -37,7 +37,7 @@
 
 > 由 `auto-advance` routine 每 3 小時取**第一個未完成**項目執行，規則見 `docs/routines/auto-advance.md`。
 
-**佇列持續清空，等待方向指派（#19 再次確認，無新項目）。** 目前僅剩以下需人工項目：
+**佇列持續清空，等待方向指派（#20 再次確認，無新項目）。** 目前僅剩以下需人工項目：
 
 - [ ] **P2-1** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ **已嘗試執行並卡關（auto-advance #9）**：編輯內容本身通過自我測試，但 commit 動作被 Claude Code auto-mode classifier 以「Self-Modification」拒絕，工作樹已還原。**需人工授權**：需人工在具備更高權限的 session（或人工直接編輯）才能完成 commit；routine 之後觸發應**跳過此項**。
 
@@ -61,4 +61,4 @@
 - 🟢 GitHub connector 持續可用（#11～#19 皆驗證成功），`docs/routines/auto-advance.md` §4.1「無 connector」描述已過時，下次觸發請直接嘗試查詢而非假設不可用。
 - 🟡 **前端元件計數口徑不穩**（#14 發現，#15/#16 再次確認、誤差擴大）：純 grep `export` 統計對同一份未變更程式碼在不同觸發間得到 37 / 39 / 40 / 41，屬統計方法誤差而非實際差異。非阻塞，但下次若需精確值應改用更嚴謹的計數方式（如 AST parser）而非持續沿用不穩定的 grep 口徑。#17～#19 因 `frontend/` 未變更而略過重新掃描。
 - ℹ️ **技能數量計數需排除基礎設施檔**（#15 校準，#16～#19 沿用）：`src/skills/` 下若用 `find ... -name "*.py"` 未排除 `base.py`、`registry.py`（皆為共用基礎設施，非單一技能），會把 28 誤算為 37。下次沿用 #10～#19 的排除方式核實。
-- 🟡 **佇列連續 6 次觸發（#14～#19）空轉**：自 #14 起僅剩 P2-1（`CLAUDE.md` 自我修改被系統擋下）與 P2-2（方向性決策）兩個需人工項目，routine 已無自主可推進工作。#18 已發過一次 push notification 提醒；#19 數據無變化，未重複發送（見上次工作時間欄說明），下次觸發若仍無使用者回應且數據持續無變化，同樣不需重複通知。
+- 🟡 **佇列連續 7 次觸發（#14～#20）空轉**：自 #14 起僅剩 P2-1（`CLAUDE.md` 自我修改被系統擋下）與 P2-2（方向性決策）兩個需人工項目，routine 已無自主可推進工作。#18 已發過一次 push notification 提醒；#19、#20 數據皆無變化，未重複發送（見上次工作時間欄說明），下次觸發若仍無使用者回應且數據持續無變化，同樣不需重複通知。
