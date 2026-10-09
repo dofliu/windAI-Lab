@@ -1,17 +1,18 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-09-27（auto-advance #28 觸發後）
+> 自動更新時間：2026-10-09（auto-advance #29 觸發後）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
+- **#29（2026-10-09）**：距 #28 約 12 天。自我測試重跑：ruff 0.6.0 0 錯誤 / black 181 檔全綠 / pytest 872 pass、5 skip、0 fail，與 #28 完全一致。佇列仍只剩需人工項目（P2-1/P2-2），已發 push notification。注意：環境 `pip` 指向 Python 3.13（pandas 2.2.0 編譯失敗），須用 `python3 -m pip install`（Python 3.11）。
 - 日期：2026-09-27
 - Session：`auto-advance` 第 28 次觸發。佇列僅剩需人工項目（P2-1 / P2-2），依 playbook §6 執行完整健檢（自我測試三項 + iconv 編碼掃描 + 資產盤點 + GitHub Issue/CI 核對）。實測與 #27 基準完全一致，無回歸、無新問題，本次**無程式碼變更**。
 - 前次有效工作日：2026-09-27（auto-advance #27，健檢 only）；最近一次有實質程式碼 commit 仍為 auto-advance #13（`253f80f`，見 [WLAB-20260924-03](work-logs/2026-09/WLAB-20260924-03-p0-new2-verify-p1-new1-ruff-pin.md)）
 - 🟡 **佇列已連續 15 次觸發（#14～#28）維持「等待方向指派」空轉**，僅剩需人工項目未解除。上次 push notification 補發提醒為 #22（2026-09-27T00:52 UTC）；本次（#28，2026-09-27T18:50 UTC）距上次提醒約 17 小時 58 分，**已達 15～18 小時補發門檻上緣**，且數據連續 15 次觸發無變化，故**本次已發送 push notification**，提醒使用者從 P2-2 候選方向中擇一指派，或協助處理 P2-1。下次補發時機重新起算（距本次起算滿 15～18 小時後，若仍無變化再發）。
 
-## 數據基準（實測，auto-advance #28）
+## 數據基準（實測，auto-advance #29，2026-10-09；ruff/black/pytest 重測，其餘沿用 #28）
 
 - 環境：新容器，依 playbook Phase 0 重裝，pin `ruff==0.6.0`、`black==24.8.0`（與 CI 一致）
 - `ruff check .`（`0.6.0`，`/usr/local/bin/ruff`）：**0 錯誤**
