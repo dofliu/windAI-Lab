@@ -1,67 +1,51 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-11（auto-advance #30 + 使用者授權完成 P2-1）
+> 自動更新時間：2026-10-11（auto-advance #31，使用者指派 Epic A 後的第一輪）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
-- **#29（2026-10-09）**：距 #28 約 12 天。自我測試重跑：ruff 0.6.0 0 錯誤 / black 181 檔全綠 / pytest 872 pass、5 skip、0 fail，與 #28 完全一致。佇列仍只剩需人工項目（P2-1/P2-2），已發 push notification。注意：環境 `pip` 指向 Python 3.13（pandas 2.2.0 編譯失敗），須用 `python3 -m pip install`（Python 3.11）。
-- 日期：2026-09-27
-- Session：`auto-advance` 第 28 次觸發。佇列僅剩需人工項目（P2-1 / P2-2），依 playbook §6 執行完整健檢（自我測試三項 + iconv 編碼掃描 + 資產盤點 + GitHub Issue/CI 核對）。實測與 #27 基準完全一致，無回歸、無新問題，本次**無程式碼變更**。
-- 前次有效工作日：2026-09-27（auto-advance #27，健檢 only）；最近一次有實質程式碼 commit 仍為 auto-advance #13（`253f80f`，見 [WLAB-20260924-03](work-logs/2026-09/WLAB-20260924-03-p0-new2-verify-p1-new1-ruff-pin.md)）
-- 🟡 **佇列已連續 15 次觸發（#14～#28）維持「等待方向指派」空轉**，僅剩需人工項目未解除。上次 push notification 補發提醒為 #22（2026-09-27T00:52 UTC）；本次（#28，2026-09-27T18:50 UTC）距上次提醒約 17 小時 58 分，**已達 15～18 小時補發門檻上緣**，且數據連續 15 次觸發無變化，故**本次已發送 push notification**，提醒使用者從 P2-2 候選方向中擇一指派，或協助處理 P2-1。下次補發時機重新起算（距本次起算滿 15～18 小時後，若仍無變化再發）。
+- **#31（2026-10-11）**：使用者指派方向 **Epic A 案例學習系統**（P2-2 解除），並授權完成 P2-1。本輪完成 **A1-1**（`cases` 表 + `CaseLearningService`），見 [WLAB-20261011-01](work-logs/2026-10/WLAB-20261011-01-epic-a-case-recording.md)。
+- **#30（2026-10-11）**：P2-1 `CLAUDE.md` 章節重編 §1–§14、代理數更正為 25（使用者授權，已 commit）。
+- 空轉期（#14～#29）已結束，佇列重新有可自主推進的工作。
 
-## 數據基準（實測，auto-advance #29，2026-10-09；ruff/black/pytest 重測，其餘沿用 #28）
+## 數據基準（實測，#31，2026-10-11）
 
-- 環境：新容器，依 playbook Phase 0 重裝，pin `ruff==0.6.0`、`black==24.8.0`（與 CI 一致）
-- `ruff check .`（`0.6.0`，`/usr/local/bin/ruff`）：**0 錯誤**
-- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，181 檔案
-- `python3 -m pytest tests/ -q`：**872 pass / 0 fail / 5 skip**（與 #8～#27 基準相同，本次無回歸）
-- `iconv` 編碼掃描（`src/` `tests/` `docs/` 下 `.py`/`.md`）：**0 個非 UTF-8 檔案**（238 檔掃描）
-- CI：最新 push（run `36331101788`，#27 的健檢 commit `cdea32a`）已確認 **conclusion=success**
-- Open Issues：12（`list_issues` state=OPEN 核對，號碼與 #11～#27 完全一致：#34/35/36/37/46/47/48/49/50/51/52/69，無新增無關閉）
-- 前端 TODO：1（`frontend/src/hooks/useWebSocket.ts:266`，穩定，本次未重新掃描細節）
-- 最近 commit：`cdea32a`（2026-09-27，auto-advance #27；本次 #28 未變更程式碼，僅文件）
-- 資產：
-  - REST 端點：73（`grep -rE "@router\.(get|post|put|delete|patch)\(|@app\.(get|post|put|delete|patch|websocket)\("` 精確比對裝飾器行，與 #10～#27 基準一致）
-  - 前端元件：未重新掃描（`frontend/` 本次未變更；沿用 #14～#27 已知結論——純 grep `export` 口徑在 37～41 間波動，屬統計誤差非實際變化。維持建議：下次需要精確值時改用 AST parser）
-  - 技能：28（重新以 `find src -path "*skills*" -name "*.py"` 排除 `__pycache__`/`__init__.py`/`base.py`/`registry.py` 後核實為 28，與 #10～#27 基準一致）
-  - agent 模組：25（排除 7 個 `__init__.py` 及 8 個共用基礎設施檔後核實，與基準一致）
-  - `.py` 檔案：141，總行數 30,411（`src/` 下，與 #27 完全一致）
-
-## Issue 狀態快照（#28 重新核對，未變更）
-
-剩餘 Open Issues：12 個（#34/#35/#36/#37/#46/#47/#48/#49/#50/#51/#52/#69）。詳見 #11 work-log。
-
-> 2026-10-11：CLAUDE.md 章節已重編為 §1–§14（資料規範→§10、整合規則→§12），代理數更正為 25；相關引用已同步。自我測試：ruff 0 / black 全綠 / pytest 872 pass、5 skip。
+- 環境：新容器，`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`
+- `python3 -m ruff check .`：**0 錯誤**
+- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，183 檔
+- `python3 -m pytest tests/ -q`：**883 pass / 0 fail / 5 skip**（+11，來自 `test_case_learning.py`）
+- `src/` `.py` 檔：142，總行數 30,807
+- REST 端點：73（本輪未新增；A1-2 / A3 會變動）
+- 技能 28、agent 模組 25（未變動）
+- Open Issues：12（#34/35/36/37/46/47/48/49/50/51/52/69）
+- mypy 注意：loguru `logger?` 的 attr-defined 為既有基準假警報（`rag_service.py` 同樣 14 筆），非新缺陷
 
 ## 待續產出（下個 session / auto-advance 觸發接手）
 
-> 由 `auto-advance` routine 每 3 小時取**第一個未完成**項目執行，規則見 `docs/routines/auto-advance.md`。
+> 每次觸發取**第一個未完成**項目。Epic A 依 Issue #35 拆成可獨立驗證的切片，**一次一個**。
 
-**佇列持續清空，等待方向指派（#28 再次確認，無新項目）。** 目前僅剩以下需人工項目：
+### P1 — Epic A 案例學習系統（Issue #35，使用者 2026-10-11 指派）
 
-- [x] **P2-1（2026-10-11 使用者授權，已完成）** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ **已嘗試執行並卡關（auto-advance #9）**：編輯內容本身通過自我測試，但 commit 動作被 Claude Code auto-mode classifier 以「Self-Modification」拒絕，工作樹已還原。**需人工授權**：需人工在具備更高權限的 session（或人工直接編輯）才能完成 commit；routine 之後觸發應**跳過此項**。
+- [x] **A1-1**（#47）`cases` 表 + `Database` 案例 CRUD + `src/services/case_learning.py`（`extract_case` / `CaseRecord.to_summary` / `CaseLearningService.record_case`，選用寫入 ChromaDB `maintenance_cases`）— commit 見 git log
+- [ ] **A1-2**（#47）結案 hook：`src/api/main.py` 的 `PATCH /api/work-orders/{order_id}` 在 `status` 變為 `completed` 時呼叫 `CaseLearningService(get_database(), indexer).record_case(order_id)`；indexer 取得 `RAGService` 失敗時傳 None；**案例記錄失敗不得讓工單更新失敗**。補 API 層測試（`TestClient` + tmp DB）。完成後 #47 驗收全滿足（關 Issue 需人工 / GitHub connector）
+- [ ] **A2-1**（#48）`src/skills/rag/case_recommender.py` `CaseRecommender`：輸入告警描述 → 在 `maintenance_cases` 語意搜尋 Top-5（同 `turbine_id` 加權優先），回傳 case_id / 相似度 / 故障類型 / 解法摘要。測試以假 RAG 注入（不依賴 chromadb）
+- [ ] **A2-2**（#48）向量庫不可用時的降級：以 SQLite `cases` 做關鍵字 / 同故障類型比對，確保無 chromadb 環境仍回傳結果
+- [ ] **A3-1**（#49）API：`GET /api/cases`（分頁 + `fault_type` / `turbine_id` 篩選）、`GET /api/cases/{id}`
+- [ ] **A3-2**（#49）API：`GET /api/cases/similar?alert_id=xxx` → Top-5（接 A2）
+- [ ] **A3-3**（#49）前端 `frontend/src/components/CaseRecommendation.tsx` + 整合進 WorkOrderPanel（可展開完整解法）；需 `npm run build` / 前端 lint 通過
 
-- [ ] **P2-2** 定向下一個功能方向 — **屬方向性決策，需使用者指派，routine 不得自行啟動**。建議候選（供使用者挑選）：
-  1. **Phase 15 多風場管理**
-  2. **Epic A 案例學習系統**（Issue #35，含子項 #47 案例自動記錄 / #48 相似案例推薦 / #49 案例推薦 API+前端）
-  3. **Epic B 故障知識體系**（Issue #36，含子項 #50 故障知識圖譜 / #51 維護效果追蹤）
-  4. **Epic D 報告與追蹤**（Issue #34，含子項 #46 追蹤儀表板）
-  5. **Epic F 學術論文規劃**（Issue #37，含子項 #52 投稿策略與時程）
-  6. 人工協助完成 P2-1（`CLAUDE.md` 章節整理）
+### P2 — 需人工
 
-> **下次觸發**：佇列現只有需人工項目，應依 playbook §6 執行完整健檢（三項自我測試 + iconv 掃描 + 資產盤點 + Issue 核對），確認無新問題後維持「等待方向指派」狀態。**#28（本次）已補發 push notification 提醒**（距 #22 約 17 小時 58 分，達 15～18 小時門檻）。之後若數據持續無變化，**不需要每次都發**——僅在數據出現變化（新 Issue、CI 失敗、資產計數變動等）或距 #28 本次提醒已滿 15～18 小時以上時才再發送，避免重複打擾。
+- [ ] **P2-3** Issue #47 / #48 / #49 / #35 的勾選與關閉（需 GitHub connector 或人工）
 
 ## 阻塞 / 風險
 
-- 🟢 **P1-3 lint/test 解耦確認有效**（沿用 #11 實測，CI run `35953337501`）：Lint 失敗不阻塞 Tests，兩者獨立回報
-- ✅ **ruff 版本 pin 一致性已解除**（#12/#13 雙重確認）：CI 實際 ruff 版本（0.6.0）下的 lint 問題已修正並驗證；routine playbook 本身的 pin 版本亦已同步校正
-- 🆕 **容器內 ruff 版本陷阱**（#13 發現，#14～#19 再次確認）：`/root/.local/bin/ruff`（舊版 `0.15.8`）在 PATH 中優先於 `pip install` 裝到 `/usr/local/bin/ruff` 的目標版本，`which ruff` 可能誤導。驗證 ruff 版本時，改用 `/usr/local/bin/ruff` 絕對路徑執行 lint 步驟。同理 `pytest` 執行也應優先用 `python3 -m pytest`，而非直接呼叫可能指向舊版環境的 `pytest` binary。
-- 🟠 **大 commit 直推 master**：`bfca6a7` 5,315 行未過 CI 即進主幹，流程缺門檻（沿用既有記錄，本次未新增證據）
-- 🟡 **CLAUDE.md 不可被此 routine 自動 commit**（auto-advance #9 發現）：任何觸及 `CLAUDE.md` 的佇列項目都會在 commit 階段被系統層擋下（Self-Modification）。往後佇列不要再排入直接修改 `CLAUDE.md` 的項目，除非使用者確認可由人工協助完成 commit 步驟。`docs/routines/` 下的規則類文件不在此限（#13 已驗證可正常 commit）。
-- 🟢 GitHub connector 持續可用（#11～#25 皆驗證成功），`docs/routines/auto-advance.md` §4.1「無 connector」描述已過時，下次觸發請直接嘗試查詢而非假設不可用。
-- 🟡 **前端元件計數口徑不穩**（#14 發現，#15/#16 再次確認、誤差擴大）：純 grep `export` 統計對同一份未變更程式碼在不同觸發間得到 37 / 39 / 40 / 41，屬統計方法誤差而非實際差異。非阻塞，但下次若需精確值應改用更嚴謹的計數方式（如 AST parser）而非持續沿用不穩定的 grep 口徑。#17～#28 因 `frontend/` 未變更而略過重新掃描。
-- ℹ️ **技能數量計數需排除基礎設施檔**（#15 校準，#16～#27 沿用）：`src/skills/` 下若用 `find ... -name "*.py"` 未排除 `base.py`、`registry.py`（皆為共用基礎設施，非單一技能），會把 28 誤算為 37。下次沿用 #10～#27 的排除方式核實。
-- 🟡 **佇列連續 15 次觸發（#14～#28）空轉**：自 #14 起僅剩 P2-1（`CLAUDE.md` 自我修改被系統擋下）與 P2-2（方向性決策）兩個需人工項目，routine 已無自主可推進工作。#18、#22、#28（本次）各發過一次 push notification 提醒；其餘觸發數據皆無變化，未重複發送。**下次補發門檻：距 #28 本次提醒滿 15～18 小時後（約 2026-09-28 09:50～12:50 UTC），若數據仍無變化才補發。**
+- ℹ️ **Epic A 前置條件**：Issue #35 建議累積 50+ 已結案工單後再啟用推薦。A2/A3 可先完成程式與測試，但推薦品質須等真實資料累積，不阻塞開發
+- ℹ️ **chromadb 未安裝於 routine 環境**（刻意不裝，見 playbook Phase 0）：案例相關測試一律以 Protocol 注入假 indexer，勿在測試中直接依賴 chromadb
+- 🟡 **容器內 ruff 版本陷阱**：`/root/.local/bin/ruff`（0.15.8）在 PATH 優先；一律用 `python3 -m ruff`，pytest 用 `python3 -m pytest`
+- 🟡 **CLAUDE.md 自動 commit 會被 Self-Modification 擋下**：P2-1 這次是使用者在 session 內明確授權才完成；之後佇列不要排入修改 `CLAUDE.md` 的項目
+- 🟠 **大 commit 直推 master**：`bfca6a7` 5,315 行未過 CI 即進主幹，流程缺門檻（沿用既有記錄）
+- 🟢 GitHub connector：本 session 可用；定時觸發的 session 是否帶 connector 不保證，需 API 的項目仍歸 P2「需人工」
+- ℹ️ 前端元件計數 grep 口徑不穩（37～41），需精確值時改用 AST parser；技能計數須排除 `base.py` / `registry.py`
