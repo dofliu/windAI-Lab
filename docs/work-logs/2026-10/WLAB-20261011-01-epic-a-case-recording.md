@@ -38,3 +38,7 @@
 ## 4. 後續
 
 下一切片 **A1-2**：在 `PATCH /api/work-orders/{id}` 結案時呼叫 `CaseLearningService.record_case()`（失敗不影響工單更新）+ 整合測試。完成後 #47 驗收標準即全數滿足。
+
+## 5. A2-1 切片（auto-advance #32）
+
+A1-2 因 `python-multipart` 缺失無法在 CI 測試 API 層而阻塞（詳見 cursor.md）。改做 A2-1：新增 `src/skills/rag/case_recommender.py`（`CaseRecommender`，同風機 +0.1 加權、Top-5、向量庫失敗回傳空列表）與 `tests/unit/test_case_recommender.py`（6 測試）。自我測試：ruff 0 / black 通過 / pytest 889 pass、5 skip。
