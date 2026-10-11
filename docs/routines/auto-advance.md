@@ -160,7 +160,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 | force-push、rewrite history | 破壞性且不可逆 |
 | 刪除或改名既有檔案（非本次新建者） | 範圍外的破壞 |
 | 新增第三方依賴到 `requirements.txt` | 供應鏈決策 |
-| 動 `data/raw/`（唯讀）或 commit 敏感資料（風場座標、發電量） | `CLAUDE.md` §7 |
+| 動 `data/raw/`（唯讀）或 commit 敏感資料（風場座標、發電量） | `CLAUDE.md` §10 |
 | 修改 `CLAUDE.md` 的規則內容 | 那是本 routine 的上位規範 |
 | 啟動一個全新 Epic / Phase | 方向性決策屬總監與使用者 |
 

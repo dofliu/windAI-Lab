@@ -147,7 +147,7 @@ OMC `skill` 與 windAI 內建 skill registry（`src/skills/`）的銜接示意�
 1. **所有 OMC 子代理產出仍須通過 wLab:director Checkpoint**：未經總監確認的 commit/PR 不可推送。
 2. **派工紀錄必填**：OMC 自動完成的任務也須回填 `docs/work-logs/YYYY-MM/WLAB-*.md`，避免「黑箱完成」。
 3. **資料保護**：原始資料 (`data/raw/`, `data/external/`) 唯讀；OMC `executor` 禁止就地修改，必須輸出至 `data/processed/`。
-4. **訊息格式**：跨代理通訊使用 `CLAUDE.md §9` 定義的 JSON 格式。
+4. **訊息格式**：跨代理通訊使用 `CLAUDE.md §12` 定義的 JSON 格式。
 5. **繁體中文輸出**：對使用者的所有最終回覆均使用繁體中文，技術術語保留英文原文。
 
 ---

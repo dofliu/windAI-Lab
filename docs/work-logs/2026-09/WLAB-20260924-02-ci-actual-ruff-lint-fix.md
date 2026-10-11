@@ -30,7 +30,7 @@ auto-advance #11 定位出 CI 持續紅燈的真正根因：routine 本地自我
 | UP038 ×9 | `director_review.py`、`report_generator.py` | `isinstance(x, (int, float))` → `isinstance(x, int \| float)` |
 | E741 ×4 | `director.py`、`allocator.py`、`converter.py` | 變數 `l` 改為語意化名稱（`load_entry`/`label`/`learning`） |
 | B904 ×3 | `main.py` | `except Exception as e: raise HTTPException(...)` 補 `from e` |
-| N815 ×6 | `director_allocation/models.py` | `TeamNamespace` enum 成員（`wLab`/`wData`/...）為刻意保留的命名空間前綴（CLAUDE.md §9），逐行加 `# noqa: N815` 並加註說明，不改名 |
+| N815 ×6 | `director_allocation/models.py` | `TeamNamespace` enum 成員（`wLab`/`wData`/...）為刻意保留的命名空間前綴（CLAUDE.md §12），逐行加 `# noqa: N815` 並加註說明，不改名 |
 | TCH003 ×1 | `notifiers/base.py` | `datetime` 僅用於型別註記（dataclass + `from __future__ import annotations`），移入 `TYPE_CHECKING` 區塊 |
 | SIM108 ×1 | `converter.py` | if/else 改三元運算子 |
 | E402 ×1 | `main.py` | `from src.api.director import router` 原置於 `app = FastAPI(...)` 之後以便 `app.include_router()`；核查 `director.py` 無循環 import 疑慮，改為將 import 搬至檔案頂部，`include_router()` 呼叫保留原位置 |

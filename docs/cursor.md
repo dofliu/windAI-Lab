@@ -1,6 +1,6 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-09（auto-advance #29 觸發後）
+> 自動更新時間：2026-10-11（auto-advance #30 + 使用者授權完成 P2-1）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
@@ -34,13 +34,15 @@
 
 剩餘 Open Issues：12 個（#34/#35/#36/#37/#46/#47/#48/#49/#50/#51/#52/#69）。詳見 #11 work-log。
 
+> 2026-10-11：CLAUDE.md 章節已重編為 §1–§14（資料規範→§10、整合規則→§12），代理數更正為 25；相關引用已同步。自我測試：ruff 0 / black 全綠 / pytest 872 pass、5 skip。
+
 ## 待續產出（下個 session / auto-advance 觸發接手）
 
 > 由 `auto-advance` routine 每 3 小時取**第一個未完成**項目執行，規則見 `docs/routines/auto-advance.md`。
 
 **佇列持續清空，等待方向指派（#28 再次確認，無新項目）。** 目前僅剩以下需人工項目：
 
-- [ ] **P2-1** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ **已嘗試執行並卡關（auto-advance #9）**：編輯內容本身通過自我測試，但 commit 動作被 Claude Code auto-mode classifier 以「Self-Modification」拒絕，工作樹已還原。**需人工授權**：需人工在具備更高權限的 session（或人工直接編輯）才能完成 commit；routine 之後觸發應**跳過此項**。
+- [x] **P2-1（2026-10-11 使用者授權，已完成）** `CLAUDE.md` 章節編號去重（現有兩組 §5/§6/§7）、§10「42 個代理」更正為 25。⚠️ **已嘗試執行並卡關（auto-advance #9）**：編輯內容本身通過自我測試，但 commit 動作被 Claude Code auto-mode classifier 以「Self-Modification」拒絕，工作樹已還原。**需人工授權**：需人工在具備更高權限的 session（或人工直接編輯）才能完成 commit；routine 之後觸發應**跳過此項**。
 
 - [ ] **P2-2** 定向下一個功能方向 — **屬方向性決策，需使用者指派，routine 不得自行啟動**。建議候選（供使用者挑選）：
   1. **Phase 15 多風場管理**
