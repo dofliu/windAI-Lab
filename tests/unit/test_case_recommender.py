@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from src.core.database import Database
 from src.services.case_learning import CASE_COLLECTION
 from src.services.rag_service import SearchResult
 from src.skills.rag.case_recommender import CaseRecommender
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _res(case_id: str, score: float, turbine: str, fault: str = "齒輪箱") -> SearchResult:
@@ -78,3 +82,52 @@ def test_empty_query_returns_empty_without_search() -> None:
 
 def test_search_failure_returns_empty() -> None:
     assert CaseRecommender(FakeSearcher([], fail=True)).recommend("振動") == []
+
+
+def _db_with_cases(tmp_path: Path) -> Database:
+    db = Database(str(tmp_path / "fallback.db"))
+    db.initialize()
+    db.create_case(
+        "WO-1", "齒輪箱", "s1", symptoms="齒輪箱振動偏高", solution="更換軸承", turbine_id="WT-01"
+    )
+    db.create_case(
+        "WO-2", "葉片", "s2", symptoms="葉片裂紋", solution="修補葉片", turbine_id="WT-02"
+    )
+    return db
+
+
+def test_fallback_when_searcher_missing(tmp_path: Path) -> None:
+    recs = CaseRecommender(None, store=_db_with_cases(tmp_path)).recommend("齒輪箱振動異常")
+    assert recs
+    assert recs[0].fault_type == "齒輪箱"
+    assert recs[0].solution == "更換軸承"
+    assert all(r.fault_type != "葉片" for r in recs)
+
+
+def test_fallback_when_search_fails_or_empty(tmp_path: Path) -> None:
+    db = _db_with_cases(tmp_path)
+    failed = CaseRecommender(FakeSearcher([], fail=True), store=db).recommend("葉片裂紋")
+    empty = CaseRecommender(FakeSearcher([]), store=db).recommend("葉片裂紋")
+    assert failed[0].fault_type == "葉片"
+    assert empty[0].fault_type == "葉片"
+
+
+def test_fallback_same_turbine_boost(tmp_path: Path) -> None:
+    db = _db_with_cases(tmp_path)
+    db.create_case(
+        "WO-3", "齒輪箱", "s3", symptoms="齒輪箱振動", solution="換油", turbine_id="WT-09"
+    )
+    recs = CaseRecommender(None, store=db).recommend("齒輪箱振動", turbine_id="WT-09")
+    assert recs[0].turbine_id == "WT-09"
+    assert recs[0].same_turbine is True
+
+
+def test_fallback_no_match_and_no_store(tmp_path: Path) -> None:
+    assert CaseRecommender(None, store=_db_with_cases(tmp_path)).recommend("zzz") == []
+    assert CaseRecommender(None).recommend("齒輪箱振動") == []
+
+
+def test_semantic_results_preferred_over_fallback(tmp_path: Path) -> None:
+    searcher = FakeSearcher([_res("sem", 0.9, "WT-01")])
+    recs = CaseRecommender(searcher, store=_db_with_cases(tmp_path)).recommend("齒輪箱")
+    assert [r.case_id for r in recs] == ["sem"]
