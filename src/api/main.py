@@ -1957,6 +1957,32 @@ async def get_work_order(order_id: str) -> dict[str, Any]:
     return {"status": "success", "work_order": order}
 
 
+# ── Epic A：維修案例 API ────────────────────────────────────────
+
+
+@app.get("/api/cases", tags=["案例學習"])
+async def list_cases(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    fault_type: str | None = None,
+    turbine_id: str | None = None,
+) -> dict[str, Any]:
+    """查詢維修案例列表（分頁，最新在前），可依故障類型 / 風機篩選。"""
+    db = _get_db()
+    cases = db.list_cases(limit=limit, offset=offset, fault_type=fault_type, turbine_id=turbine_id)
+    total = db.count_cases(fault_type=fault_type, turbine_id=turbine_id)
+    return {"status": "success", "cases": cases, "total": total, "limit": limit, "offset": offset}
+
+
+@app.get("/api/cases/{case_id}", tags=["案例學習"])
+async def get_case(case_id: str) -> dict[str, Any]:
+    """取得單一維修案例（含完整症狀 / 解法）。"""
+    case = _get_db().get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="案例不存在")
+    return {"status": "success", "case": case}
+
+
 @app.post("/api/work-orders", tags=["工單管理"])
 async def create_work_order(req: CreateWorkOrderRequest) -> JSONResponse:
     """建立新工單。"""

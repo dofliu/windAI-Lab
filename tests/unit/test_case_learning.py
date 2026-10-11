@@ -203,3 +203,23 @@ class TestCaseQueries:
         assert case is not None and case["fault_type"] == "x"
         assert db.get_case("CASE-missing") is None
         assert db.mark_case_indexed("CASE-missing") is False
+
+
+class TestCountCases:
+    """count_cases 與 list_cases 篩選一致（A3-1 分頁 total）。"""
+
+    def test_count_matches_filters(self, db: Database) -> None:
+        db.create_case("WO-a", "gearbox_overheat", "s1", turbine_id="WT-01")
+        db.create_case("WO-b", "pitch_fault", "s2", turbine_id="WT-01")
+        db.create_case("WO-c", "pitch_fault", "s3", turbine_id="WT-02")
+        assert db.count_cases() == 3
+        assert db.count_cases(fault_type="pitch_fault") == 2
+        assert db.count_cases(turbine_id="WT-01") == 2
+        assert db.count_cases(fault_type="pitch_fault", turbine_id="WT-02") == 1
+        assert db.count_cases(fault_type="none") == 0
+
+    def test_pagination_total_independent_of_limit(self, db: Database) -> None:
+        for i in range(5):
+            db.create_case(f"WO-{i}", "pitch_fault", f"s{i}")
+        assert len(db.list_cases(limit=2, offset=0)) == 2
+        assert db.count_cases() == 5

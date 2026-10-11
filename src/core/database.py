@@ -891,6 +891,22 @@ class Database:
             ).fetchall()
             return [_row_to_case(r) for r in rows]
 
+    def count_cases(self, fault_type: str | None = None, turbine_id: str | None = None) -> int:
+        """統計案例數量，篩選條件與 `list_cases` 一致（供分頁 total 使用）。"""
+        self.initialize()
+        conditions: list[str] = []
+        params: list[Any] = []
+        if fault_type:
+            conditions.append("fault_type = ?")
+            params.append(fault_type)
+        if turbine_id:
+            conditions.append("turbine_id = ?")
+            params.append(turbine_id)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        with self._connect() as conn:
+            row = conn.execute(f"SELECT COUNT(*) as c FROM cases {where}", params).fetchone()
+            return int(row["c"])
+
     # ── 統計 ─────────────────────────────────────────────────────
 
     def get_stats(self) -> dict[str, Any]:
