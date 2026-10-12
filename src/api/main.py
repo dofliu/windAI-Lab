@@ -1974,6 +1974,38 @@ async def list_cases(
     return {"status": "success", "cases": cases, "total": total, "limit": limit, "offset": offset}
 
 
+@app.get("/api/cases/similar", tags=["案例學習"])
+async def similar_cases(
+    alert_id: str,
+    top_k: int = Query(5, ge=1, le=20),
+) -> dict[str, Any]:
+    """依告警推薦相似歷史案例（語意搜尋，向量庫不可用時降級為關鍵字比對）。
+
+    注意：路由須宣告在 `/api/cases/{case_id}` 之前，避免 `similar` 被當成 case_id。
+    """
+    from dataclasses import asdict
+
+    from src.skills.rag.case_recommender import CaseRecommender
+
+    db = _get_db()
+    alert = db.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="告警不存在")
+    try:
+        searcher: Any = _get_rag_service()
+    except Exception as exc:  # RAG 為選用依賴（chromadb 可能未安裝）
+        logger.warning(f"RAG 服務不可用，案例推薦改用關鍵字比對: {exc}")
+        searcher = None
+    recommender = CaseRecommender(searcher, top_k=top_k, store=db)
+    recs = recommender.recommend_for_alert(alert)
+    return {
+        "status": "success",
+        "alert_id": alert_id,
+        "recommendations": [asdict(r) for r in recs],
+        "total": len(recs),
+    }
+
+
 @app.get("/api/cases/{case_id}", tags=["案例學習"])
 async def get_case(case_id: str) -> dict[str, Any]:
     """取得單一維修案例（含完整症狀 / 解法）。"""

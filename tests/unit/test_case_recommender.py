@@ -131,3 +131,17 @@ def test_semantic_results_preferred_over_fallback(tmp_path: Path) -> None:
     searcher = FakeSearcher([_res("sem", 0.9, "WT-01")])
     recs = CaseRecommender(searcher, store=_db_with_cases(tmp_path)).recommend("齒輪箱")
     assert [r.case_id for r in recs] == ["sem"]
+
+
+def test_recommend_for_alert_uses_title_description_and_turbine(tmp_path: Path) -> None:
+    db = _db_with_cases(tmp_path)
+    alert = {"title": "振動告警", "description": "齒輪箱振動異常", "turbine_id": "WT-01"}
+    recs = CaseRecommender(None, store=db).recommend_for_alert(alert)
+    assert recs[0].fault_type == "齒輪箱"
+    assert recs[0].same_turbine is True
+
+
+def test_recommend_for_alert_empty_text_returns_empty(tmp_path: Path) -> None:
+    db = _db_with_cases(tmp_path)
+    alert = {"title": None, "description": "", "turbine_id": "WT-01"}
+    assert CaseRecommender(None, store=db).recommend_for_alert(alert) == []

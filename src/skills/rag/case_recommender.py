@@ -155,6 +155,22 @@ class CaseRecommender:
         scored.sort(key=lambda pair: pair[0], reverse=True)
         return [rec for _, rec in scored[:limit]]
 
+    def recommend_for_alert(
+        self, alert: dict[str, Any], top_k: int | None = None
+    ) -> list[CaseRecommendation]:
+        """以告警紀錄（`alerts` 表一列）的標題 + 描述推薦相似案例。
+
+        Args:
+            alert: 告警紀錄，使用 `title`、`description`、`turbine_id` 欄位。
+            top_k: 回傳筆數，None 使用預設。
+
+        Returns:
+            推薦列表；告警無任何描述文字時為空。
+        """
+        text = " ".join(str(alert.get(k) or "") for k in ("title", "description")).strip()
+        turbine_id = str(alert.get("turbine_id") or "") or None
+        return self.recommend(text, turbine_id=turbine_id, top_k=top_k)
+
     def _fallback(
         self, description: str, turbine_id: str | None, limit: int
     ) -> list[CaseRecommendation]:
