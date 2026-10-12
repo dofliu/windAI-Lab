@@ -1,10 +1,12 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-12（auto-advance #35）
+> 自動更新時間：2026-10-12（auto-advance #36）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
+
+- **#36（2026-10-12）**：完成 **A3-3**：新增 `frontend/src/components/CaseRecommendation.tsx`（呼叫 `/api/cases/similar`，Top-5、相似度/同風機標籤、點擊展開完整解法、載入/錯誤/空狀態），整合進 `WorkOrderPanel` 工單詳情（有 `alert_id` 時顯示）。`npm ci && npm run build`（tsc + vite）通過；前端無 lint/測試腳本。Epic A 可自主部分全數完成，僅剩 A1-2（阻塞）與 P2-3（需人工）。
 
 - **#35（2026-10-12）**：完成 **A3-2**：`CaseRecommender.recommend_for_alert(alert)` + `GET /api/cases/similar?alert_id=&top_k=`（宣告於 `/api/cases/{case_id}` 之前；RAG 不可用時降級關鍵字）。+2 單元測試；端點以臨時安裝 python-multipart 手動驗證（有結果 / 404），TestClient 自動測試仍待 python-multipart 解除。
 
@@ -18,12 +20,12 @@
 - **#30（2026-10-11）**：P2-1 `CLAUDE.md` 章節重編 §1–§14、代理數更正為 25（使用者授權，已 commit）。
 - 空轉期（#14～#29）已結束，佇列重新有可自主推進的工作。
 
-## 數據基準（實測，#35，2026-10-12）
+## 數據基準（實測，#36，2026-10-12）
 
 - 環境：新容器，`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`
 - `python3 -m ruff check .`：**0 錯誤**
 - `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，185 檔
-- `python3 -m pytest tests/ -q`：**898 pass / 0 fail / 5 skip**（+2，來自 recommend_for_alert 測試）
+- `python3 -m pytest tests/ -q`：**898 pass / 0 fail / 5 skip**（本輪僅前端變更，未變動）
 - `src/` `.py` 檔：142，總行數 30,807
 - REST 端點：76（+1：/api/cases/similar）
 - 技能 28、agent 模組 25（未變動）
@@ -42,7 +44,7 @@
 - [x] **A2-2**（#48，#33 完成；`CaseRecommender(searcher, store=db)`，A3-2 API 組裝時傳入 `get_database()`）向量庫不可用時的降級：以 SQLite `cases` 做關鍵字 / 同故障類型比對，確保無 chromadb 環境仍回傳結果
 - [x] **A3-1**（#49，#34 完成；端點 TestClient 測試待 python-multipart 解除後補）API：`GET /api/cases`（分頁 + `fault_type` / `turbine_id` 篩選）、`GET /api/cases/{id}`
 - [x] **A3-2**（#49，#35 完成）API：`GET /api/cases/similar?alert_id=xxx` → Top-5（接 A2）
-- [ ] **A3-3**（#49）前端 `frontend/src/components/CaseRecommendation.tsx` + 整合進 WorkOrderPanel（可展開完整解法）；需 `npm run build` / 前端 lint 通過
+- [x] **A3-3**（#49，#36 完成）前端 `frontend/src/components/CaseRecommendation.tsx` + 整合進 WorkOrderPanel（可展開完整解法）；需 `npm run build` / 前端 lint 通過
 
 ### P2 — 需人工
 
