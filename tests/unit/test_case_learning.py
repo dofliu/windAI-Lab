@@ -103,6 +103,12 @@ class TestExtractCase:
         assert extract_case({"id": "WO"}, {"source": "windguard"}).fault_type == "windguard"
         assert extract_case({"id": "WO"}).fault_type == UNCLASSIFIED_FAULT
 
+    def test_generic_source_falls_back_to_title(self) -> None:
+        """手動建立的告警（source=manual）以告警標題當故障類型，而非 'manual'。"""
+        alert = {"source": "manual", "title": "齒輪箱油溫過高"}
+        assert extract_case({"id": "WO"}, alert).fault_type == "齒輪箱油溫過高"
+        assert extract_case({"id": "WO"}, {"source": "manual"}).fault_type == UNCLASSIFIED_FAULT
+
     def test_without_alert_falls_back_to_work_order(self) -> None:
         work_order = {
             "id": "WO-2",

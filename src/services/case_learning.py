@@ -120,11 +120,19 @@ def _resolution_hours(work_order: dict[str, Any]) -> float | None:
     return round(hours, 2) if hours >= 0 else None
 
 
+# `AlertSource` 內建的通用來源值：只說明告警從哪來，不能當故障類型
+_GENERIC_ALERT_SOURCES = frozenset(
+    {"manual", "external", "agent_error", "task_failure", "anomaly_detection", "scada_threshold"}
+)
+
+
 def _infer_fault_type(work_order: dict[str, Any], alert: dict[str, Any] | None) -> str:
     """推斷故障類型。
 
     優先序：工單 metadata.fault_type → 告警 metadata.fault_type_zh / fault_type
-    → 告警第一個 tag（規則 ID）→ 告警 source → 「未分類」。
+    → 告警第一個 tag（規則 ID）→ 告警 source（外部系統名）→ 告警標題 → 「未分類」。
+
+    系統內建的通用來源（如 `manual`）不代表故障類型，略過改用告警標題。
     """
     wo_meta = work_order.get("metadata") or {}
     if wo_meta.get("fault_type"):
@@ -137,8 +145,11 @@ def _infer_fault_type(work_order: dict[str, Any], alert: dict[str, Any] | None) 
         tags = alert.get("tags") or []
         if tags:
             return str(tags[0])
-        if alert.get("source"):
-            return str(alert["source"])
+        source = alert.get("source")
+        if source and str(source) not in _GENERIC_ALERT_SOURCES:
+            return str(source)
+        if alert.get("title"):
+            return str(alert["title"])
     return UNCLASSIFIED_FAULT
 
 

@@ -113,6 +113,13 @@ docs/work-logs/
 
 ## 5. 月度索引
 
+### 2026 年 10 月
+
+| 日期 | 派工單 | 主要任務 | 完成度 |
+|------|--------|----------|--------|
+| 10-11 ~ 10-12 | — | Epic A 案例學習系統：[A1-1](2026-10/WLAB-20261011-01-epic-a-case-recording.md) `cases` 表 + `CaseLearningService`；A2-1/A2-2 `CaseRecommender`（語意 + 關鍵字降級）；A3-1/A3-2 案例 API；A3-3 前端 `CaseRecommendation` 元件 | ✅ |
+| 10-13 | — | [實機 UI E2E 測試 + 缺陷排除](2026-10/WLAB-20261013-01-ui-e2e-bugfix.md)：7 項缺陷（路由遮蔽、缺 python-multipart、A1-2 結案 hook、故障類型 manual、風機清單、拉取檔無限增長、SCADA 過期回應），+12 測試 | ✅ |
+
 ### 2026 年 9 月
 
 | 日期 | 派工單 | 主要任務 | 完成度 |

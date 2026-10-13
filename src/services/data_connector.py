@@ -17,6 +17,36 @@ logger = logging.getLogger("windailab.data_connector")
 # 專案根目錄
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# 每座風機保留的連接器拉取檔數上限（避免每次拉取都新增檔案、無限增長）
+MAX_FETCHED_FILES_PER_TURBINE = 10
+
+
+def _prune_fetched_files(
+    target_dir: Path, turbine_id: str, keep: int = MAX_FETCHED_FILES_PER_TURBINE
+) -> list[Path]:
+    """刪除超出保留上限的舊拉取檔，只動連接器自己產生的 `{turbine}_api_fetched_*.csv`。
+
+    檔名時間戳為 `YYYYmmdd_HHMMSS`，字典序即時間序。
+
+    Args:
+        target_dir: 拉取檔所在目錄。
+        turbine_id: 風機識別碼。
+        keep: 保留最新的檔案數。
+
+    Returns:
+        被刪除的檔案路徑。
+    """
+    files = sorted(target_dir.glob(f"{turbine_id}_api_fetched_*.csv"))
+    stale = files[:-keep] if keep > 0 else files
+    removed: list[Path] = []
+    for f in stale:
+        try:
+            f.unlink()
+            removed.append(f)
+        except OSError as e:
+            logger.warning(f"刪除舊拉取檔失敗 {f.name}：{e}")
+    return removed
+
 
 class BaseConnector(ABC):
     """資料連接器抽象基類。"""
@@ -555,6 +585,7 @@ class ConnectorManager:
                     await loop.run_in_executor(
                         None, lambda data_df=df, fp=file_path: data_df.to_csv(fp, index=False)
                     )
+                    _prune_fetched_files(target_dir, turbine_id)
                     logger.info(f"連接器 [{conn.name}] 拉取成功：數據已保存至 {filename}")
                 else:
                     logger.warning(f"連接器 [{conn.name}] 拉取返回空數據或 None")

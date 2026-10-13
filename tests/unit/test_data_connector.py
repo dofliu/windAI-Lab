@@ -1,5 +1,6 @@
 """資料連接器與斷線告警整合測試。"""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,6 +9,7 @@ import yaml
 from src.services.data_connector import (
     ConnectorManager,
     MQTTConnector,
+    _prune_fetched_files,
 )
 
 
@@ -92,3 +94,28 @@ class TestConnectorManagerHealth:
             called_args = engine_mock.evaluate.call_args[0][0]
             assert called_args["connector_online_status"] == 0.0
             assert called_args["connector_id"] == "bad_connector"
+
+
+class TestPruneFetchedFiles:
+    """連接器拉取檔保留上限，避免 data/raw 無限增長。"""
+
+    def test_keeps_latest_n(self, tmp_path: Path) -> None:
+        for i in range(5):
+            (tmp_path / f"WT-01_api_fetched_20261013_14{i:02d}00.csv").write_text("x")
+        (tmp_path / "WT-02_api_fetched_20261013_140000.csv").write_text("x")
+        (tmp_path / "WT-01.csv").write_text("x")
+
+        removed = _prune_fetched_files(tmp_path, "WT-01", keep=2)
+
+        assert len(removed) == 3
+        left = sorted(p.name for p in tmp_path.iterdir())
+        assert left == [
+            "WT-01.csv",
+            "WT-01_api_fetched_20261013_140300.csv",
+            "WT-01_api_fetched_20261013_140400.csv",
+            "WT-02_api_fetched_20261013_140000.csv",
+        ]
+
+    def test_under_limit_removes_nothing(self, tmp_path: Path) -> None:
+        (tmp_path / "WT-01_api_fetched_20261013_140000.csv").write_text("x")
+        assert _prune_fetched_files(tmp_path, "WT-01", keep=10) == []

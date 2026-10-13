@@ -51,7 +51,7 @@ git merge --no-edit origin/master     # 衝突 → 見 §5
 pip install --quiet fastapi==0.115.0 "uvicorn[standard]" "websockets>=13.0" \
   pydantic==2.9.0 pydantic-settings==2.5.0 pandas==2.2.0 "numpy>=1.26,<2" \
   scikit-learn xgboost scipy pytest==8.3.0 pytest-asyncio==0.24.0 \
-  python-dotenv loguru "httpx>=0.28.1" pyyaml
+  python-dotenv loguru "httpx>=0.28.1" pyyaml "python-multipart>=0.0.9"
 pip install --quiet "ruff==0.6.0" "black==24.8.0"
 ```
 

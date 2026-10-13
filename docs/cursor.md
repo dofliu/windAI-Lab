@@ -1,63 +1,55 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-12（auto-advance #36）
+> 自動更新時間：2026-10-13（使用者 session：實機 UI 測試 + 缺陷排除）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
-- **#36（2026-10-12）**：完成 **A3-3**：新增 `frontend/src/components/CaseRecommendation.tsx`（呼叫 `/api/cases/similar`，Top-5、相似度/同風機標籤、點擊展開完整解法、載入/錯誤/空狀態），整合進 `WorkOrderPanel` 工單詳情（有 `alert_id` 時顯示）。`npm ci && npm run build`（tsc + vite）通過；前端無 lint/測試腳本。Epic A 可自主部分全數完成，僅剩 A1-2（阻塞）與 P2-3（需人工）。
+- **2026-10-13（使用者 session）**：首次實機 E2E（uvicorn + vite + headless Chromium 巡覽全部分頁），排除 7 項缺陷，見 [WLAB-20261013-01](work-logs/2026-10/WLAB-20261013-01-ui-e2e-bugfix.md)。其中 **A1-2 已完成**（使用者授權把 `python-multipart` 加入 `requirements.txt`，阻塞解除）。Epic A 程式面全數完成。
+- **#37（2026-10-13 auto-advance）**：佇列只剩阻塞 / 需人工項目，本次無變更。
+- **#32～#36（2026-10-11～12）**：Epic A 的 A2-1、A2-2、A3-1、A3-2、A3-3 依序完成。
 
-- **#35（2026-10-12）**：完成 **A3-2**：`CaseRecommender.recommend_for_alert(alert)` + `GET /api/cases/similar?alert_id=&top_k=`（宣告於 `/api/cases/{case_id}` 之前；RAG 不可用時降級關鍵字）。+2 單元測試；端點以臨時安裝 python-multipart 手動驗證（有結果 / 404），TestClient 自動測試仍待 python-multipart 解除。
+## 數據基準（實測，2026-10-13）
 
-- **#34（2026-10-11）**：完成 **A3-1**：`GET /api/cases`（分頁 + `fault_type`/`turbine_id` 篩選，回傳 total）、`GET /api/cases/{case_id}`，新增 `Database.count_cases` + 2 測試。端點本身因 python-multipart 阻塞無法以 TestClient 測（僅 DB 層有測試），解除後補。
-
-- **#33（2026-10-11）**：完成 **A2-2**：`CaseRecommender` 新增 `store`（SQLite `list_cases`）降級——searcher 缺席 / 失敗 / 無結果時以 bigram 關鍵字 + 故障類型比對，+5 測試。A1-2 仍阻塞。
-
-- **#32（2026-10-11）**：A1-2 因缺 `python-multipart` 阻塞（見阻塞清單）→ 改做 **A2-1**：`src/skills/rag/case_recommender.py` + 6 個測試。
-
-- **#31（2026-10-11）**：使用者指派方向 **Epic A 案例學習系統**（P2-2 解除），並授權完成 P2-1。本輪完成 **A1-1**（`cases` 表 + `CaseLearningService`），見 [WLAB-20261011-01](work-logs/2026-10/WLAB-20261011-01-epic-a-case-recording.md)。
-- **#30（2026-10-11）**：P2-1 `CLAUDE.md` 章節重編 §1–§14、代理數更正為 25（使用者授權，已 commit）。
-- 空轉期（#14～#29）已結束，佇列重新有可自主推進的工作。
-
-## 數據基準（實測，#36，2026-10-12）
-
-- 環境：新容器，`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`
+- 環境：`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`；**需 `python-multipart`**（已在 requirements.txt 與 Phase 0 安裝清單）
 - `python3 -m ruff check .`：**0 錯誤**
-- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，185 檔
-- `python3 -m pytest tests/ -q`：**898 pass / 0 fail / 5 skip**（本輪僅前端變更，未變動）
-- `src/` `.py` 檔：142，總行數 30,807
-- REST 端點：76（+1：/api/cases/similar）
+- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，186 檔
+- `python3 -m pytest tests/ -q`：**910 pass / 0 fail / 5 skip**
+- `npm run build`（frontend）：通過
+- `mypy src/`：423 errors（基準；CI 只安裝不執行 mypy，多數為 loguru `logger?` 假警報）
+- 實機 UI 巡覽：0 個 API 4xx/5xx、0 個 JS 例外
+- `src/` `.py` 檔：143，總行數 31,182
+- REST/WS 端點：76（`/api` + `/ws`，以 app.routes 實算）
 - 技能 28、agent 模組 25（未變動）
-- Open Issues：12（#34/35/36/37/46/47/48/49/50/51/52/69）
-- mypy 注意：loguru `logger?` 的 attr-defined 為既有基準假警報（`rag_service.py` 同樣 14 筆），非新缺陷
+- Open Issues：12（#34/35/36/37/46/47/48/49/50/51/52/69）——本 session 未核對
 
 ## 待續產出（下個 session / auto-advance 觸發接手）
 
-> 每次觸發取**第一個未完成**項目。Epic A 依 Issue #35 拆成可獨立驗證的切片，**一次一個**。
+> 每次觸發取**第一個未完成**項目，一次一個。
 
-### P1 — Epic A 案例學習系統（Issue #35，使用者 2026-10-11 指派）
+### P1 — 實機測試後續（2026-10-13 發現）
 
-- [x] **A1-1**（#47）`cases` 表 + `Database` 案例 CRUD + `src/services/case_learning.py`（`extract_case` / `CaseRecord.to_summary` / `CaseLearningService.record_case`，選用寫入 ChromaDB `maintenance_cases`）— commit 見 git log
-- [ ] **A1-2（⛔ 阻塞，需人工）**（#47）結案 hook：`src/api/main.py` 的 `PATCH /api/work-orders/{order_id}` 在 `status` 變為 `completed` 時呼叫 `CaseLearningService(get_database(), indexer).record_case(order_id)`；indexer 取得 `RAGService` 失敗時傳 None；**案例記錄失敗不得讓工單更新失敗**。補 API 層測試（`TestClient` + tmp DB）。完成後 #47 驗收全滿足（關 Issue 需人工 / GitHub connector）
-- [x] **A2-1**（#48，#32 完成）`src/skills/rag/case_recommender.py` `CaseRecommender`：輸入告警描述 → 在 `maintenance_cases` 語意搜尋 Top-5（同 `turbine_id` 加權優先），回傳 case_id / 相似度 / 故障類型 / 解法摘要。測試以假 RAG 注入（不依賴 chromadb）
-- [x] **A2-2**（#48，#33 完成；`CaseRecommender(searcher, store=db)`，A3-2 API 組裝時傳入 `get_database()`）向量庫不可用時的降級：以 SQLite `cases` 做關鍵字 / 同故障類型比對，確保無 chromadb 環境仍回傳結果
-- [x] **A3-1**（#49，#34 完成；端點 TestClient 測試待 python-multipart 解除後補）API：`GET /api/cases`（分頁 + `fault_type` / `turbine_id` 篩選）、`GET /api/cases/{id}`
-- [x] **A3-2**（#49，#35 完成）API：`GET /api/cases/similar?alert_id=xxx` → Top-5（接 A2）
-- [x] **A3-3**（#49，#36 完成）前端 `frontend/src/components/CaseRecommendation.tsx` + 整合進 WorkOrderPanel（可展開完整解法）；需 `npm run build` / 前端 lint 通過
+- [x] **P1-1** `docs/routines/auto-advance.md` Phase 0 安裝清單補 `python-multipart`（2026-10-13 同 commit 完成）
+- [ ] **P1-2** 前端寫死 Kelmarsh 清單統一改為讀 `/api/scada/turbines`：`MLDashboard.tsx`（L30-32）、`CommandBar.tsx` / `TaskLauncher.tsx` 的 `FALLBACK_TURBINES` 僅在 API 失敗時使用；`npm run build` 驗證
+- [ ] **P1-3** MockConnector 每次拉取只產 1 筆紀錄、一檔一筆 → SCADA 圖只有 1 個點。改為同風機追加寫入單一滾動檔（或拉取時產生一段時間序列），保留 FileWatcher 觸發；補測試
+- [ ] **P1-4** 實機 E2E 自動化：把本次 Playwright 巡覽腳本（全部分頁 + 工單結案 → 案例推薦）收成 `scripts/e2e_smoke.mjs` 或 run skill，CI 前端 job 可選擇性執行。**新增 Playwright 依賴屬供應鏈決策 → 需人工授權**，授權前只能寫成不進 CI 的手動腳本
 
 ### P2 — 需人工
 
-- [ ] **P2-3** Issue #47 / #48 / #49 / #35 的勾選與關閉（需 GitHub connector 或人工）
+- [ ] **P2-3** Issue #47 / #48 / #49 / #35 勾選與關閉（Epic A 程式面已全數完成；需 GitHub connector 或人工）
+- [ ] **P2-4** 推薦品質驗證：Issue #35 建議累積 50+ 已結案工單後評估 Top-5 命中率（需真實資料）
+- [ ] **P2-5** 下一個方向（Epic A 完成後）：Phase 15 多風場管理 / 其他 Epic，待使用者指派
 
 ## 阻塞 / 風險
 
-- ⛔ **A1-2 阻塞（需人工授權）**：`import src.api.main` 在無 `python-multipart` 時直接 RuntimeError（`File`/`UploadFile` 路由），而 `requirements.txt` 與 CI 都沒有該套件，且 playbook 禁止自行新增依賴。任何 `TestClient` 測試在 CI 會失敗。解法擇一：(a) 人工把 `python-multipart` 加進 `requirements.txt`（建議，FastAPI 上傳本就需要）；(b) 授權使用 `pytest.importorskip`。解除後 A1-2 實作已設計好：`update_work_order` 於 `fields.get("status")=="completed"` 時呼叫 `_record_case_on_close(db, order_id)`（try/except 包住 `CaseLearningService(db, indexer).record_case`，`_get_rag_service()` 失敗時 indexer=None）。
-
-- ℹ️ **Epic A 前置條件**：Issue #35 建議累積 50+ 已結案工單後再啟用推薦。A2/A3 可先完成程式與測試，但推薦品質須等真實資料累積，不阻塞開發
-- ℹ️ **chromadb 未安裝於 routine 環境**（刻意不裝，見 playbook Phase 0）：案例相關測試一律以 Protocol 注入假 indexer，勿在測試中直接依賴 chromadb
-- 🟡 **容器內 ruff 版本陷阱**：`/root/.local/bin/ruff`（0.15.8）在 PATH 優先；一律用 `python3 -m ruff`，pytest 用 `python3 -m pytest`
-- 🟡 **CLAUDE.md 自動 commit 會被 Self-Modification 擋下**：P2-1 這次是使用者在 session 內明確授權才完成；之後佇列不要排入修改 `CLAUDE.md` 的項目
+- ✅ **A1-2 阻塞已解除**（2026-10-13）：`python-multipart` 已加入 `requirements.txt`，結案 hook 與 API 層 TestClient 測試已完成
+- ℹ️ **TestClient 測試寫法**：參考 `tests/unit/test_api_regressions.py`——`TestClient(app)` 不用 `with`（不啟動 lifespan 的背景連接器 / 排程），以 monkeypatch 取代 `src.core.database._db_instance` 與 `_get_rag_service`
+- ℹ️ **路由宣告順序**：FastAPI 依宣告順序比對，固定路徑（`/available`、`/similar`）必須寫在 `/{id}` 之前；已有兩次前例
+- ℹ️ **chromadb 未安裝於 routine 環境**（刻意不裝）：案例相關測試一律注入假 indexer / 讓 `_get_rag_service` 拋錯
+- ℹ️ **本機 DB 殘留**：本次手動測試建立的 3 筆舊案例 fault_type 為 `manual`（修復前寫入），僅存在容器內 `windai.db`（gitignored），不影響 repo
+- 🟡 **容器內 ruff 版本陷阱**：`/root/.local/bin/ruff`（0.15.8）在 PATH 優先；一律用 `python3 -m ruff`、`python3 -m pytest`
+- 🟡 **CLAUDE.md 自動 commit 會被 Self-Modification 擋下**：佇列不要排入修改 `CLAUDE.md` 的項目
 - 🟠 **大 commit 直推 master**：`bfca6a7` 5,315 行未過 CI 即進主幹，流程缺門檻（沿用既有記錄）
-- 🟢 GitHub connector：本 session 可用；定時觸發的 session 是否帶 connector 不保證，需 API 的項目仍歸 P2「需人工」
+- 🟢 GitHub connector：定時觸發的 session 不保證帶 connector，需 API 的項目歸 P2「需人工」
 - ℹ️ 前端元件計數 grep 口徑不穩（37～41），需精確值時改用 AST parser；技能計數須排除 `base.py` / `registry.py`

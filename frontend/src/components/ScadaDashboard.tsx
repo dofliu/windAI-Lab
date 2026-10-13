@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   ScatterChart,
   Scatter,
@@ -107,7 +107,8 @@ export default function ScadaDashboard() {
   const [loading, setLoading] = useState(false)
   const [featureLoading, setFeatureLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [turbineId, setTurbineId] = useState('Kelmarsh_1')
+  // 空字串 = 尚未取得風機清單；取得前不發出資料請求，避免先打一筆不存在的預設風機
+  const [turbineId, setTurbineId] = useState('')
   const [activeTab, setActiveTab] = useState<'scatter' | 'trend' | 'stats' | 'features'>('scatter')
   const [turbines, setTurbines] = useState<string[]>(['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6'])
 
@@ -118,20 +119,26 @@ export default function ScadaDashboard() {
       .then((data) => {
         if (data.turbines && data.turbines.length > 0) {
           setTurbines(data.turbines)
-          if (!data.turbines.includes(turbineId)) {
-            setTurbineId(data.turbines[0])
-          }
+          setTurbineId(data.turbines[0])
+        } else {
+          setTurbineId('Kelmarsh_1')
         }
       })
-      .catch(() => { /* 後端未啟動時保留 fallback */ })
+      .catch(() => setTurbineId('Kelmarsh_1')) // 後端未啟動時保留 fallback
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 請求序號：切換風機後，較早送出的回應晚到時直接丟棄，避免覆蓋目前風機的狀態
+  const loadSeq = useRef(0)
+
   const loadData = useCallback(async () => {
+    if (!turbineId) return
+    const seq = ++loadSeq.current
     setLoading(true)
     setError(null)
     try {
       const res = await fetch(`${API_BASE}/scada/${turbineId}/overview?limit=2000`)
       const text = await res.text()
+      if (seq !== loadSeq.current) return
       const json = safeJsonParse(text) as Record<string, unknown>
       if (json.status === 'error') {
         setError((json.detail as string) || '載入失敗')
@@ -139,13 +146,14 @@ export default function ScadaDashboard() {
         setData(json as unknown as ScadaData)
       }
     } catch {
-      setError('無法連線至後端')
+      if (seq === loadSeq.current) setError('無法連線至後端')
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
   }, [turbineId])
 
   const loadFeatures = useCallback(async () => {
+    if (!turbineId) return
     setFeatureLoading(true)
     try {
       const res = await fetch(`${API_BASE}/scada/${turbineId}/features`)

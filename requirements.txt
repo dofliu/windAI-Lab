@@ -7,6 +7,7 @@ uvicorn[standard]>=0.30.0
 websockets>=13.0
 pydantic==2.9.0
 pydantic-settings==2.5.0
+python-multipart>=0.0.9  # FastAPI File/UploadFile 路由必需，缺少時 app 無法啟動
 
 # 資料處理
 pandas==2.2.0
