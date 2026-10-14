@@ -1,11 +1,12 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-14（auto-advance #39：P1-3 完成）
+> 自動更新時間：2026-10-14（auto-advance #40：P1-4 手動腳本完成）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
+- **#40（2026-10-14 auto-advance）**：P1-4 完成可做的部分——新增 `scripts/e2e_smoke.mjs`（手動、不進 CI、未改 package.json）：巡覽 5 分頁 / 11 子頁面檢查 API 4xx/5xx 與 JS 例外，並以 API 驗證工單結案 → `/api/cases` +1；實機（uvicorn + vite + Chromium）跑通。無 SCADA 資料時對 `/api/scada/*` 的 404 視為預期。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
 - **#39（2026-10-14 auto-advance）**：P1-3 完成——`MockConnector.fetch_data` 每次拉取改產生 6 筆連續時間序列（10 分鐘間隔、跨次接續不重疊，`batch_size` 可由連接器 config 設定），快取模式與隨機模式皆適用；FileWatcher 觸發路徑不變。補 4 個測試。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
 - **#38（2026-10-13 auto-advance）**：P1-2 完成——`MLDashboard.tsx` 改為讀 `/api/scada/turbines`（失敗保留 `Kelmarsh_1` fallback）；CommandBar / TaskLauncher / ScadaDashboard 原本已動態讀取，僅 API 失敗才用 fallback。ruff 0 / black 186 檔綠 / pytest 910 pass 5 skip / `npm run build` 通過。
 - **2026-10-13（使用者 session）**：首次實機 E2E（uvicorn + vite + headless Chromium 巡覽全部分頁），排除 7 項缺陷，見 [WLAB-20261013-01](work-logs/2026-10/WLAB-20261013-01-ui-e2e-bugfix.md)。其中 **A1-2 已完成**（使用者授權把 `python-multipart` 加入 `requirements.txt`，阻塞解除）。Epic A 程式面全數完成。
@@ -35,7 +36,7 @@
 - [x] **P1-1** `docs/routines/auto-advance.md` Phase 0 安裝清單補 `python-multipart`（2026-10-13 同 commit 完成）
 - [x] **P1-2** 前端寫死 Kelmarsh 清單統一改為讀 `/api/scada/turbines`：`MLDashboard.tsx`（L30-32）、`CommandBar.tsx` / `TaskLauncher.tsx` 的 `FALLBACK_TURBINES` 僅在 API 失敗時使用；`npm run build` 驗證
 - [x] **P1-3**（#39 完成）MockConnector 每次拉取只產 1 筆紀錄、一檔一筆 → SCADA 圖只有 1 個點。改為同風機追加寫入單一滾動檔（或拉取時產生一段時間序列），保留 FileWatcher 觸發；補測試
-- [ ] **P1-4** 實機 E2E 自動化：把本次 Playwright 巡覽腳本（全部分頁 + 工單結案 → 案例推薦）收成 `scripts/e2e_smoke.mjs` 或 run skill，CI 前端 job 可選擇性執行。**新增 Playwright 依賴屬供應鏈決策 → 需人工授權**，授權前只能寫成不進 CI 的手動腳本
+- [x] **P1-4**（#40：手動腳本已完成；CI 整合仍待授權，見阻塞）實機 E2E 自動化：把本次 Playwright 巡覽腳本（全部分頁 + 工單結案 → 案例推薦）收成 `scripts/e2e_smoke.mjs` 或 run skill，CI 前端 job 可選擇性執行。**新增 Playwright 依賴屬供應鏈決策 → 需人工授權**，授權前只能寫成不進 CI 的手動腳本
 
 ### P2 — 需人工
 
@@ -45,6 +46,7 @@
 
 ## 阻塞 / 風險
 
+- 🔴 **需人工授權**：把 `scripts/e2e_smoke.mjs` 接入 CI 需新增 Playwright 依賴（供應鏈決策）。執行方式：`NODE_PATH=<含 playwright 的 node_modules> [CHROMIUM_PATH=…] node scripts/e2e_smoke.mjs`（需後端 :5800、前端 :5173 已啟動）
 - ✅ **A1-2 阻塞已解除**（2026-10-13）：`python-multipart` 已加入 `requirements.txt`，結案 hook 與 API 層 TestClient 測試已完成
 - ℹ️ **TestClient 測試寫法**：參考 `tests/unit/test_api_regressions.py`——`TestClient(app)` 不用 `with`（不啟動 lifespan 的背景連接器 / 排程），以 monkeypatch 取代 `src.core.database._db_instance` 與 `_get_rag_service`
 - ℹ️ **路由宣告順序**：FastAPI 依宣告順序比對，固定路徑（`/available`、`/similar`）必須寫在 `/{id}` 之前；已有兩次前例
