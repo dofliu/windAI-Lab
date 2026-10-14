@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # 每座風機保留的連接器拉取檔數上限（避免每次拉取都新增檔案、無限增長）
 MAX_FETCHED_FILES_PER_TURBINE = 10
+
+# MockConnector 每次拉取的紀錄數與時間解析度（SCADA 10 分鐘平均）
+MOCK_BATCH_SIZE = 6
+MOCK_STEP_MINUTES = 10
 
 
 def _prune_fetched_files(
@@ -97,6 +101,27 @@ class MockConnector(BaseConnector):
         self.turbine_id = config.get("turbine_id", "WT-01")
         self.data_cache: pd.DataFrame | None = None
         self.current_index = 0
+        # 每次拉取產生的連續紀錄數（10 分鐘解析度），讓 SCADA 圖有時間序列可畫
+        self.batch_size = max(1, int(config.get("batch_size", MOCK_BATCH_SIZE)))
+        self._next_timestamp: datetime | None = None
+
+    def _next_timestamps(self) -> list[str]:
+        """產生本次拉取的連續時間戳（10 分鐘間隔），跨次拉取接續不重疊。
+
+        首次從「現在往前 batch_size 筆」起算；其後從上次結尾接續，若落後現在
+        太多（例如長時間停機）則重新對齊，避免產生過期資料。
+
+        Returns:
+            `YYYY-mm-dd HH:MM:SS` 格式時間戳清單，長度為 batch_size。
+        """
+        now = datetime.now(UTC)
+        step = timedelta(minutes=MOCK_STEP_MINUTES)
+        start = now - step * (self.batch_size - 1)
+        if self._next_timestamp is not None and self._next_timestamp > start:
+            start = self._next_timestamp
+        stamps = [start + step * i for i in range(self.batch_size)]
+        self._next_timestamp = stamps[-1] + step
+        return [t.strftime("%Y-%m-%d %H:%M:%S") for t in stamps]
 
     async def connect(self) -> bool:
         try:
@@ -155,39 +180,44 @@ class MockConnector(BaseConnector):
 
         # 模式一：如果快取有載入數據，定時順序或隨機返回一筆
         if self.data_cache is not None and len(self.data_cache) > 0:
-            row = self.data_cache.iloc[[self.current_index]].copy()
-            # 更新時間戳記為當前時間以模擬實時性
+            size = len(self.data_cache)
+            idx = [(self.current_index + i) % size for i in range(self.batch_size)]
+            rows = self.data_cache.iloc[idx].copy().reset_index(drop=True)
+            # 更新時間戳記為當前時間序列以模擬實時性
             timestamp_col = next(
-                (c for c in row.columns if "timestamp" in c.lower() or "time" in c.lower()), None
+                (c for c in rows.columns if "timestamp" in c.lower() or "time" in c.lower()), None
             )
             if timestamp_col:
-                row[timestamp_col] = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+                rows[timestamp_col] = self._next_timestamps()
 
             # 更新下一筆索引用於下次抓取，循環利用
-            self.current_index = (self.current_index + 1) % len(self.data_cache)
-            return row
+            self.current_index = (self.current_index + self.batch_size) % size
+            return rows
 
         # 模式二：若無本地檔案，生成隨機合理的模擬行數據
         import random
 
-        ws = random.uniform(3.0, 15.0)
-        # 簡易正常風速/功率曲線對照 (12m/s 滿載 2050kW)
-        if ws < 3.0:
-            power = 0.0
-        elif ws > 12.0:
-            power = 2050.0
-        else:
-            power = 2050.0 * (((ws - 3) / 9) ** 3)
-
-        mock_data = {
-            "Timestamp": [datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")],
-            "Wind_speed": [ws],
-            "Active_power": [power],
-            "Generator_temp": [random.uniform(65.0, 85.0)],
-            "Gear_oil_temp": [random.uniform(55.0, 70.0)],
-            "Nacelle_direction": [random.uniform(0.0, 360.0)],
-        }
-        return pd.DataFrame(mock_data)
+        records: list[dict[str, float | str]] = []
+        for stamp in self._next_timestamps():
+            ws = random.uniform(3.0, 15.0)
+            # 簡易正常風速/功率曲線對照 (12m/s 滿載 2050kW)
+            if ws < 3.0:
+                power = 0.0
+            elif ws > 12.0:
+                power = 2050.0
+            else:
+                power = 2050.0 * (((ws - 3) / 9) ** 3)
+            records.append(
+                {
+                    "Timestamp": stamp,
+                    "Wind_speed": ws,
+                    "Active_power": power,
+                    "Generator_temp": random.uniform(65.0, 85.0),
+                    "Gear_oil_temp": random.uniform(55.0, 70.0),
+                    "Nacelle_direction": random.uniform(0.0, 360.0),
+                }
+            )
+        return pd.DataFrame(records)
 
 
 class RESTConnector(BaseConnector):

@@ -1,24 +1,25 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-13（auto-advance #38：P1-2 完成）
+> 自動更新時間：2026-10-14（auto-advance #39：P1-3 完成）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
+- **#39（2026-10-14 auto-advance）**：P1-3 完成——`MockConnector.fetch_data` 每次拉取改產生 6 筆連續時間序列（10 分鐘間隔、跨次接續不重疊，`batch_size` 可由連接器 config 設定），快取模式與隨機模式皆適用；FileWatcher 觸發路徑不變。補 4 個測試。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
 - **#38（2026-10-13 auto-advance）**：P1-2 完成——`MLDashboard.tsx` 改為讀 `/api/scada/turbines`（失敗保留 `Kelmarsh_1` fallback）；CommandBar / TaskLauncher / ScadaDashboard 原本已動態讀取，僅 API 失敗才用 fallback。ruff 0 / black 186 檔綠 / pytest 910 pass 5 skip / `npm run build` 通過。
 - **2026-10-13（使用者 session）**：首次實機 E2E（uvicorn + vite + headless Chromium 巡覽全部分頁），排除 7 項缺陷，見 [WLAB-20261013-01](work-logs/2026-10/WLAB-20261013-01-ui-e2e-bugfix.md)。其中 **A1-2 已完成**（使用者授權把 `python-multipart` 加入 `requirements.txt`，阻塞解除）。Epic A 程式面全數完成。
 - **#37（2026-10-13 auto-advance）**：佇列只剩阻塞 / 需人工項目，本次無變更。
 - **#32～#36（2026-10-11～12）**：Epic A 的 A2-1、A2-2、A3-1、A3-2、A3-3 依序完成。
 
-## 數據基準（實測，2026-10-13）
+## 數據基準（實測，2026-10-14）
 
 - 環境：`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`；**需 `python-multipart`**（已在 requirements.txt 與 Phase 0 安裝清單）
 - `python3 -m ruff check .`：**0 錯誤**
 - `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，186 檔
-- `python3 -m pytest tests/ -q`：**910 pass / 0 fail / 5 skip**
+- `python3 -m pytest tests/ -q`：**914 pass / 0 fail / 5 skip**
 - `npm run build`（frontend）：通過
-- `mypy src/`：423 errors（基準；CI 只安裝不執行 mypy，多數為 loguru `logger?` 假警報）
+- `mypy src/`：本次未跑（環境未裝 mypy；上次基準 423 errors；CI 只安裝不執行 mypy，多數為 loguru `logger?` 假警報）
 - 實機 UI 巡覽：0 個 API 4xx/5xx、0 個 JS 例外
 - `src/` `.py` 檔：143，總行數 31,182
 - REST/WS 端點：76（`/api` + `/ws`，以 app.routes 實算）
@@ -33,7 +34,7 @@
 
 - [x] **P1-1** `docs/routines/auto-advance.md` Phase 0 安裝清單補 `python-multipart`（2026-10-13 同 commit 完成）
 - [x] **P1-2** 前端寫死 Kelmarsh 清單統一改為讀 `/api/scada/turbines`：`MLDashboard.tsx`（L30-32）、`CommandBar.tsx` / `TaskLauncher.tsx` 的 `FALLBACK_TURBINES` 僅在 API 失敗時使用；`npm run build` 驗證
-- [ ] **P1-3** MockConnector 每次拉取只產 1 筆紀錄、一檔一筆 → SCADA 圖只有 1 個點。改為同風機追加寫入單一滾動檔（或拉取時產生一段時間序列），保留 FileWatcher 觸發；補測試
+- [x] **P1-3**（#39 完成）MockConnector 每次拉取只產 1 筆紀錄、一檔一筆 → SCADA 圖只有 1 個點。改為同風機追加寫入單一滾動檔（或拉取時產生一段時間序列），保留 FileWatcher 觸發；補測試
 - [ ] **P1-4** 實機 E2E 自動化：把本次 Playwright 巡覽腳本（全部分頁 + 工單結案 → 案例推薦）收成 `scripts/e2e_smoke.mjs` 或 run skill，CI 前端 job 可選擇性執行。**新增 Playwright 依賴屬供應鏈決策 → 需人工授權**，授權前只能寫成不進 CI 的手動腳本
 
 ### P2 — 需人工
