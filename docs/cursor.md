@@ -6,6 +6,7 @@
 
 ## 上次工作時間
 
+- **2026-10-21 auto-advance**：P2-3 完成——關閉 #47/#48/#49（附 commit sha 與程式位置），#35 子任務勾選。無程式變更。
 - **#40（2026-10-14 auto-advance）**：P1-4 完成可做的部分——新增 `scripts/e2e_smoke.mjs`（手動、不進 CI、未改 package.json）：巡覽 5 分頁 / 11 子頁面檢查 API 4xx/5xx 與 JS 例外，並以 API 驗證工單結案 → `/api/cases` +1；實機（uvicorn + vite + Chromium）跑通。無 SCADA 資料時對 `/api/scada/*` 的 404 視為預期。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
 - **#39（2026-10-14 auto-advance）**：P1-3 完成——`MockConnector.fetch_data` 每次拉取改產生 6 筆連續時間序列（10 分鐘間隔、跨次接續不重疊，`batch_size` 可由連接器 config 設定），快取模式與隨機模式皆適用；FileWatcher 觸發路徑不變。補 4 個測試。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
 - **#38（2026-10-13 auto-advance）**：P1-2 完成——`MLDashboard.tsx` 改為讀 `/api/scada/turbines`（失敗保留 `Kelmarsh_1` fallback）；CommandBar / TaskLauncher / ScadaDashboard 原本已動態讀取，僅 API 失敗才用 fallback。ruff 0 / black 186 檔綠 / pytest 910 pass 5 skip / `npm run build` 通過。
@@ -25,7 +26,7 @@
 - `src/` `.py` 檔：143，總行數 31,182
 - REST/WS 端點：76（`/api` + `/ws`，以 app.routes 實算）
 - 技能 28、agent 模組 25（未變動）
-- Open Issues：12（#34/35/36/37/46/47/48/49/50/51/52/69）——本 session 未核對
+- Open Issues：9（#34/35/36/37/46/50/51/52/69）——#47/#48/#49 已於 2026-10-21 關閉；其餘未重新核對
 
 ## 待續產出（下個 session / auto-advance 觸發接手）
 
@@ -40,7 +41,7 @@
 
 ### P2 — 需人工
 
-- [ ] **P2-3** Issue #47 / #48 / #49 / #35 勾選與關閉（Epic A 程式面已全數完成）。**可自主執行**——關閉已完工 Issue 已列入 playbook §3 允許清單，須附完工證據（commit sha + 對應程式位置）
+- [x] **P2-3**（2026-10-21 auto-advance）#47 / #48 / #49 已附 commit 證據並關閉；#35 子任務已勾選，保持開啟待 P2-4 驗證
 - [ ] **P2-4** 推薦品質驗證：Issue #35 建議累積 50+ 已結案工單後評估 Top-5 命中率（需真實資料）
 - [ ] **P2-5** 下一個方向（Epic A 完成後）：Phase 15 多風場管理 / 其他 Epic，待使用者指派
 
