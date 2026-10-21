@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { WorkOrder, WorkOrderStatus, WorkOrderPriority, Agent } from '../types/agent'
 import { useTheme } from '../themes'
 import { API_BASE } from '../config/api'
+import CaseRecommendation from './CaseRecommendation'
 
 interface WorkOrderPanelProps {
   workOrders: WorkOrder[]
@@ -569,6 +570,8 @@ export default function WorkOrderPanel({ workOrders: wsOrders, allAgents = [] }:
                   關聯告警：{detail.alert_id}
                 </div>
               )}
+
+              {detail.alert_id && <CaseRecommendation alertId={detail.alert_id} />}
 
               {/* 狀態操作 */}
               <div className="flex items-center gap-1.5">

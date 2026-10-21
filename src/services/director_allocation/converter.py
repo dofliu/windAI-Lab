@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from src.services.director_allocation.models import (
@@ -37,10 +38,7 @@ class AllocationMarkdownConverter:
 
         # 1. 解析日期
         date_match = re.search(r"# 總監派工單 — (\d{4}-\d{2}-\d{2})", content)
-        if date_match:
-            sheet_date = date.fromisoformat(date_match.group(1))
-        else:
-            sheet_date = date.today()
+        sheet_date = date.fromisoformat(date_match.group(1)) if date_match else date.today()
 
         # 2. 解析剩餘天數
         days_match = re.search(r"\* Hackathon 剩餘天數：(\d+)", content)
@@ -280,9 +278,11 @@ class AllocationMarkdownConverter:
         # > **建立日期**：...
         # > **狀態**：...
         title = "未知任務"
-        issue = []
+        github_issue: int | None = None
         assignee = ""
         status = "pending"
+        created_at = datetime.utcnow()
+        closed_at: datetime | None = None
 
         meta_matches = re.findall(r"> \*\*([^*]+)\*\*：(.*)", content)
         for name, value in meta_matches:
@@ -294,9 +294,15 @@ class AllocationMarkdownConverter:
                 # 解析其中的 issue number, 例如 [#42](...)
                 issue_nums = re.findall(r"#(\d+)", val)
                 if issue_nums:
-                    issue = [int(i) for i in issue_nums]
+                    github_issue = int(issue_nums[0])
             elif "指派代理" in name:
                 assignee = val
+            elif "結束日期" in name:
+                with contextlib.suppress(ValueError):
+                    closed_at = datetime.strptime(val, "%Y-%m-%d")
+            elif "建立日期" in name:
+                with contextlib.suppress(ValueError):
+                    created_at = datetime.strptime(val, "%Y-%m-%d")
             elif "狀態" in name:
                 status = val
 
@@ -379,22 +385,35 @@ class AllocationMarkdownConverter:
             summary=summary,
             execution_steps=steps,
             deliverables=deliverables,
+            title=title,
+            github_issue=github_issue,
+            assignee=assignee,
+            status=status,
             commits=commits,
             prs=prs,
             test_results=test_results,
             learnings=learnings,
             follow_up_actions=follow_up,
             markdown_path=markdown_path,
+            created_at=created_at,
+            closed_at=closed_at,
         )
 
     @staticmethod
     def render_record(
         record: WorkRecord,
-        title: str = "未知任務",
+        title: str | None = None,
         github_issue: int | None = None,
-        assignee_agent: str = "",
+        assignee_agent: str | None = None,
     ) -> str:
-        """渲染成 WLAB-*.md 工作紀錄 Markdown 內容。"""
+        """渲染成 WLAB-*.md 工作紀錄 Markdown 內容。
+
+        `title` / `github_issue` / `assignee_agent` 未顯式提供時，回退採用
+        `record` 自身同名欄位（例如來自 `parse_record()` 的往返解析結果）。
+        """
+        title = title if title is not None else record.title
+        github_issue = github_issue if github_issue is not None else record.github_issue
+        assignee_agent = assignee_agent if assignee_agent is not None else record.assignee
         issue_str = (
             f"[#{github_issue}](https://github.com/dofliu/windai-lab/issues/{github_issue})"
             if github_issue
@@ -409,6 +428,12 @@ class AllocationMarkdownConverter:
             f"> **GitHub Issue**：{issue_str}",
             f"> **指派代理**：{assignee_agent}",
             f"> **建立日期**：{record.created_at.strftime('%Y-%m-%d')}",
+        ]
+
+        if record.closed_at:
+            lines.append(f"> **結束日期**：{record.closed_at.strftime('%Y-%m-%d')}")
+
+        lines += [
             f"> **狀態**：{status_str}",
             "",
             "---",
@@ -464,8 +489,8 @@ class AllocationMarkdownConverter:
         lines.extend(["", "## 6. 學習與後續建議", "* 學到什麼："])
 
         if record.learnings:
-            for l in record.learnings:
-                lines.append(f"  - {l}")
+            for learning in record.learnings:
+                lines.append(f"  - {learning}")
         else:
             lines.append("  - 暫無。")
 

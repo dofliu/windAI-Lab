@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { API_BASE } from '../config/api'
 
 interface MLResult {
@@ -29,7 +29,20 @@ export default function MLDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [turbineId, setTurbineId] = useState('Kelmarsh_1')
 
-  const turbines = ['Kelmarsh_1', 'Kelmarsh_2', 'Kelmarsh_3', 'Kelmarsh_4', 'Kelmarsh_5', 'Kelmarsh_6']
+  const [turbines, setTurbines] = useState<string[]>(['Kelmarsh_1'])
+
+  // 從後端動態取得風機列表；失敗時保留 fallback
+  useEffect(() => {
+    fetch(`${API_BASE}/scada/turbines`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.turbines && data.turbines.length > 0) {
+          setTurbines(data.turbines)
+          setTurbineId(data.turbines[0])
+        }
+      })
+      .catch(() => undefined)
+  }, [])
 
   const apiCall = useCallback(async (url: string, setter: (r: MLResult) => void) => {
     setLoading(true)

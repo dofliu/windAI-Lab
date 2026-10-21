@@ -18,12 +18,13 @@ class Priority(str, Enum):
 
 
 class TeamNamespace(str, Enum):
-    wLab = "wLab"
-    wData = "wData"
-    wAI = "wAI"
-    wDomain = "wDomain"
-    wEng = "wEng"
-    wRes = "wRes"
+    # 命名空間常數刻意採用與 CLAUDE.md §12 一致的 wXxx 前綴，非誤用 mixedCase
+    wLab = "wLab"  # noqa: N815
+    wData = "wData"  # noqa: N815
+    wAI = "wAI"  # noqa: N815
+    wDomain = "wDomain"  # noqa: N815
+    wEng = "wEng"  # noqa: N815
+    wRes = "wRes"  # noqa: N815
 
 
 class TaskStatus(str, Enum):
@@ -89,6 +90,10 @@ class WorkRecord(BaseModel):
     summary: str
     execution_steps: list[str]
     deliverables: list[str]
+    title: str = "未知任務"
+    github_issue: int | None = None
+    assignee: str = ""
+    status: str = "pending"
     commits: list[str] = Field(default_factory=list)
     prs: list[int] = Field(default_factory=list)
     test_results: dict[str, str] = Field(default_factory=dict)

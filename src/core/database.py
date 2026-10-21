@@ -181,6 +181,25 @@ CREATE TABLE IF NOT EXISTS work_records (
     updated_at TEXT NOT NULL,
     FOREIGN KEY (task_id) REFERENCES allocations(task_id)
 );
+
+-- ── Epic A (#47)：案例學習 ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS cases (
+    id TEXT PRIMARY KEY,
+    work_order_id TEXT NOT NULL UNIQUE,
+    alert_id TEXT,
+    turbine_id TEXT,
+    fault_type TEXT NOT NULL,
+    symptoms TEXT DEFAULT '',
+    solution TEXT DEFAULT '',
+    resolution_hours REAL,
+    summary TEXT NOT NULL,
+    indexed INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    metadata TEXT DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_cases_fault_type ON cases(fault_type);
+CREATE INDEX IF NOT EXISTS idx_cases_turbine_id ON cases(turbine_id);
 """
 
 
@@ -777,6 +796,117 @@ class Database:
                 "completed": completed,
             }
 
+    # ── Case CRUD（Epic A #47）──────────────────────────────────
+
+    def create_case(
+        self,
+        work_order_id: str,
+        fault_type: str,
+        summary: str,
+        symptoms: str = "",
+        solution: str = "",
+        alert_id: str | None = None,
+        turbine_id: str | None = None,
+        resolution_hours: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """建立案例紀錄，回傳 case_id。
+
+        同一張工單只會有一筆案例；若已存在則直接回傳既有 case_id（冪等）。
+        """
+        self.initialize()
+        existing = self.get_case_by_work_order(work_order_id)
+        if existing:
+            return str(existing["id"])
+        case_id = f"CASE-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO cases "
+                "(id, work_order_id, alert_id, turbine_id, fault_type, symptoms, solution, "
+                "resolution_hours, summary, indexed, created_at, metadata) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)",
+                (
+                    case_id,
+                    work_order_id,
+                    alert_id,
+                    turbine_id,
+                    fault_type,
+                    symptoms,
+                    solution,
+                    resolution_hours,
+                    summary,
+                    datetime.now().isoformat(),
+                    json.dumps(metadata or {}, default=_json_fallback),
+                ),
+            )
+        logger.debug(f"案例已建立：{case_id}（工單 {work_order_id}，{fault_type}）")
+        return case_id
+
+    def mark_case_indexed(self, case_id: str) -> bool:
+        """標記案例已寫入向量知識庫。"""
+        self.initialize()
+        with self._connect() as conn:
+            cursor = conn.execute("UPDATE cases SET indexed = 1 WHERE id = ?", (case_id,))
+            return cursor.rowcount > 0
+
+    def get_case(self, case_id: str) -> dict[str, Any] | None:
+        """取得單一案例。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM cases WHERE id = ?", (case_id,)).fetchone()
+            return _row_to_case(row) if row else None
+
+    def get_case_by_work_order(self, work_order_id: str) -> dict[str, Any] | None:
+        """以工單 ID 取得案例。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM cases WHERE work_order_id = ?", (work_order_id,)
+            ).fetchone()
+            return _row_to_case(row) if row else None
+
+    def list_cases(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        fault_type: str | None = None,
+        turbine_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """查詢案例列表（最新在前），可依故障類型 / 風機篩選。"""
+        self.initialize()
+        conditions: list[str] = []
+        params: list[Any] = []
+        if fault_type:
+            conditions.append("fault_type = ?")
+            params.append(fault_type)
+        if turbine_id:
+            conditions.append("turbine_id = ?")
+            params.append(turbine_id)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        params.extend([limit, offset])
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM cases {where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                params,
+            ).fetchall()
+            return [_row_to_case(r) for r in rows]
+
+    def count_cases(self, fault_type: str | None = None, turbine_id: str | None = None) -> int:
+        """統計案例數量，篩選條件與 `list_cases` 一致（供分頁 total 使用）。"""
+        self.initialize()
+        conditions: list[str] = []
+        params: list[Any] = []
+        if fault_type:
+            conditions.append("fault_type = ?")
+            params.append(fault_type)
+        if turbine_id:
+            conditions.append("turbine_id = ?")
+            params.append(turbine_id)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        with self._connect() as conn:
+            row = conn.execute(f"SELECT COUNT(*) as c FROM cases {where}", params).fetchone()
+            return int(row["c"])
+
     # ── 統計 ─────────────────────────────────────────────────────
 
     def get_stats(self) -> dict[str, Any]:
@@ -1030,6 +1160,14 @@ def _row_to_work_order(row: sqlite3.Row) -> dict[str, Any]:
     d = dict(row)
     d["assigned_agents"] = json.loads(d.get("assigned_agents") or "[]")
     d["notes"] = json.loads(d.get("notes") or "[]")
+    d["metadata"] = json.loads(d.get("metadata") or "{}")
+    return d
+
+
+def _row_to_case(row: sqlite3.Row) -> dict[str, Any]:
+    """將 sqlite3.Row 轉為 case dict，解析 JSON 與布林欄位。"""
+    d = dict(row)
+    d["indexed"] = bool(d.get("indexed"))
     d["metadata"] = json.loads(d.get("metadata") or "{}")
     return d
 

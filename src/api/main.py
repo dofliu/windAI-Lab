@@ -7,9 +7,11 @@
 from __future__ import annotations
 
 import math
+import re
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -23,6 +25,7 @@ from pydantic import BaseModel
 from src.agents.orchestrator.engine import engine as orchestration_engine
 from src.agents.orchestrator.workflows import AVAILABLE_WORKFLOWS
 from src.api.agent_registry import get_agent, get_all_agents, update_agent_status
+from src.api.director import router as director_router
 from src.api.models import (
     AddWorkOrderNoteRequest,
     AgentModel,
@@ -179,8 +182,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from src.api.director import router as director_router
 
 app.include_router(director_router)
 
@@ -881,6 +882,18 @@ async def list_agents() -> list[AgentModel]:
     return get_all_agents()
 
 
+@app.get("/api/agents/available", tags=["代理管理"])
+async def available_agents() -> dict[str, Any]:
+    """列出可聘用但尚未啟用的代理。
+
+    須宣告於 `/api/agents/{agent_id}` 之前，否則 `available` 會被當成 agent_id 而回 404。
+    """
+    from src.agents.dynamic_registry import dynamic_registry
+
+    available = dynamic_registry.get_available()
+    return {"total": len(available), "agents": available}
+
+
 @app.get("/api/agents/{agent_id}", response_model=AgentModel, tags=["代理管理"])
 async def get_agent_detail(agent_id: str) -> AgentModel:
     """取得指定代理的詳細資訊。"""
@@ -986,15 +999,6 @@ async def fire_agent(agent_id: str) -> dict[str, Any]:
         return {"status": "fired", "agent_id": agent_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-
-
-@app.get("/api/agents/available", tags=["代理管理"])
-async def available_agents() -> dict[str, Any]:
-    """列出可聘用但尚未啟用的代理。"""
-    from src.agents.dynamic_registry import dynamic_registry
-
-    available = dynamic_registry.get_available()
-    return {"total": len(available), "agents": available}
 
 
 @app.get("/api/skills", tags=["技能管理"])
@@ -1385,40 +1389,56 @@ async def scada_overview(turbine_id: str = "WT-01", limit: int = 2000) -> JSONRe
         return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
 
 
-@app.get("/api/scada/turbines", tags=["SCADA 資料"])
-async def list_turbines() -> dict[str, Any]:
-    """列出可用的風機清單（自動掃描所有資料來源）。"""
-    from pathlib import Path
+def _scan_turbines(data_root: Path) -> list[str]:
+    """掃描資料目錄，列出可載入的風機 / 資料檔清單。
 
+    Args:
+        data_root: 專案 `data/` 目錄。
+
+    Returns:
+        風機 ID（即檔名 stem）清單。
+    """
     turbines: list[str] = []
     seen: set[str] = set()
-    data_root = Path(__file__).resolve().parents[2] / "data"
+    # 連接器拉取檔 `{turbine}_api_fetched_{YYYYmmdd_HHMMSS}`：同一風機只列最新一份
+    fetched_pattern = re.compile(r"^(?P<turbine>.+)_api_fetched_\d{8}_\d{6}$")
+    latest_fetched: dict[str, str] = {}
 
-    # 掃描 raw/ 目錄的 CSV/Parquet
+    # 掃描 raw/ external/ processed/ 目錄的 CSV/Parquet/Excel
     for sub in ["raw", "external", "processed"]:
         d = data_root / sub
         if not d.exists():
             continue
         for f in sorted(d.iterdir()):
-            if (
-                f.is_file()
-                and f.suffix.lower() in (".csv", ".parquet", ".xlsx")
-                and f.stem not in seen
-            ):
+            if not f.is_file() or f.suffix.lower() not in (".csv", ".parquet", ".xlsx"):
+                continue
+            match = fetched_pattern.match(f.stem)
+            if match:
+                key = match.group("turbine")
+                latest_fetched[key] = max(latest_fetched.get(key, ""), f.stem)
+            elif f.stem not in seen:
                 turbines.append(f.stem)
                 seen.add(f.stem)
 
-    # 嘗試 Kelmarsh ZIP 自動發現
-    try:
+    for stem in sorted(latest_fetched.values()):
+        if stem not in seen:
+            turbines.append(stem)
+            seen.add(stem)
+
+    # Kelmarsh 風場：只有 ZIP 實際存在時才列出（避免列出載不到的風機）
+    if any((data_root / "external").glob("Kelmarsh_SCADA_*.zip")):
         for tid in [f"Kelmarsh_{i}" for i in range(1, 7)]:
             if tid not in seen:
                 turbines.append(tid)
                 seen.add(tid)
-    except Exception:
-        if not turbines:
-            turbines = [f"Kelmarsh_{i}" for i in range(1, 7)]
 
-    return {"turbines": turbines}
+    return turbines
+
+
+@app.get("/api/scada/turbines", tags=["SCADA 資料"])
+async def list_turbines() -> dict[str, Any]:
+    """列出可用的風機清單（自動掃描所有資料來源）。"""
+    return {"turbines": _scan_turbines(Path(__file__).resolve().parents[2] / "data")}
 
 
 @app.get("/api/scada/discover", tags=["SCADA 資料"])
@@ -1958,6 +1978,64 @@ async def get_work_order(order_id: str) -> dict[str, Any]:
     return {"status": "success", "work_order": order}
 
 
+# ── Epic A：維修案例 API ────────────────────────────────────────
+
+
+@app.get("/api/cases", tags=["案例學習"])
+async def list_cases(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    fault_type: str | None = None,
+    turbine_id: str | None = None,
+) -> dict[str, Any]:
+    """查詢維修案例列表（分頁，最新在前），可依故障類型 / 風機篩選。"""
+    db = _get_db()
+    cases = db.list_cases(limit=limit, offset=offset, fault_type=fault_type, turbine_id=turbine_id)
+    total = db.count_cases(fault_type=fault_type, turbine_id=turbine_id)
+    return {"status": "success", "cases": cases, "total": total, "limit": limit, "offset": offset}
+
+
+@app.get("/api/cases/similar", tags=["案例學習"])
+async def similar_cases(
+    alert_id: str,
+    top_k: int = Query(5, ge=1, le=20),
+) -> dict[str, Any]:
+    """依告警推薦相似歷史案例（語意搜尋，向量庫不可用時降級為關鍵字比對）。
+
+    注意：路由須宣告在 `/api/cases/{case_id}` 之前，避免 `similar` 被當成 case_id。
+    """
+    from dataclasses import asdict
+
+    from src.skills.rag.case_recommender import CaseRecommender
+
+    db = _get_db()
+    alert = db.get_alert(alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="告警不存在")
+    try:
+        searcher: Any = _get_rag_service()
+    except Exception as exc:  # RAG 為選用依賴（chromadb 可能未安裝）
+        logger.warning(f"RAG 服務不可用，案例推薦改用關鍵字比對: {exc}")
+        searcher = None
+    recommender = CaseRecommender(searcher, top_k=top_k, store=db)
+    recs = recommender.recommend_for_alert(alert)
+    return {
+        "status": "success",
+        "alert_id": alert_id,
+        "recommendations": [asdict(r) for r in recs],
+        "total": len(recs),
+    }
+
+
+@app.get("/api/cases/{case_id}", tags=["案例學習"])
+async def get_case(case_id: str) -> dict[str, Any]:
+    """取得單一維修案例（含完整症狀 / 解法）。"""
+    case = _get_db().get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="案例不存在")
+    return {"status": "success", "case": case}
+
+
 @app.post("/api/work-orders", tags=["工單管理"])
 async def create_work_order(req: CreateWorkOrderRequest) -> JSONResponse:
     """建立新工單。"""
@@ -1990,10 +2068,36 @@ async def update_work_order(order_id: str, req: UpdateWorkOrderRequest) -> dict[
     ok = db.update_work_order(order_id, **fields)
     if not ok:
         raise HTTPException(status_code=404, detail="工單不存在")
+    if fields.get("status") == "completed":
+        _record_case_on_close(db, order_id)
     order = db.get_work_order(order_id)
     if order:
         await ws_manager.broadcast_work_order_update(order)
     return {"status": "success", "work_order": order}
+
+
+def _record_case_on_close(db: Any, order_id: str) -> None:
+    """工單結案時自動建立維修案例（Epic A1-2）。
+
+    案例記錄失敗只記 log，不得讓工單更新失敗；RAG 不可用時只寫 SQLite。
+
+    Args:
+        db: 資料庫實例。
+        order_id: 剛結案的工單 ID。
+    """
+    from src.services.case_learning import CaseLearningService
+
+    try:
+        indexer: Any = _get_rag_service()
+    except Exception as exc:  # RAG 為選用依賴（chromadb 可能未安裝）
+        logger.warning(f"RAG 服務不可用，案例僅寫入 SQLite: {exc}")
+        indexer = None
+    try:
+        result = CaseLearningService(db, indexer).record_case(order_id)
+        if result:
+            logger.info(f"工單 {order_id} 結案，案例 {result['case_id']} 已記錄")
+    except Exception as exc:
+        logger.error(f"工單 {order_id} 結案案例記錄失敗（不影響工單更新）: {exc}")
 
 
 @app.post("/api/work-orders/{order_id}/notes", tags=["工單管理"])
@@ -2198,7 +2302,7 @@ async def reload_alert_rules() -> dict[str, Any]:
             "detail": "告警規則已成功熱重載！",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}")
+        raise HTTPException(status_code=500, detail=f"熱重載告警規則失敗：{e}") from e
 
 
 @app.post("/api/reports/generate", tags=["報告管理"])
@@ -2214,7 +2318,7 @@ async def api_generate_report(
         res = scheduler.generate_and_dispatch(report_type, turbine_id, title_prefix)
         return {"status": "success", "detail": "維運報告生成成功！", "report": res}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"即時生成報告失敗：{e}")
+        raise HTTPException(status_code=500, detail=f"即時生成報告失敗：{e}") from e
 
 
 @app.get("/api/connectors", tags=["資料對接"])
@@ -2271,7 +2375,7 @@ async def api_create_connector(req: ConnectorCreateRequest) -> dict[str, Any]:
         with open(file_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"寫入設定檔失敗：{e}")
+        raise HTTPException(status_code=500, detail=f"寫入設定檔失敗：{e}") from e
 
     if req.enabled:
         success = await _connector_manager.toggle_connector(req.id, True)

@@ -106,7 +106,7 @@ cd frontend && npm run dev           # frontend
 
 ---
 
-## 5. 技術棧
+## 7. 技術棧
 
 ### Backend
 
@@ -140,7 +140,7 @@ cd frontend && npm run dev           # frontend
 
 ---
 
-## 6. 目錄結構說明
+## 8. 目錄結構說明
 
 ```
 windAILab/
@@ -177,20 +177,20 @@ src/
 
 ---
 
-## 7. 程式碼規範
+## 9. 程式碼規範
 
 ### Python 規範
 
 模板：`docs/templates/tmpl-work-assignment.md`、`tmpl-work-record.md`、`tmpl-formal-report.md`
 
-## 7. 資料規範要點
+## 10. 資料規範要點
 
 - SCADA 標準：`timestamp` (ISO 8601 UTC) + 必要欄位 `wind_speed`, `power_output`, `rotor_speed`, `blade_pitch_angle`, `nacelle_direction`，10 分鐘平均
 - 檔案格式：Parquet 優先、CSV 備用
 - `data/raw/` **唯讀**，處理結果落 `data/processed/` 或 `data/features/`
 - 敏感資料（風場座標、發電量）**禁止** commit
 
-## 8. 哪裡找更多資訊
+## 11. 哪裡找更多資訊
 
 - 完整功能與架構：`README.md`、`docs/architecture-design.md`
 - 當前 Phase 與待辦：`docs/PROJECT-STATUS.md`（每週更新）
@@ -200,7 +200,7 @@ src/
 
 ---
 
-## 9. 整合規則
+## 12. 整合規則
 
 ### 與 iWrite 代理系統整合
 
@@ -234,11 +234,11 @@ WindAI 代理與既有的 iWrite 代理系統共存，整合規則如下：
 
 ---
 
-## 10. 虛擬辦公室
+## 13. 虛擬辦公室
 
 ### 概念說明
 
-虛擬辦公室 (Virtual Office) 是 WindAI Lab 的即時協作介面，以視覺化方式呈現所有 42 個代理的狀態與互動。使用者可透過 React 前端即時監控代理活動、下達指令、檢視任務進度。
+虛擬辦公室 (Virtual Office) 是 WindAI Lab 的即時協作介面，以視覺化方式呈現所有 25 個代理的狀態與互動。使用者可透過 React 前端即時監控代理活動、下達指令、檢視任務進度。
 
 ### 代理狀態 (Agent Status)
 
@@ -278,9 +278,9 @@ WindAI 代理與既有的 iWrite 代理系統共存，整合規則如下：
 
 ---
 
-## 11. oh-my-claudecode (OMC) 整合（2026-04-27 啟動）
+## 14. oh-my-claudecode (OMC) 整合（2026-04-27 啟動）
 
-WindAI Lab 已整合 [oh-my-claudecode (OMC)](https://github.com/Yeachan-Heo/oh-my-claudecode) 作為通用型代理框架，與既有 22 位 windAI 領域代理互補。
+WindAI Lab 已整合 [oh-my-claudecode (OMC)](https://github.com/Yeachan-Heo/oh-my-claudecode) 作為通用型代理框架，與既有 25 位 windAI 領域代理互補。
 
 ### 整合原則
 
