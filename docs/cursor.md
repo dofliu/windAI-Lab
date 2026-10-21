@@ -40,7 +40,7 @@
 
 ### P2 — 需人工
 
-- [ ] **P2-3** Issue #47 / #48 / #49 / #35 勾選與關閉（Epic A 程式面已全數完成；需 GitHub connector 或人工）
+- [ ] **P2-3** Issue #47 / #48 / #49 / #35 勾選與關閉（Epic A 程式面已全數完成）。**可自主執行**——關閉已完工 Issue 已列入 playbook §3 允許清單，須附完工證據（commit sha + 對應程式位置）
 - [ ] **P2-4** 推薦品質驗證：Issue #35 建議累積 50+ 已結案工單後評估 Top-5 命中率（需真實資料）
 - [ ] **P2-5** 下一個方向（Epic A 完成後）：Phase 15 多風場管理 / 其他 Epic，待使用者指派
 
@@ -55,5 +55,5 @@
 - 🟡 **容器內 ruff 版本陷阱**：`/root/.local/bin/ruff`（0.15.8）在 PATH 優先；一律用 `python3 -m ruff`、`python3 -m pytest`
 - 🟡 **CLAUDE.md 自動 commit 會被 Self-Modification 擋下**：佇列不要排入修改 `CLAUDE.md` 的項目
 - 🟠 **大 commit 直推 master**：`bfca6a7` 5,315 行未過 CI 即進主幹，流程缺門檻（沿用既有記錄）
-- 🟢 GitHub connector：定時觸發的 session 不保證帶 connector，需 API 的項目歸 P2「需人工」
+- ✅ **GitHub 能力誤判已更正**（2026-10-21）：先前記載「不保證帶 connector、需 API 的項目歸人工」是錯的。實績顯示查 CI 結果與開關 Issue 皆可執行（2026-09-24 曾關閉 6 個 Issue）。僅「開 PR / merge / 核准」仍禁止——那是規則界線，不是能力限制。詳見 `docs/routines/auto-advance.md` §4.1
 - ℹ️ 前端元件計數 grep 口徑不穩（37～41），需精確值時改用 AST parser；技能計數須排除 `base.py` / `registry.py`

@@ -1,6 +1,6 @@
 # WindAI Lab — 自動推進 Routine（auto-advance）
 
-> 版本：v1.0（2026-09-22 建立）
+> 版本：v1.1（2026-10-21 修訂：Phase 6 改為有條件寫檔、§4.1 能力說明更正）
 > 觸發頻率：每 3 小時（cron `47 */3 * * *`，UTC — 伺服器依建立時間錨定分鐘數）
 > Trigger ID：`trig_01DhdmQUUguMvZLjudiLEvB1`
 > 執行模式：每次觸發開一個**全新 session**，以 `docs/cursor.md` 為唯一狀態交接介面
@@ -28,14 +28,12 @@
 
 ### Phase 0 — 環境準備
 
-**先確認 repo 在不在**（定時觸發的新 session 不保證帶著 checkout）：
-
 ```bash
-cd /home/user/windAI-Lab 2>/dev/null \
-  || git clone https://github.com/dofliu/windAI-Lab /home/user/windAI-Lab && cd /home/user/windAI-Lab
+cd /home/user/windAI-Lab
 ```
 
-若 clone 失敗（無憑證 / 私有 repo 無授權）→ **立刻停止**，回報「本次觸發無法取得 repo」並說明需人工於 claude.ai Routines UI 為此 Routine 掛上 source repository。不要在沒有 repo 的情況下嘗試任何替代方案。
+> ✅ **repo 一律到位**。2026-09-22 ～ 10-14 共 40 次觸發，無一次因取不到 repo 中止。建立本 Routine 時曾因 trigger 的 `sources` 為空而預期拿不到 checkout，該預期已被實績推翻。萬一真的沒有，再退回 clone 即可，不需為此預作任何準備：
+> `cd /home/user/windAI-Lab 2>/dev/null || (git clone https://github.com/dofliu/windAI-Lab /home/user/windAI-Lab && cd /home/user/windAI-Lab)`
 
 ```bash
 git fetch origin master claude/auto-advance claude/lucid-johnson-um3m2o
@@ -105,6 +103,8 @@ python -m pytest tests/ -q                # 期望：0 failed
 
 ### Phase 5 — Commit 與 push
 
+> ⛔ **先過 Phase 6 的閘門**：若本次唯一的變更是 `docs/cursor.md`，而且只是序號、日期或「與 #N 一致」這類措辭，那就**不要走這一節**——不 commit、不 push。判斷標準見 Phase 6。
+
 ```bash
 git add -A
 git commit   # 訊息格式見下
@@ -123,9 +123,30 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 
 推送失敗（網路）→ 重試最多 4 次，間隔 2s / 4s / 8s / 16s。
 
-### Phase 6 — 更新 cursor.md（**不可略過**）
+### Phase 6 — 收尾：cursor.md **只在有實質變化時**才寫
 
-**覆寫** `docs/cursor.md`（不累積歷史，避免膨脹）：
+**先判斷，再決定寫不寫。** 把本次結果與現有 `docs/cursor.md` 比對，只看這四類**實質**內容：
+
+| 類別 | 算實質變化 |
+|------|-----------|
+| 待續產出 | 有項目完成、新增、改寫或重新排序 |
+| 數據基準 | lint / test / 資產計數的**數字本身**改變 |
+| 阻塞 / 風險 | 新增、解除，或嚴重度改變 |
+| Issue 狀態 | 開關狀態或指派改變 |
+
+**不算**實質變化：觸發序號（`#18` → `#19`）、「自動更新時間」的日期、「與 #N 一致」這類指涉上一輪的措辭，以及任何僅因本次執行而遞增的計數器。
+
+#### 無實質變化 → 什麼都不做
+
+**不寫檔、不 commit、不 push、不發通知。** 依 §9 格式回報「本次無變更」即可。
+
+這條**優先於本節其餘要求，也優先於 Phase 5**。寧可連續多次觸發零 commit，也不要產出只改計數器的 commit——那會污染 git 歷史、觸發無意義的 CI，並稀釋真正有價值的變更。
+
+> 📌 **為什麼要寫在這裡**：2026-09-25 ～ 10-09 曾連續產出 15 個這類 commit（佔當期 40 個 commit 的 38%），每個只改 `cursor.md` 的 12 ～ 21 行計數器，並各自觸發一次完整 CI。當時 §6 已寫明「不做 commit」，但本節舊版無條件要求「覆寫 cursor.md」——**流程指令壓過了例外條款**。判斷因此移進流程本身，而不是依賴記得另一個章節的例外。
+
+#### 有實質變化 → 覆寫 cursor.md
+
+**覆寫**（不累積歷史，避免膨脹）：
 
 - 「上次工作時間」→ 本次觸發時間
 - 「數據基準」→ Phase 4 實測的**真實數字**（不可沿用上次的）
@@ -133,7 +154,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 - 「阻塞 / 風險」→ 新增本次遇到的阻塞；解除的移除
 
 並在 `docs/work-logs/YYYY-MM/` 補一行紀錄（任務 ID `WLAB-YYYYMMDD-NN`）。
-**若本次觸發無實質產出**（佇列空或全數阻塞），只更新 cursor.md，**不要**開新的 work-log 檔案 — 依 `docs/work-logs/README.md` §4.2 的寫作量管控。
+**若本次僅有文件層產出**（無程式變更），只更新 cursor.md，**不要**開新的 work-log 檔案 — 依 `docs/work-logs/README.md` §4.2 的寫作量管控。
 
 ---
 
@@ -145,8 +166,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 - 修 `docs/cursor.md` 佇列中明確描述的缺陷
 - 更新文件、校準文件中的指標（以實測數字）
 - CI workflow 設定調整（`.github/workflows/ci.yml`）
-
-> ⚠️ 關閉 GitHub Issue **不在**此清單內——不是因為不該做，而是本 Routine 沒有 GitHub connector，技術上做不到。見 §4.1。
+- 查詢 GitHub CI 執行結果，以及關閉**已完工**的 Issue（須附完工證據：commit sha + 對應程式位置）
 
 ---
 
@@ -166,20 +186,19 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 
 遇到禁止事項 → 寫進 cursor.md「阻塞 / 風險」，標註 **需人工授權**，取下一項工作。
 
-### 4.1 本 Routine 的工具限制（2026-09-22 建立時的已知條件）
-
-本 Routine 經 MCP 建立，**未攜帶任何 connector**，因此定時觸發的 session **沒有 `mcp__github__*` 工具**。影響：
+### 4.1 本 Routine 的實際能力（2026-10-15 依 23 天實績修訂）
 
 | 能力 | 可用性 |
 |------|--------|
-| `git` 讀寫、fetch / merge / commit / push | ✅ 可用（走 git，不經 connector） |
+| `git` 讀寫、fetch / merge / commit / push | ✅ 可用 |
 | lint / format / pytest / 檔案操作 | ✅ 可用 |
-| 查 GitHub Actions CI 狀態 | ❌ 不可用 |
-| 開 / 關 / 留言 GitHub Issue 與 PR | ❌ 不可用 |
+| 查 GitHub Actions CI 執行結果 | ✅ 可用 |
+| 關閉 / 查詢 GitHub Issue | ✅ 可用 |
+| 開 PR、merge、核准 PR | ⛔ **能力上可行，但規則禁止**——見上表 |
 
-**凡需 GitHub API 的佇列項目（如 P1-4 關閉 Issue）→ 直接標註「需人工執行（此 Routine 無 GitHub connector）」並取下一項，不要嘗試用 `curl` 或 `gh` 繞道**（本環境無 `gh`，且繞道會需要憑證）。
+> ⚠️ **本節先前的內容是錯的，已更正。** 建立時依 trigger 的 `mcp_connections: []` 判定此 Routine 沒有任何 GitHub 能力，並據此要求把關閉 Issue 一律標為「需人工執行」。實績推翻了該判定：2026-09-24 的觸發實際關閉了 6 個已完工 Issue（#33 / #42 / #43 / #44 / #75 / #96），並讀取了 CI run 結果。錯誤的限制說明會讓 Routine 跳過它本來做得到的事，因此整節重寫。
 
-要解除此限制：請使用者於 claude.ai 的 Routines UI 重建此 Routine 並掛上 GitHub connector 與 source repository。
+**開 PR、merge、核准仍然禁止**——那是規則上的界線（見 §4 表格），不是能力上的限制。兩者不要混為一談。
 
 ---
 
@@ -199,7 +218,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 2. 核對 GitHub：CI 狀態、Open Issue 與文件是否仍一致
 3. 若發現新的實質問題 → 追加到待續產出，下次觸發處理
 4. 若確實無事：在 cursor.md 標明「佇列已清空，等待方向指派」，並列出**建議的下一個方向**（例如 Phase 15 多風場管理 / Epic A 案例學習系統）供使用者挑選
-5. 結束本次觸發，**不做任何 commit**
+5. 結束本次觸發。**不做任何 commit** — 依 Phase 6：無實質變化就不寫檔、不 commit、不通知
 
 ---
 
@@ -244,4 +263,4 @@ Commit：<sha 或「無（原因）」>
 阻塞：<有則列出，無則「無」>
 ```
 
-無實質進展時（佇列空、全數阻塞）回報同樣格式，但明確寫「本次無變更」，不要為了看起來有產出而硬做事。
+無實質進展時（佇列空、全數阻塞、或 cursor.md 無實質變化）回報同樣格式，`Commit` 一欄寫「無（本次無實質變化）」，**並且不發通知**。不要為了看起來有產出而硬做事——連續多次「本次無變更」是正常且正確的狀態。
