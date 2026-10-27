@@ -2078,6 +2078,13 @@ async def create_farm(req: WindFarmCreateRequest) -> JSONResponse:
     )
 
 
+@app.get("/api/farms/overview", tags=["多風場管理"])
+async def farms_overview() -> dict[str, Any]:
+    """風場總覽：各風場風機數、使用中告警數、開放工單數（需宣告於 `/{farm_id}` 之前）。"""
+    farms = _get_db().get_farms_overview()
+    return {"status": "success", "farms": farms, "total": len(farms)}
+
+
 @app.get("/api/farms/{farm_id}", tags=["多風場管理"])
 async def get_farm(farm_id: str) -> dict[str, Any]:
     """取得風場完整階層（風場 → 群組 → 風機）。"""

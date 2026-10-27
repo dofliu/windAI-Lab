@@ -116,3 +116,32 @@ def test_api_errors(client: TestClient) -> None:
         f"/api/farms/{farm_id}/turbines", json={"turbine_id": "WT", "group_id": "GRP-x"}
     )
     assert bad.status_code == 400
+
+
+def test_overview_aggregates_alerts_and_work_orders(db: Database, client: TestClient) -> None:
+    farm_a = db.create_wind_farm("A 場")
+    farm_b = db.create_wind_farm("B 場")
+    db.assign_turbine(farm_a, "WT-01")
+    db.assign_turbine(farm_a, "WT-02")
+    db.assign_turbine(farm_b, "WT-03")
+
+    db.create_alert("test", "critical", "過溫", turbine_id="WT-01")
+    db.create_alert("test", "warning", "振動", turbine_id="WT-02")
+    resolved = db.create_alert("test", "critical", "已處理", turbine_id="WT-01")
+    db.update_alert_status(resolved, "resolved")
+    db.create_alert("test", "critical", "未歸屬", turbine_id="WT-99")
+    db.create_work_order("檢修", turbine_id="WT-02")
+    done = db.create_work_order("已結", turbine_id="WT-03")
+    db.update_work_order(done, status="completed")
+
+    by_name = {f["name"]: f for f in db.get_farms_overview()}
+    assert by_name["A 場"]["turbine_count"] == 2
+    assert by_name["A 場"]["active_alerts"] == 2
+    assert by_name["A 場"]["critical_alerts"] == 1
+    assert by_name["A 場"]["open_work_orders"] == 1
+    assert by_name["B 場"]["active_alerts"] == 0
+    assert by_name["B 場"]["open_work_orders"] == 0
+
+    resp = client.get("/api/farms/overview")
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 2

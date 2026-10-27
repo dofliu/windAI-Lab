@@ -876,6 +876,29 @@ class Database:
             ).fetchall()
             return [_row_to_farm(r) for r in rows]
 
+    def get_farms_overview(self) -> list[dict[str, Any]]:
+        """風場總覽：每風場彙總風機數、使用中告警數（含 critical）與開放工單數。
+
+        告警 / 工單以 `turbine_id` 對應 `farm_turbines` 歸屬；未歸屬任何風場的風機不計入。
+        開放工單 = 狀態為 `open` 或 `in_progress`。
+        """
+        self.initialize()
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT f.id AS farm_id, f.name, f.customer, f.capacity_mw, "
+                "(SELECT COUNT(*) FROM farm_turbines t WHERE t.farm_id = f.id) AS turbine_count, "
+                "(SELECT COUNT(*) FROM alerts a JOIN farm_turbines t ON a.turbine_id = t.turbine_id "
+                "  WHERE t.farm_id = f.id AND a.status = 'active') AS active_alerts, "
+                "(SELECT COUNT(*) FROM alerts a JOIN farm_turbines t ON a.turbine_id = t.turbine_id "
+                "  WHERE t.farm_id = f.id AND a.status = 'active' "
+                "  AND a.severity = 'critical') AS critical_alerts, "
+                "(SELECT COUNT(*) FROM work_orders w JOIN farm_turbines t "
+                "  ON w.turbine_id = t.turbine_id WHERE t.farm_id = f.id "
+                "  AND w.status IN ('open', 'in_progress')) AS open_work_orders "
+                "FROM wind_farms f ORDER BY f.created_at, f.name"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def delete_wind_farm(self, farm_id: str) -> bool:
         """刪除風場（群組與風機歸屬一併連帶刪除）。"""
         self.initialize()
