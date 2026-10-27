@@ -6,6 +6,7 @@
 
 ## 上次工作時間
 
+- **2026-10-27 auto-advance**：P1-5a 完成——新增 `tests/integration/test_new_case_flow.py`（TC-01 / TC-02 / TC-04，全程走 HTTP API、RAG 不可用走關鍵字降級），3 測試通過；未發現缺陷。ruff 0 / black 188 檔綠 / pytest 927 pass 5 skip。下一項 P1-5b。
 - **2026-10-27 auto-advance**：P15-3 完成——`Database.compare_farm_turbines()` + `GET /api/farms/{farm_id}/compare`（同風場各風機的群組、使用中告警 / critical、開放工單並列，依嚴重度排序；風場不存在回 404）；補 1 個測試。健康分數 / 效能指標待 SCADA 資料來源確認，未納入。ruff 0 / black 187 檔綠 / pytest 924 pass 5 skip。
 - **2026-10-27 auto-advance**：P15-2 完成——`Database.get_farms_overview()` + `GET /api/farms/overview`（各風場風機數 / 使用中告警 / critical 告警 / 開放工單，以 `farm_turbines` 對應 `turbine_id`；未歸屬風機不計）；補 1 個測試。發電量 / 可利用率待資料來源確認，未納入。ruff 0 / black 187 檔綠 / pytest 923 pass 5 skip。
 - **2026-10-27（使用者指派 Phase 15）**：完成 Phase 15 第一切片——`wind_farms` / `turbine_groups` / `farm_turbines` 三張表、`Database` 風場 CRUD 與階層查詢、`/api/farms*` 6 個端點、`tests/unit/test_wind_farms.py` 8 測試。ruff 0 / black 187 檔綠 / pytest 922 pass 5 skip。
@@ -21,8 +22,8 @@
 
 - 環境：`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`；**需 `python-multipart`**（已在 requirements.txt 與 Phase 0 安裝清單）
 - `python3 -m ruff check .`：**0 錯誤**
-- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，187 檔
-- `python3 -m pytest tests/ -q`：**924 pass / 0 fail / 5 skip**
+- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，188 檔
+- `python3 -m pytest tests/ -q`：**927 pass / 0 fail / 5 skip**
 - `npm run build`（frontend）：通過
 - `mypy src/`：本次未跑（環境未裝 mypy；上次基準 423 errors；CI 只安裝不執行 mypy，多數為 loguru `logger?` 假警報）
 - 實機 UI 巡覽：0 個 API 4xx/5xx、0 個 JS 例外
@@ -46,7 +47,7 @@
 
 > 規劃見 `docs/routines/case-e2e-test-plan.md`；每次觸發取一個切片，追加到 `tests/integration/test_new_case_flow.py`
 
-- [ ] **P1-5a** 切片 1：TC-01 / TC-02 / TC-04（告警 → 工單 → 結案 → 案例 → 相似推薦、重複結案冪等）
+- [x] **P1-5a**（2026-10-27 完成）切片 1：TC-01 / TC-02 / TC-04（告警 → 工單 → 結案 → 案例 → 相似推薦、重複結案冪等）
 - [ ] **P1-5b** 切片 2：TC-05 / TC-06 / TC-07（容錯）
 - [ ] **P1-5c** 切片 3：TC-03（推薦 Top-3 命中率 ≥ 80%）
 - [ ] **P1-5d** 切片 4：TC-08 / TC-09 / TC-10（多風場連動 + 耗時記錄）
