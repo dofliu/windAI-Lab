@@ -2094,6 +2094,15 @@ async def get_farm(farm_id: str) -> dict[str, Any]:
     return {"status": "success", "farm": farm}
 
 
+@app.get("/api/farms/{farm_id}/compare", tags=["多風場管理"])
+async def compare_farm_turbines(farm_id: str) -> dict[str, Any]:
+    """跨風機比較：同風場各風機的使用中告警、critical 告警與開放工單並列。"""
+    turbines = _get_db().compare_farm_turbines(farm_id)
+    if turbines is None:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    return {"status": "success", "farm_id": farm_id, "turbines": turbines, "total": len(turbines)}
+
+
 @app.delete("/api/farms/{farm_id}", tags=["多風場管理"])
 async def delete_farm(farm_id: str) -> dict[str, Any]:
     """刪除風場（群組與風機歸屬連帶刪除）。"""

@@ -1,11 +1,12 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-27（Phase 15 第二切片：風場總覽 API）
+> 自動更新時間：2026-10-27（Phase 15 第三切片：跨風機比較 API）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
+- **2026-10-27 auto-advance**：P15-3 完成——`Database.compare_farm_turbines()` + `GET /api/farms/{farm_id}/compare`（同風場各風機的群組、使用中告警 / critical、開放工單並列，依嚴重度排序；風場不存在回 404）；補 1 個測試。健康分數 / 效能指標待 SCADA 資料來源確認，未納入。ruff 0 / black 187 檔綠 / pytest 924 pass 5 skip。
 - **2026-10-27 auto-advance**：P15-2 完成——`Database.get_farms_overview()` + `GET /api/farms/overview`（各風場風機數 / 使用中告警 / critical 告警 / 開放工單，以 `farm_turbines` 對應 `turbine_id`；未歸屬風機不計）；補 1 個測試。發電量 / 可利用率待資料來源確認，未納入。ruff 0 / black 187 檔綠 / pytest 923 pass 5 skip。
 - **2026-10-27（使用者指派 Phase 15）**：完成 Phase 15 第一切片——`wind_farms` / `turbine_groups` / `farm_turbines` 三張表、`Database` 風場 CRUD 與階層查詢、`/api/farms*` 6 個端點、`tests/unit/test_wind_farms.py` 8 測試。ruff 0 / black 187 檔綠 / pytest 922 pass 5 skip。
 - **2026-10-21 auto-advance**：P2-3 完成——關閉 #47/#48/#49（附 commit sha 與程式位置），#35 子任務勾選。無程式變更。
@@ -21,7 +22,7 @@
 - 環境：`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`；**需 `python-multipart`**（已在 requirements.txt 與 Phase 0 安裝清單）
 - `python3 -m ruff check .`：**0 錯誤**
 - `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，187 檔
-- `python3 -m pytest tests/ -q`：**923 pass / 0 fail / 5 skip**
+- `python3 -m pytest tests/ -q`：**924 pass / 0 fail / 5 skip**
 - `npm run build`（frontend）：通過
 - `mypy src/`：本次未跑（環境未裝 mypy；上次基準 423 errors；CI 只安裝不執行 mypy，多數為 loguru `logger?` 假警報）
 - 實機 UI 巡覽：0 個 API 4xx/5xx、0 個 JS 例外
@@ -45,7 +46,7 @@
 
 - [x] **P15-1** WindFarm 階層式資料模型（風場 → 群組 → 單機）：DB + API + 測試
 - [x] **P15-2** 風場總覽 API（`/api/farms/overview`）：告警數、開放工單數已完成；發電量 / 可利用率待資料來源確認，另列追蹤
-- [ ] **P15-3** 跨風機比較 API：同風場多風機健康 / 效能並列
+- [x] **P15-3** 跨風機比較 API（`/api/farms/{id}/compare`）：告警 / 工單並列已完成；健康 / 效能指標待資料來源確認，另列追蹤
 - [ ] **P15-4** 前端：風場總覽儀表板（多風場卡片）+ 風場管理頁
 - [ ] **P15-5** 客戶管理 + OAuth2/JWT 認證——**需人工授權**（可能新增依賴、屬安全設計決策）
 

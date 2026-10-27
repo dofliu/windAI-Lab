@@ -899,6 +899,31 @@ class Database:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def compare_farm_turbines(self, farm_id: str) -> list[dict[str, Any]] | None:
+        """跨風機比較：同風場每台風機的群組、使用中告警（含 critical）與開放工單並列。
+
+        依 critical 告警數、使用中告警數由多到少排序，方便先看最需要關注的風機。
+        風場不存在回傳 `None`。
+        """
+        self.initialize()
+        if self.get_wind_farm(farm_id) is None:
+            return None
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT t.turbine_id, t.group_id, g.name AS group_name, t.rated_power_kw, "
+                "(SELECT COUNT(*) FROM alerts a WHERE a.turbine_id = t.turbine_id "
+                "  AND a.status = 'active') AS active_alerts, "
+                "(SELECT COUNT(*) FROM alerts a WHERE a.turbine_id = t.turbine_id "
+                "  AND a.status = 'active' AND a.severity = 'critical') AS critical_alerts, "
+                "(SELECT COUNT(*) FROM work_orders w WHERE w.turbine_id = t.turbine_id "
+                "  AND w.status IN ('open', 'in_progress')) AS open_work_orders "
+                "FROM farm_turbines t LEFT JOIN turbine_groups g ON t.group_id = g.id "
+                "WHERE t.farm_id = ? "
+                "ORDER BY critical_alerts DESC, active_alerts DESC, t.turbine_id",
+                (farm_id,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def delete_wind_farm(self, farm_id: str) -> bool:
         """刪除風場（群組與風機歸屬一併連帶刪除）。"""
         self.initialize()

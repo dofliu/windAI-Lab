@@ -145,3 +145,27 @@ def test_overview_aggregates_alerts_and_work_orders(db: Database, client: TestCl
     resp = client.get("/api/farms/overview")
     assert resp.status_code == 200
     assert resp.json()["total"] == 2
+
+
+def test_compare_turbines_ranks_by_severity(db: Database, client: TestClient) -> None:
+    farm_id = db.create_wind_farm("比較場")
+    group_id = db.create_turbine_group(farm_id, "A 區")
+    db.assign_turbine(farm_id, "WT-01", group_id=group_id, rated_power_kw=2000)
+    db.assign_turbine(farm_id, "WT-02")
+    db.assign_turbine(farm_id, "WT-03")
+    db.create_alert("test", "warning", "振動", turbine_id="WT-01")
+    db.create_alert("test", "critical", "過溫", turbine_id="WT-02")
+    db.create_alert("test", "critical", "過溫", turbine_id="WT-02")
+    db.create_work_order("檢修", turbine_id="WT-01")
+
+    turbines = db.compare_farm_turbines(farm_id)
+    assert turbines is not None
+    assert [t["turbine_id"] for t in turbines] == ["WT-02", "WT-01", "WT-03"]
+    assert turbines[0]["critical_alerts"] == 2
+    wt01 = turbines[1]
+    assert (wt01["group_name"], wt01["active_alerts"], wt01["open_work_orders"]) == ("A 區", 1, 1)
+
+    resp = client.get(f"/api/farms/{farm_id}/compare")
+    assert resp.status_code == 200
+    assert resp.json()["total"] == 3
+    assert client.get("/api/farms/FARM-nope/compare").status_code == 404
