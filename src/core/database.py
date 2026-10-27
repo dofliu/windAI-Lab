@@ -200,6 +200,37 @@ CREATE TABLE IF NOT EXISTS cases (
 
 CREATE INDEX IF NOT EXISTS idx_cases_fault_type ON cases(fault_type);
 CREATE INDEX IF NOT EXISTS idx_cases_turbine_id ON cases(turbine_id);
+
+-- ── Phase 15：多風場階層（風場 → 風機群組 → 單機）────────────────
+CREATE TABLE IF NOT EXISTS wind_farms (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    customer TEXT DEFAULT '',
+    capacity_mw REAL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    metadata TEXT DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS turbine_groups (
+    id TEXT PRIMARY KEY,
+    farm_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (farm_id, name),
+    FOREIGN KEY (farm_id) REFERENCES wind_farms(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS farm_turbines (
+    turbine_id TEXT PRIMARY KEY,
+    farm_id TEXT NOT NULL,
+    group_id TEXT,
+    rated_power_kw REAL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (farm_id) REFERENCES wind_farms(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES turbine_groups(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_farm_turbines_farm ON farm_turbines(farm_id);
 """
 
 
@@ -796,6 +827,135 @@ class Database:
                 "completed": completed,
             }
 
+    # ── 風場階層 CRUD（Phase 15）────────────────────────────────
+
+    def create_wind_farm(
+        self,
+        name: str,
+        customer: str = "",
+        capacity_mw: float = 0.0,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """建立風場，回傳 farm_id。風場名稱重複時拋出 `ValueError`。"""
+        self.initialize()
+        farm_id = f"FARM-{uuid.uuid4().hex[:8]}"
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT INTO wind_farms (id, name, customer, capacity_mw, created_at, metadata) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        farm_id,
+                        name,
+                        customer,
+                        capacity_mw,
+                        datetime.now().isoformat(),
+                        json.dumps(metadata or {}, default=_json_fallback),
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"風場名稱已存在：{name}") from exc
+        return farm_id
+
+    def get_wind_farm(self, farm_id: str) -> dict[str, Any] | None:
+        """取得單一風場（不含階層）。"""
+        self.initialize()
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM wind_farms WHERE id = ?", (farm_id,)).fetchone()
+            return _row_to_farm(row) if row else None
+
+    def list_wind_farms(self) -> list[dict[str, Any]]:
+        """列出所有風場，附風機 / 群組數量。"""
+        self.initialize()
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT f.*, "
+                "(SELECT COUNT(*) FROM farm_turbines t WHERE t.farm_id = f.id) AS turbine_count, "
+                "(SELECT COUNT(*) FROM turbine_groups g WHERE g.farm_id = f.id) AS group_count "
+                "FROM wind_farms f ORDER BY f.created_at, f.name"
+            ).fetchall()
+            return [_row_to_farm(r) for r in rows]
+
+    def delete_wind_farm(self, farm_id: str) -> bool:
+        """刪除風場（群組與風機歸屬一併連帶刪除）。"""
+        self.initialize()
+        with self._connect() as conn:
+            return conn.execute("DELETE FROM wind_farms WHERE id = ?", (farm_id,)).rowcount > 0
+
+    def create_turbine_group(self, farm_id: str, name: str) -> str:
+        """於風場下建立風機群組。風場不存在或群組名稱重複時拋出 `ValueError`。"""
+        self.initialize()
+        if self.get_wind_farm(farm_id) is None:
+            raise ValueError(f"風場不存在：{farm_id}")
+        group_id = f"GRP-{uuid.uuid4().hex[:8]}"
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT INTO turbine_groups (id, farm_id, name, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (group_id, farm_id, name, datetime.now().isoformat()),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"群組名稱已存在：{name}") from exc
+        return group_id
+
+    def assign_turbine(
+        self,
+        farm_id: str,
+        turbine_id: str,
+        group_id: str | None = None,
+        rated_power_kw: float = 0.0,
+    ) -> None:
+        """將風機歸屬到風場（可指定群組）；風機已歸屬他處則改掛至新位置。
+
+        Raises:
+            ValueError: 風場不存在，或群組不屬於該風場。
+        """
+        self.initialize()
+        if self.get_wind_farm(farm_id) is None:
+            raise ValueError(f"風場不存在：{farm_id}")
+        with self._connect() as conn:
+            if group_id is not None:
+                owner = conn.execute(
+                    "SELECT farm_id FROM turbine_groups WHERE id = ?", (group_id,)
+                ).fetchone()
+                if owner is None or owner["farm_id"] != farm_id:
+                    raise ValueError(f"群組不屬於風場 {farm_id}：{group_id}")
+            conn.execute(
+                "INSERT INTO farm_turbines (turbine_id, farm_id, group_id, rated_power_kw, "
+                "created_at) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(turbine_id) DO UPDATE SET farm_id = excluded.farm_id, "
+                "group_id = excluded.group_id, rated_power_kw = excluded.rated_power_kw",
+                (turbine_id, farm_id, group_id, rated_power_kw, datetime.now().isoformat()),
+            )
+
+    def get_farm_hierarchy(self, farm_id: str) -> dict[str, Any] | None:
+        """取得風場完整階層：風場 → 群組 → 風機（未分群的風機放 `ungrouped`）。"""
+        farm = self.get_wind_farm(farm_id)
+        if farm is None:
+            return None
+        with self._connect() as conn:
+            groups = conn.execute(
+                "SELECT id, name FROM turbine_groups WHERE farm_id = ? ORDER BY name", (farm_id,)
+            ).fetchall()
+            turbines = conn.execute(
+                "SELECT turbine_id, group_id, rated_power_kw FROM farm_turbines "
+                "WHERE farm_id = ? ORDER BY turbine_id",
+                (farm_id,),
+            ).fetchall()
+        by_group: dict[str | None, list[dict[str, Any]]] = {}
+        for t in turbines:
+            by_group.setdefault(t["group_id"], []).append(
+                {"turbine_id": t["turbine_id"], "rated_power_kw": t["rated_power_kw"]}
+            )
+        farm["groups"] = [
+            {"id": g["id"], "name": g["name"], "turbines": by_group.get(g["id"], [])}
+            for g in groups
+        ]
+        farm["ungrouped"] = by_group.get(None, [])
+        farm["turbine_count"] = len(turbines)
+        return farm
+
     # ── Case CRUD（Epic A #47）──────────────────────────────────
 
     def create_case(
@@ -1168,6 +1328,13 @@ def _row_to_case(row: sqlite3.Row) -> dict[str, Any]:
     """將 sqlite3.Row 轉為 case dict，解析 JSON 與布林欄位。"""
     d = dict(row)
     d["indexed"] = bool(d.get("indexed"))
+    d["metadata"] = json.loads(d.get("metadata") or "{}")
+    return d
+
+
+def _row_to_farm(row: sqlite3.Row) -> dict[str, Any]:
+    """將 sqlite3.Row 轉為 wind_farm dict，解析 JSON 欄位。"""
+    d = dict(row)
     d["metadata"] = json.loads(d.get("metadata") or "{}")
     return d
 

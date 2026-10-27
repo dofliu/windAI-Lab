@@ -2036,6 +2036,95 @@ async def get_case(case_id: str) -> dict[str, Any]:
     return {"status": "success", "case": case}
 
 
+class WindFarmCreateRequest(BaseModel):
+    """建立風場請求。"""
+
+    name: str
+    customer: str = ""
+    capacity_mw: float = 0.0
+
+
+class TurbineGroupCreateRequest(BaseModel):
+    """建立風機群組請求。"""
+
+    name: str
+
+
+class FarmTurbineAssignRequest(BaseModel):
+    """將風機歸屬到風場 / 群組的請求。"""
+
+    turbine_id: str
+    group_id: str | None = None
+    rated_power_kw: float = 0.0
+
+
+@app.get("/api/farms", tags=["多風場管理"])
+async def list_farms() -> dict[str, Any]:
+    """列出所有風場（含風機 / 群組數量）。"""
+    farms = _get_db().list_wind_farms()
+    return {"status": "success", "farms": farms, "total": len(farms)}
+
+
+@app.post("/api/farms", tags=["多風場管理"])
+async def create_farm(req: WindFarmCreateRequest) -> JSONResponse:
+    """建立風場；名稱重複回 409。"""
+    db = _get_db()
+    try:
+        farm_id = db.create_wind_farm(req.name, customer=req.customer, capacity_mw=req.capacity_mw)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return JSONResponse(
+        status_code=201, content={"status": "success", "farm": db.get_wind_farm(farm_id)}
+    )
+
+
+@app.get("/api/farms/{farm_id}", tags=["多風場管理"])
+async def get_farm(farm_id: str) -> dict[str, Any]:
+    """取得風場完整階層（風場 → 群組 → 風機）。"""
+    farm = _get_db().get_farm_hierarchy(farm_id)
+    if not farm:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    return {"status": "success", "farm": farm}
+
+
+@app.delete("/api/farms/{farm_id}", tags=["多風場管理"])
+async def delete_farm(farm_id: str) -> dict[str, Any]:
+    """刪除風場（群組與風機歸屬連帶刪除）。"""
+    if not _get_db().delete_wind_farm(farm_id):
+        raise HTTPException(status_code=404, detail="風場不存在")
+    return {"status": "success", "farm_id": farm_id}
+
+
+@app.post("/api/farms/{farm_id}/groups", tags=["多風場管理"])
+async def create_farm_group(farm_id: str, req: TurbineGroupCreateRequest) -> JSONResponse:
+    """於風場下建立風機群組；風場不存在回 404、群組名稱重複回 409。"""
+    db = _get_db()
+    if db.get_wind_farm(farm_id) is None:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    try:
+        group_id = db.create_turbine_group(farm_id, req.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return JSONResponse(
+        status_code=201, content={"status": "success", "group_id": group_id, "name": req.name}
+    )
+
+
+@app.post("/api/farms/{farm_id}/turbines", tags=["多風場管理"])
+async def assign_farm_turbine(farm_id: str, req: FarmTurbineAssignRequest) -> dict[str, Any]:
+    """將風機歸屬到風場（可指定群組）；風場不存在回 404、群組不屬於該風場回 400。"""
+    db = _get_db()
+    if db.get_wind_farm(farm_id) is None:
+        raise HTTPException(status_code=404, detail="風場不存在")
+    try:
+        db.assign_turbine(
+            farm_id, req.turbine_id, group_id=req.group_id, rated_power_kw=req.rated_power_kw
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "success", "farm": db.get_farm_hierarchy(farm_id)}
+
+
 @app.post("/api/work-orders", tags=["工單管理"])
 async def create_work_order(req: CreateWorkOrderRequest) -> JSONResponse:
     """建立新工單。"""

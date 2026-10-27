@@ -1,11 +1,12 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-14（auto-advance #40：P1-4 手動腳本完成）
+> 自動更新時間：2026-10-27（Phase 15 第一切片：風場階層資料模型）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
+- **2026-10-27（使用者指派 Phase 15）**：完成 Phase 15 第一切片——`wind_farms` / `turbine_groups` / `farm_turbines` 三張表、`Database` 風場 CRUD 與階層查詢、`/api/farms*` 6 個端點、`tests/unit/test_wind_farms.py` 8 測試。ruff 0 / black 187 檔綠 / pytest 922 pass 5 skip。
 - **2026-10-21 auto-advance**：P2-3 完成——關閉 #47/#48/#49（附 commit sha 與程式位置），#35 子任務勾選。無程式變更。
 - **#40（2026-10-14 auto-advance）**：P1-4 完成可做的部分——新增 `scripts/e2e_smoke.mjs`（手動、不進 CI、未改 package.json）：巡覽 5 分頁 / 11 子頁面檢查 API 4xx/5xx 與 JS 例外，並以 API 驗證工單結案 → `/api/cases` +1；實機（uvicorn + vite + Chromium）跑通。無 SCADA 資料時對 `/api/scada/*` 的 404 視為預期。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
 - **#39（2026-10-14 auto-advance）**：P1-3 完成——`MockConnector.fetch_data` 每次拉取改產生 6 筆連續時間序列（10 分鐘間隔、跨次接續不重疊，`batch_size` 可由連接器 config 設定），快取模式與隨機模式皆適用；FileWatcher 觸發路徑不變。補 4 個測試。ruff 0 / black 186 檔綠 / pytest 914 pass 5 skip。
@@ -18,13 +19,13 @@
 
 - 環境：`python3 -m pip install`（`pip` 指向 Python 3.13，pandas 2.2.0 會編譯失敗，務必用 `python3 -m pip`），pin `ruff==0.6.0`、`black==24.8.0`；**需 `python-multipart`**（已在 requirements.txt 與 Phase 0 安裝清單）
 - `python3 -m ruff check .`：**0 錯誤**
-- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，186 檔
-- `python3 -m pytest tests/ -q`：**914 pass / 0 fail / 5 skip**
+- `python3 -m black --check --line-length 99 src/ tests/`：**全綠**，187 檔
+- `python3 -m pytest tests/ -q`：**922 pass / 0 fail / 5 skip**
 - `npm run build`（frontend）：通過
 - `mypy src/`：本次未跑（環境未裝 mypy；上次基準 423 errors；CI 只安裝不執行 mypy，多數為 loguru `logger?` 假警報）
 - 實機 UI 巡覽：0 個 API 4xx/5xx、0 個 JS 例外
 - `src/` `.py` 檔：143，總行數 31,182
-- REST/WS 端點：76（`/api` + `/ws`，以 app.routes 實算）
+- REST/WS 端點：82（`/api` + `/ws`，以 app.routes 實算）
 - 技能 28、agent 模組 25（未變動）
 - Open Issues：9（#34/35/36/37/46/50/51/52/69）——#47/#48/#49 已於 2026-10-21 關閉；其餘未重新核對
 
@@ -38,6 +39,14 @@
 - [x] **P1-2** 前端寫死 Kelmarsh 清單統一改為讀 `/api/scada/turbines`：`MLDashboard.tsx`（L30-32）、`CommandBar.tsx` / `TaskLauncher.tsx` 的 `FALLBACK_TURBINES` 僅在 API 失敗時使用；`npm run build` 驗證
 - [x] **P1-3**（#39 完成）MockConnector 每次拉取只產 1 筆紀錄、一檔一筆 → SCADA 圖只有 1 個點。改為同風機追加寫入單一滾動檔（或拉取時產生一段時間序列），保留 FileWatcher 觸發；補測試
 - [x] **P1-4**（#40：手動腳本已完成；CI 整合仍待授權，見阻塞）實機 E2E 自動化：把本次 Playwright 巡覽腳本（全部分頁 + 工單結案 → 案例推薦）收成 `scripts/e2e_smoke.mjs` 或 run skill，CI 前端 job 可選擇性執行。**新增 Playwright 依賴屬供應鏈決策 → 需人工授權**，授權前只能寫成不進 CI 的手動腳本
+
+### P1 — Phase 15 多風場管理（使用者 2026-10-27 指派）
+
+- [x] **P15-1** WindFarm 階層式資料模型（風場 → 群組 → 單機）：DB + API + 測試
+- [ ] **P15-2** 風場總覽 API：每風場彙總告警數（`alerts.turbine_id` 對應 `farm_turbines`）、開放工單數；發電量 / 可利用率待資料來源確認
+- [ ] **P15-3** 跨風機比較 API：同風場多風機健康 / 效能並列
+- [ ] **P15-4** 前端：風場總覽儀表板（多風場卡片）+ 風場管理頁
+- [ ] **P15-5** 客戶管理 + OAuth2/JWT 認證——**需人工授權**（可能新增依賴、屬安全設計決策）
 
 ### P2 — 需人工
 
