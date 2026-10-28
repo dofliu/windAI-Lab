@@ -3,9 +3,11 @@
 切片 1：TC-01 / TC-02 / TC-04（告警 → 工單 → 結案 → 案例 → 相似推薦、重複結案冪等）。
 切片 2：TC-05 / TC-06 / TC-07（容錯：缺欄位結案、indexer 失敗、不存在 / 缺參數）。
 切片 3：TC-03（植入 3 種故障類型各 3 案例，驗證 Top-3 命中率）。
+切片 4：TC-08 / TC-09 / TC-10（多風場連動、未歸屬風機、全流程耗時記錄）。
 全程走 HTTP API，RAG 一律視為不可用，推薦走關鍵字降級路徑。
 """
 
+import time
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -195,3 +197,67 @@ class TestRecommendationQuality:
             if top3 and all(fault_by_id.get(r["case_id"]) == title for r in top3):
                 hits += 1
         assert hits / trials >= 0.8
+
+
+def _create_farm_with_turbine(client: TestClient, turbine_id: str = "WT-01") -> str:
+    resp = client.post("/api/farms", json={"name": "測試風場"})
+    assert resp.status_code == 201
+    farm_id = str(resp.json()["farm"]["id"])
+    assign = client.post(f"/api/farms/{farm_id}/turbines", json={"turbine_id": turbine_id})
+    assert assign.status_code == 200
+    return farm_id
+
+
+def _farm_overview(client: TestClient, farm_id: str) -> dict[str, int]:
+    farms = client.get("/api/farms/overview").json()["farms"]
+    return next(f for f in farms if f["farm_id"] == farm_id)
+
+
+class TestMultiFarmLinkage:
+    """TC-08：風機歸屬風場後走主流程，風場總覽 / 比較的告警與工單數即時反映。"""
+
+    def test_overview_and_compare_follow_case_flow(self, client: TestClient) -> None:
+        farm_id = _create_farm_with_turbine(client)
+
+        alert_id = _raise_alert(client)
+        row = _farm_overview(client, farm_id)
+        assert (row["active_alerts"], row["critical_alerts"]) == (1, 1)
+
+        resp = client.post(f"/api/alerts/{alert_id}/create-work-order")
+        assert resp.status_code == 201
+        order_id = str(resp.json()["work_order_id"])
+        assert _farm_overview(client, farm_id)["open_work_orders"] == 1
+        compare = client.get(f"/api/farms/{farm_id}/compare").json()["turbines"][0]
+        assert compare["turbine_id"] == "WT-01"
+        assert compare["open_work_orders"] == 1
+
+        done = client.patch(f"/api/work-orders/{order_id}", json={"status": "completed"})
+        assert done.status_code == 200
+        assert _farm_overview(client, farm_id)["open_work_orders"] == 0
+
+
+class TestUnassignedTurbine:
+    """TC-09：未歸屬風機的告警不計入任何風場，且不報錯。"""
+
+    def test_unassigned_alert_not_counted(self, client: TestClient) -> None:
+        farm_id = _create_farm_with_turbine(client, "WT-01")
+        _close_case_flow(client, "WT-99")
+        _raise_alert(client, "WT-99")
+
+        row = _farm_overview(client, farm_id)
+        assert (row["active_alerts"], row["open_work_orders"]) == (0, 0)
+        assert client.get("/api/cases").json()["total"] == 1
+
+
+class TestFlowDuration:
+    """TC-10：全流程計時（記錄耗時，目標 < 2 秒；以 10 秒為防退化上限避免 CI 抖動）。"""
+
+    def test_full_flow_duration(self, client: TestClient) -> None:
+        start = time.perf_counter()
+        _close_case_flow(client)
+        new_alert = _raise_alert(client)
+        resp = client.get("/api/cases/similar", params={"alert_id": new_alert})
+        elapsed = time.perf_counter() - start
+        assert resp.status_code == 200
+        print(f"TC-10 全流程耗時：{elapsed:.3f} 秒（目標 < 2 秒）")
+        assert elapsed < 10
