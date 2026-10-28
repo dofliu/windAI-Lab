@@ -1,11 +1,12 @@
 # WindAI Lab — Cursor
 
-> 自動更新時間：2026-10-28（P1-5d 多風場連動 + 耗時）
+> 自動更新時間：2026-10-28（P15-4 風場管理前端）
 > 規格：`docs/routines/daily-workflow.md` §4（R2 基準快照）
 > 自動推進：`docs/routines/auto-advance.md`（每 3 小時觸發，以本檔為唯一狀態交接介面）
 
 ## 上次工作時間
 
+- **2026-10-28 auto-advance**：P15-4 完成——新增 `FarmManagementPanel.tsx`（風場總覽卡片、跨風機比較表、建立風場 / 群組 / 風機歸屬、刪除風場），掛在「分析 → 風場管理」子頁（`DashboardView.tsx`）。純前端變更，未做實機瀏覽器巡覽。ruff 0 / black 188 檔綠 / pytest 936 pass 5 skip / `npm run build` 通過。下一項為 P15-5（需人工授權）與 P2，無可自主執行項目。
 - **2026-10-28 auto-advance**：P1-5d 完成——追加 TC-08（風機歸屬風場後，總覽 / 比較的告警與工單數隨流程即時變化）、TC-09（未歸屬風機不計入任何風場、不報錯）、TC-10（全流程耗時 0.056 秒，目標 < 2 秒）；未發現缺陷。P1-5 全部切片完成。ruff 0 / black 188 檔綠 / pytest 936 pass 5 skip。
 - **2026-10-28 auto-advance**：P1-5c 完成——追加 TC-03（3 種故障類型 × 3 案例，各類型查詢 Top-3 全數命中同類型，命中率 100% ≥ 80%），`_close_case_flow` 新增 `title` 參數；未發現缺陷。ruff 0 / black 188 檔綠 / pytest 933 pass 5 skip。下一項 P1-5d。
 - **2026-10-28 auto-advance**：P1-5b 完成——`tests/integration/test_new_case_flow.py` 追加 TC-05 / TC-06 / TC-07（缺欄位結案、indexer 失敗、404 / 422），5 測試通過；未發現缺陷。ruff 0 / black 188 檔綠 / pytest 932 pass 5 skip。下一項 P1-5c。
@@ -60,7 +61,7 @@
 - [x] **P15-1** WindFarm 階層式資料模型（風場 → 群組 → 單機）：DB + API + 測試
 - [x] **P15-2** 風場總覽 API（`/api/farms/overview`）：告警數、開放工單數已完成；發電量 / 可利用率待資料來源確認，另列追蹤
 - [x] **P15-3** 跨風機比較 API（`/api/farms/{id}/compare`）：告警 / 工單並列已完成；健康 / 效能指標待資料來源確認，另列追蹤
-- [ ] **P15-4** 前端：風場總覽儀表板（多風場卡片）+ 風場管理頁
+- [x] **P15-4**（2026-10-28 完成）前端：風場總覽儀表板（多風場卡片）+ 風場管理頁
 - [ ] **P15-5** 客戶管理 + OAuth2/JWT 認證——**需人工授權**（可能新增依賴、屬安全設計決策）
 
 ### P2 — 需人工

@@ -13,9 +13,10 @@ import WorkLogPanel from './WorkLogPanel'
 import WorkOrderPanel from './WorkOrderPanel'
 import ConnectorManager from './ConnectorManager'
 import ReportManagementPanel from './ReportManagementPanel'
+import FarmManagementPanel from './FarmManagementPanel'
 
 export type DashTab = 'team' | 'analysis' | 'knowledge' | 'records' | 'alerts'
-type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history' | 'alert-list' | 'work-orders' | 'connectors' | 'reports'
+type SubView = 'detail' | 'hr' | 'scada' | 'ml' | 'dag' | 'kb' | 'logs' | 'history' | 'alert-list' | 'work-orders' | 'connectors' | 'reports' | 'farms'
 
 interface FileEventPayload {
   filename: string
@@ -68,6 +69,7 @@ const TABS: { id: DashTab; label: string; icon: string; subViews: { id: SubView;
       { id: 'scada', label: 'SCADA 資料' },
       { id: 'ml', label: 'ML Pipeline' },
       { id: 'dag', label: '流程圖' },
+      { id: 'farms', label: '風場管理' },
     ],
   },
   {
@@ -234,6 +236,8 @@ export default function DashboardView({
           <ConnectorManager />
         ) : activeSubView === 'reports' ? (
           <ReportManagementPanel />
+        ) : activeSubView === 'farms' ? (
+          <FarmManagementPanel />
         ) : (
           <WorkLogPanel logs={workLogs} />
         )}
