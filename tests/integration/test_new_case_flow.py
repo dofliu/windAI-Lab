@@ -1,6 +1,7 @@
 """新案例處理能力驗證（規劃見 docs/routines/case-e2e-test-plan.md）。
 
 切片 1：TC-01 / TC-02 / TC-04（告警 → 工單 → 結案 → 案例 → 相似推薦、重複結案冪等）。
+切片 2：TC-05 / TC-06 / TC-07（容錯：缺欄位結案、indexer 失敗、不存在 / 缺參數）。
 全程走 HTTP API，RAG 一律視為不可用，推薦走關鍵字降級路徑。
 """
 
@@ -110,3 +111,58 @@ class TestIdempotentClose:
             resp = client.patch(f"/api/work-orders/{order_id}", json={"status": "completed"})
             assert resp.status_code == 200
         assert client.get("/api/cases").json()["total"] == 1
+
+
+class TestMinimalOrderClose:
+    """TC-05：無 turbine_id / 無 notes 的工單結案仍建立案例。"""
+
+    def test_close_without_turbine_or_notes(self, client: TestClient) -> None:
+        resp = client.post("/api/work-orders", json={"title": "例行巡檢"})
+        assert resp.status_code == 201
+        order_id = resp.json()["work_order_id"]
+
+        done = client.patch(f"/api/work-orders/{order_id}", json={"status": "completed"})
+        assert done.status_code == 200
+
+        listing = client.get("/api/cases").json()
+        assert listing["total"] == 1
+        case = listing["cases"][0]
+        assert case["work_order_id"] == order_id
+        assert not case.get("turbine_id")
+
+
+class _FailingIndexer:
+    """模擬向量庫寫入失敗。"""
+
+    def add_documents(self, *args: object, **kwargs: object) -> None:
+        raise RuntimeError("向量庫寫入失敗（測試）")
+
+
+class TestIndexerFailure:
+    """TC-06：indexer 失敗時結案仍成功，案例保存於 DB。"""
+
+    def test_close_succeeds_when_indexer_raises(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(api_main, "_get_rag_service", lambda: _FailingIndexer())
+        _, order_id = _close_case_flow(client)
+
+        order = client.get(f"/api/work-orders/{order_id}").json()["work_order"]
+        assert order["status"] == "completed"
+        listing = client.get("/api/cases").json()
+        assert listing["total"] == 1
+        assert listing["cases"][0]["work_order_id"] == order_id
+
+
+class TestInvalidRequests:
+    """TC-07：不存在的資源與缺參數回傳 404 / 422。"""
+
+    def test_unknown_case_returns_404(self, client: TestClient) -> None:
+        assert client.get("/api/cases/no-such-case").status_code == 404
+
+    def test_similar_without_alert_id_returns_422(self, client: TestClient) -> None:
+        assert client.get("/api/cases/similar").status_code == 422
+
+    def test_similar_with_unknown_alert_returns_404(self, client: TestClient) -> None:
+        resp = client.get("/api/cases/similar", params={"alert_id": "no-such-alert"})
+        assert resp.status_code == 404
