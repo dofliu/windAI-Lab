@@ -2,6 +2,7 @@
 
 切片 1：TC-01 / TC-02 / TC-04（告警 → 工單 → 結案 → 案例 → 相似推薦、重複結案冪等）。
 切片 2：TC-05 / TC-06 / TC-07（容錯：缺欄位結案、indexer 失敗、不存在 / 缺參數）。
+切片 3：TC-03（植入 3 種故障類型各 3 案例，驗證 Top-3 命中率）。
 全程走 HTTP API，RAG 一律視為不可用，推薦走關鍵字降級路徑。
 """
 
@@ -53,9 +54,11 @@ def _raise_alert(client: TestClient, turbine_id: str = "WT-01", title: str = FAU
     return str(resp.json()["alert_id"])
 
 
-def _close_case_flow(client: TestClient, turbine_id: str = "WT-01") -> tuple[str, str]:
+def _close_case_flow(
+    client: TestClient, turbine_id: str = "WT-01", title: str = FAULT_TITLE
+) -> tuple[str, str]:
     """告警 → 工單 → 備註 → 結案，回傳 (alert_id, order_id)。"""
-    alert_id = _raise_alert(client, turbine_id)
+    alert_id = _raise_alert(client, turbine_id, title)
     resp = client.post(f"/api/alerts/{alert_id}/create-work-order")
     assert resp.status_code == 201
     order_id = str(resp.json()["work_order_id"])
@@ -166,3 +169,29 @@ class TestInvalidRequests:
     def test_similar_with_unknown_alert_returns_404(self, client: TestClient) -> None:
         resp = client.get("/api/cases/similar", params={"alert_id": "no-such-alert"})
         assert resp.status_code == 404
+
+
+class TestRecommendationQuality:
+    """TC-03：植入 3 種故障類型各 3 案例，各類型查詢的 Top-3 命中率 ≥ 80%。"""
+
+    FAULT_TITLES = ("齒輪箱油溫過高", "發電機軸承振動異常", "變槳系統馬達過載")
+
+    def test_top3_hit_rate_at_least_80_percent(self, client: TestClient) -> None:
+        for title in self.FAULT_TITLES:
+            for turbine in ("WT-01", "WT-02", "WT-03"):
+                _close_case_flow(client, turbine, title)
+        cases = client.get("/api/cases", params={"limit": 100}).json()["cases"]
+        assert len(cases) == 9
+        fault_by_id = {c["id"]: c["fault_type"] for c in cases}
+
+        hits = 0
+        trials = 0
+        for title in self.FAULT_TITLES:
+            query = _raise_alert(client, "WT-01", title)
+            resp = client.get("/api/cases/similar", params={"alert_id": query, "top_k": 3})
+            assert resp.status_code == 200
+            top3 = resp.json()["recommendations"][:3]
+            trials += 1
+            if top3 and all(fault_by_id.get(r["case_id"]) == title for r in top3):
+                hits += 1
+        assert hits / trials >= 0.8
